@@ -1,0 +1,271 @@
+# Tech
+
+Architecture and tooling. Until the code exists, this is the plan; once it does, keep this doc in step with it.
+
+## Stack
+
+| | Choice | Notes |
+|---|---|---|
+| Language | TypeScript, `strict` | Pinned to 6.0.x: TS 7 is out, but typescript-eslint only supports up to 6.0 |
+| Engine | Phaser 4 (4.2.x) | Tilemaps, cameras, tweens, particles, input, audio, scenes |
+| Build | Vite 8 | Dev server and static build |
+| Unit tests | Vitest 5 | Runs `src/core` and the data checks in Node |
+| Data validation | Zod 4 | A schema for every kind of content |
+| End-to-end tests | Playwright | Drives the real game in Chromium and takes screenshots |
+| Lint and format | ESLint 10 + typescript-eslint, Prettier | |
+| Scripts | tsx | Runs the TypeScript tools (`validate`, `sim`) |
+| Hosting | GitHub Pages via GitHub Actions | Every push to `main` deploys to https://tim39.github.io/game/ |
+
+Versions were checked in October 2026. M0 installs the latest compatible ones.
+
+## Layout
+
+```
+.
+├── CLAUDE.md  README.md  CREDITS.md
+├── docs/                 DESIGN, STORY, TECH, ROADMAP
+├── assets-src/           raw asset packs exactly as downloaded (not shipped)
+├── public/assets/        the curated files the game loads (shipped as-is)
+├── src/
+│   ├── main.ts           Phaser config, scene list, boot
+│   ├── core/             pure game rules: no Phaser, no DOM
+│   │   ├── battle/       CTB engine, damage, statuses, enemy AI
+│   │   ├── state.ts      GameState and the operations on it
+│   │   ├── save.ts       serialization, versions, migrations
+│   │   ├── events.ts     EventContext types for scripts
+│   │   ├── schema.ts     Zod schemas and the types derived from them
+│   │   └── rng.ts        seeded RNG
+│   ├── data/             content: characters, skills, items, enemies, encounters,
+│   │                     shops, balance.ts, maps/, events/
+│   ├── systems/          Phaser-side services: input, audio, storage, assets, event runner
+│   ├── scenes/           boot, preload, title, field, battle, menu, dialogue, shop, game-over
+│   ├── ui/               the UI kit
+│   └── debug/            debug menu and window.__game (dev and test builds only)
+├── tools/                validate.ts, sim.ts and other scripts
+├── tests/e2e/            Playwright specs
+└── .github/workflows/    ci.yml, deploy.yml
+```
+
+## Dependency rules
+
+- `core` imports nothing from the rest of `src`, and never `phaser`. Content is passed in (a `GameDb` object), so tests can use small fixtures.
+- `data` imports only from `core` (schemas, `define*` helpers, types).
+- `systems`, `scenes` and `ui` may import `core`, `data` and each other.
+- Only `main.ts` imports `debug`, and only in dev and test builds.
+
+ESLint's `no-restricted-imports` enforces the first two.
+
+## Rendering
+
+- Canvas **640×360** with `pixelArt: true` and `roundPixels: true`.
+- The world camera uses zoom 2, so the world is effectively 320×180 pixels: 20×11 tiles of 16 px. The UI uses zoom 1, so text is drawn at canvas resolution and stays sharp.
+- Scaling uses whole-number multiples of 640×360 where the window allows (720p, 1080p, 1440p and 4K are all exact), letterboxed. Smaller screens such as phones fall back to fit-to-screen.
+- Text uses a pixel font through BitmapText. M0 tries this out, picks a CC0 or OFL font and records it here.
+
+## Scenes
+
+```
+Boot → Preload → Title ──▶ Field ◀──▶ Battle ──▶ GameOver
+                              │
+                              ├── Dialogue  (overlay)
+                              ├── Menu      (overlay)
+                              └── Shop      (overlay)
+```
+
+- **Field** owns the current map, the actors and the event runner.
+- **Battle** starts on top of Field (which sleeps) and hands back a result: victory, defeat or fled.
+- **Overlays** run above Field. A focus stack decides which one gets input.
+
+## Game state and saves
+
+```ts
+interface GameState {
+  party: CharacterId[];                        // in battle order
+  members: Record<CharacterId, MemberState>;   // level, exp, hp, mp, equipment
+  inventory: Record<ItemId, number>;
+  gold: number;
+  flags: Record<string, boolean>;
+  vars: Record<string, number>;
+  location: { map: MapId; x: number; y: number; facing: Direction };
+  knownWeaknesses: Record<EnemyId, Element[]>;
+  playTimeMs: number;
+}
+```
+
+- `GameState` is plain JSON, owned by `core/state.ts`. Scenes read it, and change it only through core functions (`addItem`, `equip`, `gainExp`, `setFlag` and so on).
+- Saves go in `localStorage` under `fifth-flame:save:{autosave,1,2,3}` as `{ version, savedAt, summary, state }`. Settings are stored separately under `fifth-flame:settings`.
+- `SAVE_VERSION` comes with an ordered list of migrations. Tests load a fixture save from every past version.
+- The debug menu can export a save to a file and import one, which helps when testing across devices.
+
+## Content data
+
+Content lives in `src/data/` as typed TypeScript modules rather than JSON: they're type-checked as they're written, can hold comments, and are easy to refactor. Each collection is also checked against its Zod schema.
+
+```ts
+// src/data/skills.ts
+export const skills = defineSkills({
+  'tide-edge': {
+    name: 'Tide Edge',
+    description: 'A water-charged slash.',
+    kind: 'physical',
+    element: 'water',
+    power: 1.4,
+    mp: 4,
+    rank: 'normal',
+    target: 'one-enemy',
+  },
+  'delay-strike': {
+    name: 'Delay Strike',
+    description: 'A quick jab that knocks the target back in line.',
+    kind: 'physical',
+    power: 0.8,
+    mp: 3,
+    rank: 'quick',
+    target: 'one-enemy',
+    effects: [{ type: 'delay', amount: 0.5 }], // +50% of the target's Normal delay
+  },
+});
+```
+
+`npm run validate` checks:
+
+- every collection against its schema, with unique IDs;
+- that every reference resolves: skills in learnsets; items in shops, chests and drops; encounter tables on maps; warp targets; event script IDs; sprite and audio keys in the asset manifest;
+- that every map can be reached from the start, and that no chest flag is used twice.
+
+## Maps
+
+Maps are written as ASCII so Claude can author, read and diff them:
+
+```ts
+// src/data/maps/saltmere.ts
+export default defineMap({
+  id: 'saltmere',
+  name: 'Saltmere',
+  tileset: 'village',
+  music: 'town-saltmere',
+  encounters: null,
+  terrain: `
+    TTTTTTTTTTTTTTTTTTTTTTTT
+    T......................T
+    T...,,,,,,,,,,,,,,.....T
+    T...,..............TT..T
+    T...,.........~~~~~~~~~~
+    TTTT,TTTTTTTT~~~~~~~~~~~
+  `,
+  legend: { T: 'tree', '.': 'grass', ',': 'path', '~': 'water' },
+  objects: [
+    { type: 'building', prefab: 'house-small', at: [6, 1], door: 'saltmere-tamsin-house' },
+    { type: 'npc', id: 'tamsin', sprite: 'old-woman', at: [9, 4], facing: 'down', script: 'saltmere/tamsin' },
+    { type: 'chest', at: [21, 1], item: 'potion', flag: 'chest.saltmere-01' },
+    { type: 'warp', at: [4, 5], to: { map: 'overworld', at: [40, 22] } },
+  ],
+});
+```
+
+- Each terrain character maps to a terrain type. An **autotiler** chooses edge and corner tiles (shorelines, cliff edges) so maps don't look like graph paper.
+- **Prefabs** are multi-tile structures placed as objects: houses, the lighthouse, big trees.
+- Collision and the **overhead** layer (roofs and treetops drawn above the player) come from the terrain and prefab definitions.
+- Maps are compiled into Phaser tilemap layers at load time.
+- If the owner wants to hand-paint a map, add a Tiled (`.tmj`) importer and let that map opt out of ASCII. Each map keeps one source of truth.
+
+## Event scripts
+
+Cutscenes and interactions are **async TypeScript functions** run against a typed `EventContext`. There's no scripting language to build or learn:
+
+```ts
+// src/data/events/saltmere/tamsin.ts
+export default defineEvent(async (ev) => {
+  if (!ev.flag('story.beacon-out')) {
+    await ev.say('tamsin', "Lamps won't light themselves, Rowan. Off you go!");
+    return;
+  }
+  await ev.face('tamsin', 'player');
+  await ev.say('tamsin', 'Sixty years, and I never once saw that Beacon dark.');
+  const pick = await ev.choice(["I'll go and see.", 'What do we do?']);
+  if (pick === 1) await ev.say('tamsin', 'You go and see. That is what we do.');
+  await ev.giveItem('potion', 3);
+  ev.setFlag('story.tamsin-gift');
+});
+```
+
+- **The first `EventContext` API:** `say`, `choice`, `wait`, `move`, `face`, `emote`, `fadeOut`/`fadeIn`, `cameraPan`, `flag`/`setFlag`, `var`/`setVar`, `hasItem`/`giveItem`/`takeItem`, `gold`/`giveGold`/`takeGold`, `joinParty`, `heal`, `battle(encounterId, { canFlee, canLose })`, `shop`, `inn`, `bgm`/`sfx`, `teleport`, `savePrompt`. Add verbs as content needs them, keep each one small, and test them against a fake context.
+- **Triggers:** `interact` (NPCs, objects), `touch` (stepping on a tile), `enter` (when a map loads), `auto` (runs once when a flag condition becomes true).
+- While a script runs, the player can't move, open menus or save.
+
+## Battle engine
+
+Pure, synchronous and deterministic, in `src/core/battle/`:
+
+```ts
+startBattle(setup, state, db, rng): BattleState
+nextActor(battle): CombatantId
+previewTurnOrder(battle, pending?: Action, count = 10): CombatantId[]
+applyAction(battle, action, rng): { battle: BattleState; events: BattleEvent[] }
+chooseEnemyAction(battle, enemyId, rng): Action
+battleResult(battle): 'ongoing' | 'victory' | 'defeat' | 'fled'
+```
+
+`BattleEvent`s (`action-start`, `damage`, `heal`, `miss`, `status-added`, `stagger`, `ko`, `turn-order`, …) are the only thing `BattleScene` reads to animate. The same engine runs headless for unit tests and for the simulator.
+
+**The simulator** (`npm run sim`) runs N seeded battles for each encounter group and boss, with the party at that area's target level and gear (from `balance.ts`) and a simple party AI. It prints win rate, average rounds and HP left, and flags anything outside the targets in DESIGN.md. Run it after every balance or content change.
+
+## Input
+
+- Logical actions: `up`, `down`, `left`, `right`, `confirm`, `cancel`, `menu`, `run`. Keyboard, gamepad and touch all map to these, and game code never reads raw keys.
+- Holding a direction in a menu repeats after 300 ms, then every 80 ms.
+- The touch overlay (d-pad, A, B, Menu) appears only on touch devices.
+
+## Audio
+
+- `AudioManager`: `playBgm(key, { fade })` crossfades; battle music pauses the field track, which resumes afterwards; sound effects have a per-key cooldown so fast cursor movement doesn't stack sounds.
+- Browsers block audio until the player interacts, so music starts after the first key press or tap on the title screen.
+
+## UI kit (`src/ui/`)
+
+`Window` (9-slice frame), `Menu` (list or grid with cursor, scrolling, disabled items and help text), `TextBox` (typewriter text, name and portrait, ▼ prompt), `ChoiceBox`, `Gauge` (HP, MP, EXP), `Timeline` (the CTB strip), `NumberPop` (damage numbers) and `FocusStack` (which widget has input). Every menu in the game is built from these.
+
+## Testing
+
+| Layer | Tool | Covers |
+|---|---|---|
+| Rules | Vitest | Formulas, CTB order, statuses, inventory, equipment, EXP, saves and migrations, event scripts against a fake context |
+| Content | `npm run validate` (also run as a test) | Schemas and cross-references |
+| Balance | `npm run sim` | Win rates and battle length against the targets |
+| Game | Playwright | Boots with no console errors; new game → walk → talk → battle → save → reload; screenshots of key screens |
+
+**Debug hooks.** Dev and test builds expose `window.__game`, which tests use to jump straight to what they're testing:
+
+```ts
+__game.warp('tide-caves-b2', 10, 4);
+__game.setFlag('story.beacon-out');
+__game.give('potion', 5);
+__game.setLevel(10);
+__game.battle('tide-caves-boss');
+__game.state(); // the current GameState
+```
+
+The **debug menu** (backtick key, or a three-finger tap on a phone) offers the same, plus: start any battle, encounters on/off, noclip, show collision, 4× game speed.
+
+## CI/CD
+
+- `ci.yml`, on every push and PR: install → typecheck → lint → unit tests → validate → build → Playwright smoke test.
+- `deploy.yml`, on push to `main`: build → deploy to GitHub Pages, with Vite's `base` set to `/game/`.
+- Later, optionally: preview builds for PRs, so the owner can play a branch before merging it.
+
+## Assets
+
+- Raw packs go in `assets-src/<pack>/` exactly as downloaded, license file included. They aren't shipped.
+- Files the game actually uses are copied to `public/assets/{tiles,sprites,portraits,monsters,ui,fonts,vfx,bgm,sfx}/` and registered under logical keys (`sprite.rowan`, `bgm.town-saltmere`) in `src/systems/asset-manifest.ts`. Game code only ever uses the keys.
+- Every pack is listed in `CREDITS.md` with its source URL, author and license.
+- **What the pack needs:** 16×16 tiles; characters with 4-direction walk cycles; monsters; ideally portraits, UI frames, effects, music and sound effects; a CC0 license (CC-BY is acceptable with credits).
+- **Recommended:** *Ninja Adventure* by Pixel-Boy and AAA (itch.io), which covers almost all of that in one CC0 pack, with Kenney's CC0 packs to fill gaps.
+
+## Performance budget
+
+60 fps on a mid-range phone, and a first load under about 10 MB. Once the soundtrack grows, load music per area instead of all at boot.
+
+## Cloud session notes
+
+- Chromium for Playwright is preinstalled under `/opt/pw-browsers`; don't run `playwright install` there. If the pinned `@playwright/test` expects a different Chromium build, `playwright.config.ts` should read a `PW_CHROMIUM_PATH` env var and pass it as `launchOptions.executablePath`. In cloud sessions, set it to `/opt/pw-browsers/chromium`.
+- In CI, install the browser with `npx playwright install --with-deps chromium`.
