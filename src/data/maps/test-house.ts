@@ -24,5 +24,6 @@ export default defineMap({
       to: { map: 'test-cellar', spawn: 'stairs' },
     },
     { type: 'spawn', id: 'stairs', at: [7, 3], facing: 'down' },
+    { type: 'npc', id: 'host', sprite: 'old-man', at: [2, 2], facing: 'right' },
   ],
 });

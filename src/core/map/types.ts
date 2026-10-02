@@ -93,7 +93,20 @@ export interface SpawnObject {
   readonly facing: Direction;
 }
 
-export type MapObject = PrefabObject | WarpObject | SpawnObject;
+/** Someone on the map (see src/core/npc.ts for how they move). */
+export interface NpcObject {
+  readonly type: 'npc';
+  /** Unique on its map. */
+  readonly id: string;
+  /** A character sheet: `sprite.<sprite>` in the asset manifest, such as `tamsin`. */
+  readonly sprite: string;
+  readonly at: GridPoint;
+  readonly facing: Direction;
+  /** How far it may wander from `at`, in cells across or down. Without it, it stands still. */
+  readonly wander?: number;
+}
+
+export type MapObject = PrefabObject | WarpObject | SpawnObject | NpcObject;
 
 export const SIDES = ['north', 'south', 'east', 'west'] as const;
 export type Side = (typeof SIDES)[number];

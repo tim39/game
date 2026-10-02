@@ -92,6 +92,12 @@ export function updateWalker(
   return current;
 }
 
+/** Whether a walker takes up (x, y): its cell, and mid-step the cell it's leaving too. */
+export function occupies(walker: Walker, x: number, y: number): boolean {
+  if (walker.x === x && walker.y === y) return true;
+  return walker.step !== null && walker.step.fromX === x && walker.step.fromY === y;
+}
+
 /** Where a walker is, in cells: between two cells partway through a step. */
 export function walkerPosition(walker: Walker): { x: number; y: number } {
   const { step } = walker;

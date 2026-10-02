@@ -2,14 +2,17 @@ import Phaser from 'phaser';
 import { DIRECTIONS, STEP, type Direction } from '../core/direction';
 import { compileMap, exitAt, isBlocked, type CompiledMap, type Spawn } from '../core/map/compile';
 import type { WarpTarget } from '../core/map/types';
+import { createNpc, lookAt, updateNpc, type Npc } from '../core/npc';
+import { Rng } from '../core/rng';
 import {
+  occupies,
   standingWalker,
   updateWalker,
   walkerPosition,
   type Walker,
   type WalkWorld,
 } from '../core/walker';
-import { FIELD_SPEEDS, MAP_FADE_MS } from '../data/balance';
+import { FIELD_SPEEDS, MAP_FADE_MS, NPC_TUNING } from '../data/balance';
 import { MAPS } from '../data/maps';
 import { MAP_CONTENT } from '../data/terrain';
 import { cameraBounds } from '../systems/camera';
@@ -31,20 +34,32 @@ const MAX_FRAME_MS = 100;
 
 const PLAYER_SPRITE = 'sprite.rowan';
 
+/** A character on screen: their sprite, and how many rows their sheet has. */
+interface Figure {
+  readonly sprite: Phaser.GameObjects.Sprite;
+  readonly rows: number;
+}
+
+interface NpcOnMap extends Figure {
+  npc: Npc;
+}
+
 function spawnOn(map: CompiledMap, id: string): Spawn {
   const spawn = map.spawns[id];
   if (!spawn) throw new Error(`Map ${map.id} has no spawn called ${id}`);
   return spawn;
 }
 
-/** Walking around a map. */
+/** Walking around a map, with the people on it. */
 export class FieldScene extends Phaser.Scene {
   private map?: CompiledMap;
   private world?: WalkWorld;
-  private player?: Phaser.GameObjects.Sprite;
-  private playerRows = 1;
+  private player?: Figure;
   private overhead?: Phaser.Tilemaps.TilemapLayer;
   private walker: Walker = standingWalker(0, 0);
+  private npcs: NpcOnMap[] = [];
+  /** Where the NPCs' wandering comes from. */
+  private rng = Rng.fromSeed(0);
   /** The direction pressed most recently, which wins while several are held. */
   private lastDirection: Direction | null = null;
   /** A direction tapped during a step, taken when the step ends if nothing is held by then. */
@@ -61,20 +76,25 @@ export class FieldScene extends Phaser.Scene {
     if (!def) throw new Error(`There's no map called ${start.map}`);
     const map = compileMap(def, MAP_CONTENT);
     this.map = map;
+    this.overhead = createTilemap(this, map).overhead;
+    this.rng = Rng.fromSeed(`field:${map.id}`);
+    this.npcs = map.npcs.map((placement) => ({
+      npc: createNpc(placement, this.rng, NPC_TUNING),
+      ...this.figure(`sprite.${placement.sprite}`),
+    }));
     this.world = {
-      isBlocked: (x, y) => isBlocked(map, x, y),
+      isBlocked: (x, y) => isBlocked(map, x, y) || this.npcAt(x, y) !== undefined,
       stopsAt: (x, y) => exitAt(map, x, y) !== null,
     };
-    this.overhead = createTilemap(this, map).overhead;
 
     const at = 'spawn' in start ? spawnOn(map, start.spawn) : start;
     this.walker = standingWalker(at.x, at.y, at.facing);
     this.lastDirection = null;
     this.buffered = null;
     this.leaving = false;
-    this.player = this.add.sprite(0, 0, PLAYER_SPRITE).setDepth(DEPTH.characters);
-    this.playerRows = sheetRows(this.textures.get(PLAYER_SPRITE).getFrameNames().length);
-    this.drawPlayer();
+    const player = this.figure(PLAYER_SPRITE);
+    this.player = player;
+    this.drawFigures();
 
     const camera = this.cameras.main.setZoom(WORLD_ZOOM);
     const bounds = cameraBounds(
@@ -84,13 +104,15 @@ export class FieldScene extends Phaser.Scene {
       camera.height / WORLD_ZOOM,
     );
     camera.setBounds(bounds.x, bounds.y, bounds.width, bounds.height);
-    camera.startFollow(this.player, true);
+    camera.startFollow(player.sprite, true);
     camera.fadeIn(MAP_FADE_MS, 0, 0, 0);
   }
 
   override update(_time: number, delta: number): void {
     const { map, world } = this;
     if (!map || !world) return;
+    const dt = Math.min(delta, MAX_FRAME_MS);
+
     // While leaving, the step into the way out finishes, and nothing else happens.
     const pressed = this.leaving ? undefined : DIRECTIONS.find((d) => input.pressed(d));
     if (pressed) this.buffered = pressed;
@@ -99,7 +121,7 @@ export class FieldScene extends Phaser.Scene {
     this.walker = updateWalker(
       before,
       { direction, run: input.held('run') },
-      Math.min(delta, MAX_FRAME_MS),
+      dt,
       world,
       FIELD_SPEEDS,
     );
@@ -109,15 +131,35 @@ export class FieldScene extends Phaser.Scene {
       const exit = exitAt(map, this.walker.x, this.walker.y);
       if (exit) this.leave(exit);
     }
-    this.drawPlayer();
+
+    // Walking into someone makes them turn and look.
+    if (direction && !this.walker.step) {
+      const [dx, dy] = STEP[direction];
+      const bumped = this.npcAt(this.walker.x + dx, this.walker.y + dy);
+      if (bumped) bumped.npc = lookAt(bumped.npc, this.walker.x, this.walker.y, NPC_TUNING);
+    }
+
+    // NPCs keep to themselves: no walls, ways out, the player, or each other.
+    for (const entry of this.npcs) {
+      const npcWorld: WalkWorld = {
+        isBlocked: (x, y) =>
+          isBlocked(map, x, y) ||
+          exitAt(map, x, y) !== null ||
+          occupies(this.walker, x, y) ||
+          this.npcs.some((other) => other !== entry && occupies(other.npc.walker, x, y)),
+      };
+      entry.npc = updateNpc(entry.npc, dt, npcWorld, this.rng, NPC_TUNING);
+    }
+    this.drawFigures();
   }
 
   /** Read by `window.__game.inspect('field')` in dev and test builds. */
   debugInfo(): Record<string, unknown> {
-    const { map, overhead, player, walker } = this;
-    if (!map || !overhead || !player) return {};
+    const { map, world, overhead, player, walker } = this;
+    if (!map || !world || !overhead || !player) return {};
     const camera = this.cameras.main;
     const view = camera.worldView;
+    const sprite = player.sprite;
     return {
       map: map.id,
       leaving: this.leaving,
@@ -127,17 +169,36 @@ export class FieldScene extends Phaser.Scene {
       facing: walker.facing,
       moving: walker.step !== null,
       stepMs: walker.step?.duration ?? null,
-      frame: Number(player.frame.name),
+      frame: Number(sprite.frame.name),
       // The sprite's top-left, in world pixels.
-      pixel: { x: player.x - TILE / 2, y: player.y - TILE / 2 },
+      pixel: { x: sprite.x - TILE / 2, y: sprite.y - TILE / 2 },
       view: { x: view.x, y: view.y, width: view.width, height: view.height },
       size: { width: map.width * TILE, height: map.height * TILE },
       blocked: Object.fromEntries(
-        DIRECTIONS.map((d) => [d, isBlocked(map, walker.x + STEP[d][0], walker.y + STEP[d][1])]),
+        DIRECTIONS.map((d) => [d, world.isBlocked(walker.x + STEP[d][0], walker.y + STEP[d][1])]),
       ),
       // Something on the overhead layer covers the player's cell, drawn over the player.
-      underOverhead: overhead.hasTileAt(walker.x, walker.y) && overhead.depth > player.depth,
+      underOverhead: overhead.hasTileAt(walker.x, walker.y) && overhead.depth > sprite.depth,
+      npcs: this.npcs.map(({ npc }) => ({
+        id: npc.placement.id,
+        x: npc.walker.x,
+        y: npc.walker.y,
+        facing: npc.walker.facing,
+        moving: npc.walker.step !== null,
+        home: { x: npc.placement.x, y: npc.placement.y },
+        wander: npc.placement.wander,
+      })),
     };
+  }
+
+  private figure(key: string): Figure {
+    const sprite = this.add.sprite(0, 0, key);
+    return { sprite, rows: sheetRows(this.textures.get(key).getFrameNames().length) };
+  }
+
+  /** The NPC taking up (x, y), if any. */
+  private npcAt(x: number, y: number): NpcOnMap | undefined {
+    return this.npcs.find(({ npc }) => occupies(npc.walker, x, y));
   }
 
   /** Fades out while the step into the way out finishes, then starts the field over there. */
@@ -159,11 +220,22 @@ export class FieldScene extends Phaser.Scene {
     return this.lastDirection;
   }
 
-  private drawPlayer(): void {
-    const { x, y } = walkerPosition(this.walker);
-    // Whole pixels, so the sprite and the camera that follows it never shimmer.
-    this.player
-      ?.setPosition(Math.round(x * TILE) + TILE / 2, Math.round(y * TILE) + TILE / 2)
-      .setFrame(characterFrame(this.walker, this.playerRows));
+  private drawFigures(): void {
+    if (this.player) draw(this.player, this.walker);
+    for (const { npc, sprite, rows } of this.npcs) draw({ sprite, rows }, npc.walker);
   }
+}
+
+/**
+ * Puts a character where its walker is, in whole pixels so it never shimmers against the camera,
+ * showing the right frame. Lower characters are drawn in front, staying under the overhead layer.
+ */
+function draw({ sprite, rows }: Figure, walker: Walker): void {
+  const { x, y } = walkerPosition(walker);
+  const px = Math.round(x * TILE);
+  const py = Math.round(y * TILE);
+  sprite
+    .setPosition(px + TILE / 2, py + TILE / 2)
+    .setFrame(characterFrame(walker, rows))
+    .setDepth(DEPTH.characters + py / 100_000);
 }

@@ -78,6 +78,19 @@ test('reports ways out that lead to missing maps or spawns', () => {
   ]);
 });
 
+test('reports NPCs whose sprite is not a character sheet', () => {
+  const problems = check(content({}), {
+    a: {
+      id: 'a',
+      name: 'A',
+      terrain: '..',
+      legend: { '.': 'grass' },
+      objects: [{ type: 'npc', id: 'ghost', sprite: 'nobody', at: [0, 0], facing: 'down' }],
+    },
+  });
+  expect(problems).toEqual(["Map a: npc ghost's sprite, sprite.nobody, isn't a character sheet"]);
+});
+
 test('reports trees on missing ground or prefabs, and maps that do not compile', () => {
   const problems = check(
     content({

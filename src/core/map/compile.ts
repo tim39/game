@@ -1,4 +1,5 @@
 import type { Direction } from '../direction';
+import type { NpcPlacement } from '../npc';
 import { blobLookup, blobMask, type BlobLayout } from './autotile';
 import type {
   FillTerrain,
@@ -38,6 +39,7 @@ export interface CompiledMap {
   /** Where walking off each edge leads, if anywhere. */
   readonly edges: Readonly<Partial<Record<Side, WarpTarget>>>;
   readonly spawns: Readonly<Record<string, Spawn>>;
+  readonly npcs: readonly NpcPlacement[];
 }
 
 /** The edge a cell just off the map is past, or null for a cell on the map. */
@@ -119,6 +121,7 @@ export function compileMap(def: MapDef, content: MapContent): CompiledMap {
   const solid = cells(false);
   const warps = cells<WarpTarget | null>(null);
   const spawns: Record<string, Spawn> = {};
+  const npcs: NpcPlacement[] = [];
 
   function fillTile(terrain: FillTerrain, x: number, y: number): TileRef {
     const total = terrain.tiles.reduce((sum, [, , weight = 1]) => sum + weight, 0);
@@ -242,6 +245,15 @@ export function compileMap(def: MapDef, content: MapContent): CompiledMap {
         if (spawns[object.id]) fail(`two spawns are called ${object.id}`);
         spawns[object.id] = { x, y, facing: object.facing };
         break;
+      case 'npc': {
+        const wander = object.wander ?? 0;
+        if (!onMap(x, y)) fail(`npc ${object.id} at (${x}, ${y}) is off the map`);
+        if (npcs.some((npc) => npc.id === object.id)) fail(`two npcs are called ${object.id}`);
+        if (!Number.isInteger(wander) || wander < 0)
+          fail(`npc ${object.id} can't wander ${wander}`);
+        npcs.push({ id: object.id, sprite: object.sprite, x, y, facing: object.facing, wander });
+        break;
+      }
     }
   }
 
@@ -249,10 +261,22 @@ export function compileMap(def: MapDef, content: MapContent): CompiledMap {
   for (const [id, spawn] of Object.entries(spawns)) {
     if (solid[spawn.y * width + spawn.x]) fail(`spawn ${id} is on a solid cell`);
   }
+  // NPCs start where nothing else stands, and can't block a way in or out.
+  for (const npc of npcs) {
+    const at = `npc ${npc.id} at (${npc.x}, ${npc.y})`;
+    const index = npc.y * width + npc.x;
+    if (solid[index]) fail(`${at} is on a solid cell`);
+    if (warps[index]) fail(`${at} is in a way out`);
+    const spawn = Object.entries(spawns).find(([, s]) => s.x === npc.x && s.y === npc.y);
+    if (spawn) fail(`${at} is on spawn ${spawn[0]}`);
+    if (npcs.some((other) => other !== npc && other.x === npc.x && other.y === npc.y)) {
+      fail(`${at} shares its cell`);
+    }
+  }
   warps.forEach((warp, index) => {
     if (warp && solid[index])
       fail(`the warp at (${index % width}, ${Math.floor(index / width)}) is on a solid cell`);
   });
 
-  return { id: def.id, width, height, layers, solid, warps, edges: def.edges ?? {}, spawns };
+  return { id: def.id, width, height, layers, solid, warps, edges: def.edges ?? {}, spawns, npcs };
 }

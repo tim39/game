@@ -8,3 +8,16 @@ export const STEP: Readonly<Record<Direction, readonly [dx: number, dy: number]>
   left: [-1, 0],
   right: [1, 0],
 };
+
+/** The way to face to look from one cell towards another: along whichever axis is further. */
+export function directionTowards(
+  fromX: number,
+  fromY: number,
+  toX: number,
+  toY: number,
+): Direction {
+  const dx = toX - fromX;
+  const dy = toY - fromY;
+  if (Math.abs(dx) > Math.abs(dy)) return dx > 0 ? 'right' : 'left';
+  return dy > 0 ? 'down' : 'up';
+}

@@ -17,7 +17,8 @@ export interface MapSources {
  * Checks the map content against the asset manifest and itself. Returns one line per problem:
  * - every tile a terrain or prefab uses is inside a 16×16 sprite sheet from the manifest;
  * - the terrains and prefabs that terrains refer to exist;
- * - every map compiles, and every warp, doorway and edge leads to a spawn that exists.
+ * - every map compiles, and every warp, doorway and edge leads to a spawn that exists;
+ * - every NPC's sprite is a 16×16 character sheet in the asset manifest.
  */
 export function checkMaps({ maps, content, manifest, imageSize }: MapSources): string[] {
   const problems: string[] = [];
@@ -97,6 +98,18 @@ export function checkMaps({ maps, content, manifest, imageSize }: MapSources): s
     });
     for (const [side, edge] of Object.entries(map.edges)) {
       checkTarget(`Map ${map.id}: its ${side} edge`, edge);
+    }
+    for (const npc of map.npcs) {
+      const sheet = manifest[`sprite.${npc.sprite}`];
+      if (
+        sheet?.type !== 'spritesheet' ||
+        sheet.frameWidth !== TILE ||
+        sheet.frameHeight !== TILE
+      ) {
+        problems.push(
+          `Map ${map.id}: npc ${npc.id}'s sprite, sprite.${npc.sprite}, isn't a character sheet`,
+        );
+      }
     }
   }
 

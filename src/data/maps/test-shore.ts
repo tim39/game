@@ -40,6 +40,12 @@ export default defineMap({
     { type: 'spawn', id: 'house', at: [18, 4], facing: 'down' },
     // Two cells in from the edge, clear of the treetops overhanging the path.
     { type: 'spawn', id: 'east', at: [37, 14], facing: 'left' },
+    // People: two who stand still, three who wander.
+    { type: 'npc', id: 'tamsin', sprite: 'tamsin', at: [10, 8], facing: 'down' },
+    { type: 'npc', id: 'fisher', sprite: 'old-man-3', at: [16, 9], facing: 'left' },
+    { type: 'npc', id: 'stroller', sprite: 'villager-4', at: [6, 11], facing: 'down', wander: 2 },
+    { type: 'npc', id: 'neighbour', sprite: 'woman', at: [22, 2], facing: 'left', wander: 2 },
+    { type: 'npc', id: 'kid', sprite: 'child', at: [26, 12], facing: 'up', wander: 3 },
   ],
   edges: { east: { map: 'test-meadow', spawn: 'west' } },
 });

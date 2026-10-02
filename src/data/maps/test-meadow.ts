@@ -22,6 +22,9 @@ export default defineMap({
   `,
   legend: { T: 'trees', '.': 'grass', ',': 'path', '~': 'water' },
   // Two cells in from the edge, clear of the treetops overhanging the path.
-  objects: [{ type: 'spawn', id: 'west', at: [2, 7], facing: 'right' }],
+  objects: [
+    { type: 'spawn', id: 'west', at: [2, 7], facing: 'right' },
+    { type: 'npc', id: 'walker', sprite: 'villager-2', at: [12, 4], facing: 'down', wander: 3 },
+  ],
   edges: { west: { map: 'test-shore', spawn: 'east' } },
 });

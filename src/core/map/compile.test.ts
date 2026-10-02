@@ -292,3 +292,38 @@ describe('exits and arrivals', () => {
     );
   });
 });
+
+describe('npcs', () => {
+  const npc = (id: string, x: number, y: number, wander?: number): MapObject => ({
+    type: 'npc',
+    id,
+    sprite: 'villager',
+    at: [x, y],
+    facing: 'down',
+    wander,
+  });
+
+  test('are listed where they start, standing still unless they may wander', () => {
+    const compiled = compile('...\n...', [npc('a', 0, 0), npc('b', 2, 1, 2)]);
+    expect(compiled.npcs).toEqual([
+      { id: 'a', sprite: 'villager', x: 0, y: 0, facing: 'down', wander: 0 },
+      { id: 'b', sprite: 'villager', x: 2, y: 1, facing: 'down', wander: 2 },
+    ]);
+  });
+
+  test('can’t start on solid cells, ways out, spawns or each other', () => {
+    const HOME = { map: 'home', spawn: 'door' };
+    expect(() => compile('.r', [npc('a', 1, 0)])).toThrow('npc a at (1, 0) is on a solid cell');
+    expect(() => compile('..', [{ type: 'warp', at: [0, 0], to: HOME }, npc('a', 0, 0)])).toThrow(
+      'npc a at (0, 0) is in a way out',
+    );
+    expect(() =>
+      compile('..', [{ type: 'spawn', id: 'door', at: [1, 0], facing: 'up' }, npc('a', 1, 0)]),
+    ).toThrow('npc a at (1, 0) is on spawn door');
+    expect(() => compile('..', [npc('a', 0, 0), npc('b', 0, 0)])).toThrow(
+      'npc a at (0, 0) shares its cell',
+    );
+    expect(() => compile('..', [npc('a', 0, 0), npc('a', 1, 0)])).toThrow('two npcs are called a');
+    expect(() => compile('..', [npc('a', 0, 0, -1)])).toThrow("npc a can't wander -1");
+  });
+});
