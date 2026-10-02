@@ -311,6 +311,6 @@ Watch out for:
 ## Cloud session notes
 
 - Chromium for Playwright is preinstalled under `/opt/pw-browsers` (build 1194), which is why `@playwright/test` is pinned to 1.56.1. Don't run `playwright install` there. If the image's Chromium changes, pin the matching Playwright release, or set `PW_CHROMIUM_PATH=/opt/pw-browsers/chromium`, which `playwright.config.ts` passes as `launchOptions.executablePath`.
-- In CI, install the browser with `npx playwright install --with-deps chromium`.
+- In CI, install the browser with `npx playwright install chromium`. GitHub's Ubuntu runners already have the libraries Chromium needs; `--with-deps` would only add fonts the game doesn't use, from an apt mirror that once stalled a run until it timed out. If Playwright ever reports missing host dependencies there, add `--with-deps` back.
 - Chromium logs "Noise was added to a canvas readback" while Phaser runs its startup feature checks. It's a privacy notice, not an error, so the smoke test should fail only on `console.error` and uncaught page errors.
 - For a quick screenshot without Playwright, run `/opt/pw-browsers/chromium --headless=new --no-sandbox --use-angle=swiftshader --enable-unsafe-swiftshader --screenshot=out.png <url>`. Its `--window-size` includes about 87 px of invisible browser chrome, so the page viewport is shorter than the image.

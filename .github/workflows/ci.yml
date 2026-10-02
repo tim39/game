@@ -28,8 +28,11 @@ jobs:
       - run: npm ci
       - run: npm run check
       - run: npm run build
+      # The runner image already has every library Chromium needs. --with-deps would only add fonts
+      # the game doesn't use, from an apt mirror that has stalled a run until the job timed out.
       - name: Install Chromium for Playwright
-        run: npx playwright install --with-deps chromium
+        timeout-minutes: 5
+        run: npx playwright install chromium
       - run: npm run test:e2e
       - name: Upload screenshots and test reports
         if: always()
