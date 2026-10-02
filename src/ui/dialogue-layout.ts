@@ -1,3 +1,5 @@
+import { GAME_HEIGHT, GAME_WIDTH } from '../systems/display';
+
 /**
  * Where things go inside the pack's dialogue boxes (`DialogBoxFaceset.png` and `DialogBox.png`,
  * both 300×58), in box pixels. Measured from the images; the UI draws the box at 2×.
@@ -22,6 +24,20 @@ export const DIALOGUE_BOX = {
   },
   /** Gap between the panel's edge and the text. */
   inset: { x: 4, y: 3 },
+} as const;
+
+/** The box is drawn at 2×, like the world. */
+export const DIALOGUE_SCALE = 2;
+
+/**
+ * Where the box sits on the 640×360 screen, in game pixels: centred along the bottom, 12 pixels up
+ * from the edge. Touch controls keep clear of it.
+ */
+export const DIALOGUE_BOX_ON_SCREEN = {
+  x: (GAME_WIDTH - DIALOGUE_BOX.width * DIALOGUE_SCALE) / 2,
+  y: GAME_HEIGHT - DIALOGUE_BOX.height * DIALOGUE_SCALE - 12,
+  width: DIALOGUE_BOX.width * DIALOGUE_SCALE,
+  height: DIALOGUE_BOX.height * DIALOGUE_SCALE,
 } as const;
 
 /** Three lines of body text (8 pixels tall, 12 apart) fill the panel's height. */

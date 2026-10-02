@@ -1,5 +1,7 @@
 import Phaser from 'phaser';
+import { UI_TEXT } from '../data/ui-text';
 import { input } from '../systems/input/game-input';
+import { touchMode } from '../systems/input/touch-controls';
 import { FONT } from '../ui/fonts';
 
 interface MenuItem {
@@ -25,6 +27,7 @@ export class TitleScene extends Phaser.Scene {
   private selected = 0;
   private cursorMoves = 0;
   private cursor?: Phaser.GameObjects.Graphics;
+  private hint?: Phaser.GameObjects.BitmapText;
 
   constructor() {
     super('title');
@@ -60,17 +63,20 @@ export class TitleScene extends Phaser.Scene {
         .setTint(item.enabled ? TEXT : DIM);
     });
 
-    this.add
-      .bitmapText(centerX, 330, FONT.body, 'Z, Enter or tap to choose')
+    this.hint = this.add
+      .bitmapText(centerX, 330, FONT.body, '')
       .setScale(2)
       .setOrigin(0.5)
       .setTint(DIM);
+    this.showHint();
 
     this.cursor = this.add.graphics();
     this.drawCursor();
   }
 
   override update(): void {
+    // A laptop with a touchscreen can switch to touch mode at any moment.
+    this.showHint();
     // Confirm first, so a press that lands in the same frame as a move picks what was on screen.
     if (input.pressed('confirm')) this.choose();
     if (input.pressedOrRepeated('down')) this.moveCursor(1);
@@ -79,7 +85,11 @@ export class TitleScene extends Phaser.Scene {
 
   /** Read by `window.__game.inspect('title')` in dev and test builds. */
   debugInfo(): Record<string, unknown> {
-    return { selected: MENU[this.selected]?.label, cursorMoves: this.cursorMoves };
+    return {
+      selected: MENU[this.selected]?.label,
+      cursorMoves: this.cursorMoves,
+      hint: this.hint?.text,
+    };
   }
 
   private moveCursor(step: number): void {
@@ -92,6 +102,12 @@ export class TitleScene extends Phaser.Scene {
     if (!MENU[this.selected]?.enabled) return;
     // No real opening yet: New Game previews the dialogue box, then walks onto the test map.
     this.scene.start('dialogue-sample');
+  }
+
+  /** How to choose: with keys, or with the touch controls' A button. */
+  private showHint(): void {
+    const text = touchMode() ? UI_TEXT.chooseWithTouch : UI_TEXT.chooseWithKeys;
+    if (this.hint && this.hint.text !== text) this.hint.setText(text);
   }
 
   private drawCursor(): void {

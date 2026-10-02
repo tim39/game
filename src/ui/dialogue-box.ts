@@ -1,9 +1,14 @@
 import Phaser from 'phaser';
-import { DIALOGUE_BOX, MAX_LINES, lineWidth } from './dialogue-layout';
+import {
+  DIALOGUE_BOX,
+  DIALOGUE_BOX_ON_SCREEN,
+  DIALOGUE_SCALE as SCALE,
+  MAX_LINES,
+  lineWidth,
+} from './dialogue-layout';
 import { FONT, textMeasurer } from './fonts';
 import { wrapText } from './text-wrap';
 
-const SCALE = 2;
 const INK = 0x0b001e; // the pack's own glyph color, made for the light panel
 const PAPER = 0xf2eaf1;
 
@@ -30,9 +35,7 @@ export interface DrawnDialogue {
 /** Draws the dialogue box along the bottom of the screen, with a bobbing ▼ to say there's more. */
 export function drawDialogueBox(scene: Phaser.Scene, line: DialogueLine): DrawnDialogue {
   const widthOf = textMeasurer(scene, FONT.body);
-  const boxX = (scene.scale.width - DIALOGUE_BOX.width * SCALE) / 2;
-  const boxY = scene.scale.height - DIALOGUE_BOX.height * SCALE - 12;
-  const container = scene.add.container(boxX, boxY);
+  const container = scene.add.container(DIALOGUE_BOX_ON_SCREEN.x, DIALOGUE_BOX_ON_SCREEN.y);
 
   const withPortrait = line.portrait !== undefined;
   const withName = line.name !== '' || withPortrait;

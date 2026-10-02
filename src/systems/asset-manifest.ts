@@ -28,13 +28,15 @@ const TILE = 16;
 
 const image = (path: string): ImageAsset => ({ type: 'image', url: `assets/${path}` });
 
-/** Tilesets and character sheets both use 16×16 frames. */
-const sheet = (path: string): SpriteSheetAsset => ({
+const frames = (path: string, frameWidth: number, frameHeight: number): SpriteSheetAsset => ({
   type: 'spritesheet',
   url: `assets/${path}`,
-  frameWidth: TILE,
-  frameHeight: TILE,
+  frameWidth,
+  frameHeight,
 });
+
+/** Tilesets and character sheets both use 16×16 frames. */
+const sheet = (path: string): SpriteSheetAsset => frames(path, TILE, TILE);
 
 export const ASSETS = {
   // Fonts. src/ui/fonts.ts turns each image into a bitmap font with the same key.
@@ -44,6 +46,11 @@ export const ASSETS = {
   'ui.dialogue-box': image('ui/dialog-box.png'),
   'ui.dialogue-box-portrait': image('ui/dialog-box-portrait.png'),
   'ui.dialogue-box-plain': image('ui/dialog-box-plain.png'),
+
+  // Touch controls, which the page draws over the game on phones and tablets.
+  'touch.dpad': frames('ui/touch-dpad.png', 17, 17), // idle, then pressed up, down, left, right
+  'touch.buttons': frames('ui/touch-buttons.png', 16, 15), // A, A pressed, B, B pressed
+  'touch.menu': image('ui/touch-menu.png'), // 26×9
 
   // Tilesets
   'tiles.floor': sheet('tiles/floor.png'), // grass, sand, dirt paths

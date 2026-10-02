@@ -39,7 +39,7 @@ Start a session and say **"next task"**, or name one. Claude takes the first unc
 - [x] Map transitions through doors, stairs and map edges, with fades and spawn points.
 - [x] NPCs that stand, wander and turn to face the player, and block movement.
 - [x] Interaction: face something, press Confirm, run its handler.
-- [ ] Touch controls (d-pad, A, B, Menu) on touch devices, and a "turn your phone sideways" hint in portrait, where the game is tiny.
+- [x] Touch controls (d-pad, A, B, Menu) on touch devices, and a "turn your phone sideways" hint in portrait, where the game is tiny.
 - [ ] Debug menu v1: warp to any map, noclip, show collision.
 - [ ] Draft maps: Saltmere outdoors, two house interiors, the lighthouse.
 

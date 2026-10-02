@@ -40,7 +40,8 @@ Versions were checked in October 2026. M0 installs the latest compatible ones.
 │   │   └── rng.ts        seeded RNG
 │   ├── data/             content: characters, skills, items, enemies, encounters,
 │   │                     shops, balance.ts, terrain.ts, maps/, events/, speakers.ts
-│   ├── systems/          Phaser-side services: input, audio, storage, assets, event runner
+│   ├── systems/          Phaser-side services: input (keys, gamepads, touch controls),
+│   │                     settings, audio, storage, assets, event runner
 │   ├── scenes/           boot, preload, title, field, battle, menu, dialogue, shop, game-over
 │   ├── ui/               the UI kit
 │   └── debug/            debug menu and window.__game (dev and test builds only)
@@ -235,10 +236,13 @@ battleResult(battle): 'ongoing' | 'victory' | 'defeat' | 'fled'
 
 - Logical actions: `up`, `down`, `left`, `right`, `confirm`, `cancel`, `menu`, `run`. Keyboard, gamepad and touch all map to these, and game code never reads raw keys.
 - Holding a direction in a menu repeats after 300 ms, then every 80 ms.
-- The touch overlay (d-pad, A, B, Menu) appears only on touch devices. Until M1 builds it, tapping the game counts as Confirm.
-- Code lives in `src/systems/input/`: `actions.ts` (actions, key bindings, gamepad mapping), `action-state.ts` (held / pressed / pressedOrRepeated; pure and unit-tested) and `game-input.ts` (the `input` singleton, which reads every device once per frame before scenes update). Scenes ask things like `input.pressedOrRepeated('down')`.
-- A press shorter than a frame still counts: key and pointer presses are latched until the next frame reads them.
-- Gamepads use the browser's "standard" button layout. Headless browsers have none, so `tests/e2e/input.spec.ts` swaps in a fake pad through `navigator.getGamepads`. E2E tests hold inputs for a couple of frames (see `nextFrames()` there) rather than polling, so auto-repeat can't race them.
+- Code lives in `src/systems/input/`: `actions.ts` (actions, key bindings, gamepad mapping), `action-state.ts` (held / pressed / pressedOrRepeated; pure and unit-tested), the touch controls (below) and `game-input.ts` (the `input` singleton, which reads every device once per frame before scenes update). Scenes ask things like `input.pressedOrRepeated('down')`.
+- **Touch controls** (`touch-controls.ts`, styled by `touch-controls.css`) are page elements laid over the game inside `#game`, not part of the canvas, so they can use the space beside the game and size themselves in CSS pixels. They show in *touch mode*, the `touch` class on `<html>`: on from the start where the main pointer is coarse (`prefersTouch()`), or from a laptop touchscreen's first touch. The d-pad follows the thumb that pressed it until it lifts (pointer capture, `dpadDirection()` with a dead zone in the middle and some hysteresis at the diagonals), and each button stays down until every finger on it lifts, so several fingers work at once. B holds both `cancel` and `run`, like a gamepad's B. Taps shorter than a frame are latched like key presses. Touching the game itself does nothing.
+- **Layout** is `layoutTouchControls()` in `touch-layout.ts`, pure and unit-tested: whole-number art scales from the view's height, clear of the notch and rounded corners (`env(safe-area-inset-*)`, read through a probe element), in the bottom corners, all lifted to just above the dialogue box (`DIALOGUE_BOX_ON_SCREEN`) when any would cover it. It reruns on every resize. Turning the phone upright, or leaving the page, lets go of every control.
+- **Held upright** in touch mode, CSS hides the controls and shows the "turn your phone sideways" hint (its text is in `src/data/ui-text.ts`) over everything.
+- **Always run** is `settings.alwaysRun` (`src/systems/settings.ts`): the field runs when Run is held, or when it isn't with always run on. `main.ts` turns it on for touch-first devices. Settings live in memory until the Options screen (M5) keeps them.
+- A press shorter than a frame still counts: key presses and touches are latched until the next frame reads them.
+- Gamepads use the browser's "standard" button layout. Headless browsers have none, so `tests/e2e/input.spec.ts` swaps in a fake pad through `navigator.getGamepads`. E2E tests hold inputs for a couple of frames (see `nextFrames()` there) rather than polling, so auto-repeat can't race them. `tests/e2e/touch.spec.ts` plays a touchscreen phone (Playwright's `hasTouch` and `isMobile`) and puts fingers down and lifts them through Chromium's DevTools protocol (`Input.dispatchTouchEvent`), several at once.
 
 ## Audio
 
@@ -273,7 +277,7 @@ __game.battle('tide-caves-boss');
 __game.state(); // the current GameState
 ```
 
-So far it has `activeScenes()`, `startScene(key, data?)`, `inspect(sceneKey)` and `warp(map, x, y, facing?)`; the rest arrive with the features they test. `installDebugHooks` also registers the debug-only scenes; so far that's `asset-gallery`, which shows every character sheet in all four directions and the portraits, at the world's scale (`__game.startScene('asset-gallery')`). `src/main.ts` installs all of it only when `import.meta.env.DEV` is true or the build mode is `e2e`, so production builds drop it entirely, and `npm run build` runs `tools/check-bundle.mjs` afterwards, failing the build if `__game` or a debug scene ever leaks in. Tests get its types with `import type {} from '../../src/debug/api'`.
+So far it has `activeScenes()`, `startScene(key, data?)`, `inspect(sceneKey)`, `warp(map, x, y, facing?)` and `held()` (the actions the game read as held this frame); the rest arrive with the features they test. `installDebugHooks` also registers the debug-only scenes; so far that's `asset-gallery`, which shows every character sheet in all four directions and the portraits, at the world's scale (`__game.startScene('asset-gallery')`). `src/main.ts` installs all of it only when `import.meta.env.DEV` is true or the build mode is `e2e`, so production builds drop it entirely, and `npm run build` runs `tools/check-bundle.mjs` afterwards, failing the build if `__game` or a debug scene ever leaks in. Tests get its types with `import type {} from '../../src/debug/api'`.
 
 The **debug menu** (backtick key, or a three-finger tap on a phone) offers the same, plus: start any battle, encounters on/off, noclip, show collision, 4× game speed.
 

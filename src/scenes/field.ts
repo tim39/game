@@ -29,6 +29,7 @@ import { MAP_CONTENT } from '../data/terrain';
 import { cameraBounds } from '../systems/camera';
 import { characterFrame, sheetRows } from '../systems/character-frames';
 import { input } from '../systems/input/game-input';
+import { settings } from '../systems/settings';
 import { DEPTH, TILE, createTilemap } from '../systems/tilemap';
 import type { DialogueRequest } from './dialogue';
 
@@ -144,7 +145,7 @@ export class FieldScene extends Phaser.Scene {
     const before = this.walker;
     this.walker = updateWalker(
       before,
-      { direction, run: input.held('run') },
+      { direction, run: input.held('run') !== settings.alwaysRun },
       dt,
       world,
       FIELD_SPEEDS,

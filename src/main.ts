@@ -7,6 +7,8 @@ import { PreloadScene } from './scenes/preload';
 import { TitleScene } from './scenes/title';
 import { GAME_HEIGHT, GAME_WIDTH, pickZoom } from './systems/display';
 import { input } from './systems/input/game-input';
+import { prefersTouch } from './systems/input/touch-controls';
+import { settings } from './systems/settings';
 
 const container = document.getElementById('game');
 if (!container) throw new Error('index.html needs a <div id="game">');
@@ -30,7 +32,9 @@ const game = new Phaser.Game({
 });
 
 window.addEventListener('resize', () => game.scale.setZoom(zoomForContainer()));
-input.attach(game);
+input.attach(game, container);
+// Phones and tablets have no Run button to hold, so they run unless B is held (Controls in DESIGN.md).
+if (prefersTouch()) settings.alwaysRun = true;
 
 // Vite replaces these with constants, so production builds drop the debug code entirely.
 if (import.meta.env.DEV || import.meta.env.MODE === 'e2e') {

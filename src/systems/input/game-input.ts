@@ -1,20 +1,21 @@
 import Phaser from 'phaser';
 import { ActionState } from './action-state';
 import { ACTIONS, BOUND_KEYS, KEYBOARD, gamepadActions, type Action } from './actions';
+import { TouchControls } from './touch-controls';
 
 /**
- * The game's one input source. It reads the keyboard, gamepads and (until M1's touch controls)
- * a tap on the game as Confirm, and updates once per frame before any scene runs.
+ * The game's one input source. It reads the keyboard, gamepads and the touch controls, and updates
+ * once per frame before any scene runs.
  */
 class GameInput {
   private readonly state = new ActionState();
   private readonly keysDown = new Set<string>();
   // Presses since the last frame, kept even if already released, so a tap shorter than a frame still counts.
   private readonly keysTapped = new Set<string>();
-  private pointerDown = false;
-  private pointerTapped = false;
+  private readonly touch = new TouchControls();
 
-  attach(game: Phaser.Game): void {
+  /** Starts listening. The touch controls go in `container`, over the game. */
+  attach(game: Phaser.Game, container: HTMLElement): void {
     window.addEventListener('keydown', (event) => {
       if (!BOUND_KEYS.has(event.code)) return;
       event.preventDefault();
@@ -24,15 +25,7 @@ class GameInput {
     window.addEventListener('keyup', (event) => this.keysDown.delete(event.code));
     // Keys released while the window is in the background never send keyup.
     window.addEventListener('blur', () => this.keysDown.clear());
-
-    game.events.once(Phaser.Core.Events.READY, () => {
-      game.canvas.addEventListener('pointerdown', () => {
-        this.pointerDown = true;
-        this.pointerTapped = true;
-      });
-    });
-    window.addEventListener('pointerup', () => (this.pointerDown = false));
-    window.addEventListener('pointercancel', () => (this.pointerDown = false));
+    this.touch.attach(container);
 
     game.events.on(Phaser.Core.Events.PRE_STEP, (time: number) => {
       this.state.update(this.collectHeld(), time);
@@ -51,6 +44,11 @@ class GameInput {
     return this.state.pressedOrRepeated(action);
   }
 
+  /** Every action held this frame, from any device. */
+  heldActions(): Action[] {
+    return ACTIONS.filter((action) => this.state.held(action));
+  }
+
   private collectHeld(): Set<Action> {
     const held = gamepadActions(navigator.getGamepads());
     for (const action of ACTIONS) {
@@ -59,9 +57,8 @@ class GameInput {
         held.add(action);
       }
     }
-    if (this.pointerDown || this.pointerTapped) held.add('confirm');
     this.keysTapped.clear();
-    this.pointerTapped = false;
+    this.touch.collect(held);
     return held;
   }
 }

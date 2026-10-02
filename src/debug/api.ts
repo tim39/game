@@ -13,6 +13,8 @@ export interface DebugApi {
   inspect(sceneKey: string): Record<string, unknown> | undefined;
   /** Stops every running scene and puts the player on `map` at cell (x, y). */
   warp(map: string, x: number, y: number, facing?: Direction): void;
+  /** The actions the game read as held this frame, from any device. */
+  held(): string[];
 }
 
 declare global {

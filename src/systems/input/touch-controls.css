@@ -1,0 +1,123 @@
+/* The touch controls and the "turn your phone sideways" hint. Both show only in touch mode (the
+   `touch` class on <html>): the controls held sideways, the hint held upright. */
+
+#touch-controls,
+#rotate-hint {
+  display: none;
+}
+
+html.touch #touch-controls {
+  display: block;
+}
+
+@media (orientation: portrait) {
+  html.touch #touch-controls {
+    display: none;
+  }
+
+  html.touch #rotate-hint {
+    display: flex;
+  }
+}
+
+#touch-controls {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  overflow: hidden;
+  /* Only the controls take touches; the game between them ignores them. */
+  pointer-events: none;
+}
+
+.touch-control {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.8;
+  pointer-events: auto;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.touch-control.pressed {
+  opacity: 1;
+}
+
+/* One frame of a strip of pixel art, scaled up crisply. The script sets the variables. */
+.touch-art {
+  width: calc(var(--frame-width) * var(--scale) * 1px);
+  height: calc(var(--frame-height) * var(--scale) * 1px);
+  background-repeat: no-repeat;
+  background-size: calc(var(--sheet-width) * var(--scale) * 1px)
+    calc(var(--frame-height) * var(--scale) * 1px);
+  background-position: calc(var(--frame) * var(--frame-width) * var(--scale) * -1px) 0;
+  image-rendering: crisp-edges;
+  image-rendering: pixelated;
+}
+
+/* The menu button has no pressed frame of its own. */
+.touch-control[data-control='menu'].pressed .touch-art {
+  filter: brightness(0.75);
+}
+
+/* Measures how far the notch and rounded corners reach in from each edge. */
+.safe-area-probe {
+  position: fixed;
+  top: 0;
+  left: 0;
+  visibility: hidden;
+  pointer-events: none;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom)
+    env(safe-area-inset-left);
+}
+
+#rotate-hint {
+  position: fixed;
+  inset: 0;
+  z-index: 2;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  padding: 24px;
+  background: #14101c;
+  color: #f2eaf1;
+  font:
+    600 20px/1.4 system-ui,
+    sans-serif;
+  text-align: center;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+#rotate-hint p {
+  margin: 0;
+  max-width: 14em;
+}
+
+.rotate-hint-phone {
+  animation: turn-sideways 2.4s ease-in-out infinite;
+}
+
+@keyframes turn-sideways {
+  0%,
+  25% {
+    transform: rotate(0deg);
+  }
+  50%,
+  85% {
+    transform: rotate(-90deg);
+  }
+  100% {
+    transform: rotate(0deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rotate-hint-phone {
+    animation: none;
+  }
+}

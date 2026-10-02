@@ -1,5 +1,6 @@
 import type Phaser from 'phaser';
 import type { FieldStart } from '../scenes/field';
+import { input } from '../systems/input/game-input';
 import type { DebugApi } from './api';
 import { AssetGalleryScene } from './asset-gallery';
 
@@ -27,6 +28,7 @@ export function installDebugHooks(game: Phaser.Game): void {
       return scene && isInspectable(scene) ? scene.debugInfo() : undefined;
     },
     warp: (map, x, y, facing) => startScene('field', { map, x, y, facing } satisfies FieldStart),
+    held: () => input.heldActions(),
   };
   window.__game = api;
 }
