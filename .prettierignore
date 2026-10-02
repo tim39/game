@@ -1,0 +1,10 @@
+dist/
+dist-*/
+coverage/
+playwright-report/
+test-results/
+assets-src/
+public/
+package-lock.json
+# Docs are hand-formatted; Prettier would re-pad every table on each edit.
+*.md

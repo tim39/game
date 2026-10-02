@@ -53,7 +53,7 @@ Versions were checked in October 2026. M0 installs the latest compatible ones.
 - `systems`, `scenes` and `ui` may import `core`, `data` and each other.
 - Only `main.ts` imports `debug`, and only in dev and test builds.
 
-ESLint's `no-restricted-imports` enforces the first two.
+`eslint.config.js` enforces the first two with `no-restricted-imports`, and also bans `Math.random`, `Date.now` and browser globals (`window`, `document`, `localStorage`, `performance`) inside `src/core`.
 
 ## Rendering
 

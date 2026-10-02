@@ -12,7 +12,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
-    "lint": "node tools/not-yet.mjs lint \"M0's ESLint + Prettier task\"",
+    "lint": "eslint . && prettier --check .",
+    "format": "prettier --write . && eslint --fix .",
     "test": "node tools/not-yet.mjs test \"M0's Vitest task\"",
     "validate": "node tools/not-yet.mjs validate \"M3 (game data schemas)\"",
     "sim": "node tools/not-yet.mjs sim \"M3 (battle simulator)\"",
@@ -27,7 +28,13 @@
     "phaser": "^4.2.1"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.11.0",
+    "eslint-config-prettier": "^10.1.8",
+    "globals": "^17.13.0",
+    "prettier": "^3.9.9",
     "typescript": "~6.0.3",
+    "typescript-eslint": "^8.71.0",
     "vite": "^8.3.2"
   }
 }
