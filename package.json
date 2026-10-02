@@ -1,0 +1,33 @@
+{
+  "name": "the-fifth-flame",
+  "private": true,
+  "version": "0.0.0",
+  "description": "A classic high-fantasy JRPG for the browser, with turn-order-timeline battles and 16-bit-style pixel art.",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "lint": "node tools/not-yet.mjs lint \"M0's ESLint + Prettier task\"",
+    "test": "node tools/not-yet.mjs test \"M0's Vitest task\"",
+    "validate": "node tools/not-yet.mjs validate \"M3 (game data schemas)\"",
+    "sim": "node tools/not-yet.mjs sim \"M3 (battle simulator)\"",
+    "test:e2e": "node tools/not-yet.mjs test:e2e \"M0's Playwright task\"",
+    "check": "npm run typecheck && npm run lint && npm test && npm run validate"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tim39/game.git"
+  },
+  "dependencies": {
+    "phaser": "^4.2.1"
+  },
+  "devDependencies": {
+    "typescript": "~6.0.3",
+    "vite": "^8.3.2"
+  }
+}

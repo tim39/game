@@ -19,7 +19,7 @@ Start a session and say **"next task"**, or name one. Claude takes the first unc
 
 *Goal: an empty game that builds, tests and deploys itself.*
 
-- [ ] Scaffold Vite + TypeScript (strict) + Phaser 4 with every npm script listed in CLAUDE.md. **Done when** `npm run dev` shows a Phaser canvas.
+- [x] Scaffold Vite + TypeScript (strict) + Phaser 4 with every npm script listed in CLAUDE.md. **Done when** `npm run dev` shows a Phaser canvas.
 - [ ] ESLint + Prettier, including the rule that `src/core` can't import Phaser. **Done when** a deliberate bad import fails `npm run lint`.
 - [ ] Vitest and the seeded RNG (`src/core/rng.ts`). **Done when** a test proves the same seed gives the same sequence.
 - [ ] Playwright smoke test: the game boots with no console errors and saves a screenshot. **Done when** it passes locally and in CI.

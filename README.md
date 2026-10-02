@@ -4,7 +4,18 @@ A classic high-fantasy JRPG for the browser, with turn-order-timeline battles, 1
 
 Built with TypeScript and Phaser 4, and vibe coded with Claude Code.
 
-> **Status:** planning. Nothing is playable yet; see the roadmap.
+> **Status:** building the foundation (milestone M0). Nothing is playable yet; see the roadmap.
+
+## Run it locally
+
+You need Node 22 or newer. Then:
+
+```sh
+npm install
+npm run dev
+```
+
+Open the address it prints.
 
 ## Docs
 

@@ -1,0 +1,8 @@
+node_modules/
+dist/
+assets-src/
+test-results/
+playwright-report/
+coverage/
+*.log
+.DS_Store

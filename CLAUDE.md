@@ -25,12 +25,13 @@ It's vibe coded. The owner directs and playtests; Claude writes nearly all of th
 
 ## Commands
 
-These are created in M0. Keep the names stable.
+Keep the names stable. Scripts whose tooling hasn't landed yet run `tools/not-yet.mjs`, which prints `SKIPPED` and exits 0: `lint`, `test` and `test:e2e` until their M0 tasks, `validate` and `sim` until M3. When you build one of those tools, swap its script over and stop calling the stand-in.
 
 | Command | What it does |
 |---|---|
 | `npm run dev` | Vite dev server |
 | `npm run build` | Production build into `dist/` |
+| `npm run preview` | Serve the production build locally |
 | `npm run typecheck` | `tsc --noEmit` |
 | `npm run lint` | ESLint + Prettier check |
 | `npm test` | Vitest unit tests |

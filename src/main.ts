@@ -1,0 +1,17 @@
+import Phaser from 'phaser';
+import { BootScene } from './scenes/boot';
+
+new Phaser.Game({
+  type: Phaser.AUTO,
+  parent: 'game',
+  width: 640,
+  height: 360,
+  backgroundColor: '#14101c',
+  pixelArt: true,
+  roundPixels: true,
+  scale: {
+    mode: Phaser.Scale.FIT,
+    autoCenter: Phaser.Scale.CENTER_BOTH,
+  },
+  scene: [BootScene],
+});
