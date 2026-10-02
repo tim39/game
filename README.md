@@ -27,4 +27,4 @@ Open the address it prints.
 
 ## Play
 
-Once milestone M0 lands, every push to `main` deploys to **https://tim39.github.io/game/**.
+**https://tim39.github.io/game/**: every push to `main` deploys there once the checks pass.

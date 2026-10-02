@@ -43,7 +43,7 @@ Versions were checked in October 2026. M0 installs the latest compatible ones.
 │   └── debug/            debug menu and window.__game (dev and test builds only)
 ├── tools/                validate.ts, sim.ts and other scripts
 ├── tests/e2e/            Playwright specs
-└── .github/workflows/    ci.yml, deploy.yml
+└── .github/workflows/    ci.yml (checks, then deploy)
 ```
 
 ## Dependency rules
@@ -255,8 +255,9 @@ The **debug menu** (backtick key, or a three-finger tap on a phone) offers the s
 
 ## CI/CD
 
-- `ci.yml`, on every push and PR: install → typecheck → lint → unit tests → validate → build → Playwright smoke test.
-- `deploy.yml`, on push to `main`: build → deploy to GitHub Pages, with Vite's `base` set to `/game/`.
+- `.github/workflows/ci.yml` runs on every push to `main`, every PR, and on demand: `npm ci` → `npm run check` → build → Playwright smoke test. It uploads screenshots and reports as the `e2e-results` artifact.
+- Its deploy job runs only for pushes to `main`, and only after the checks pass: build → GitHub Pages. One workflow, so a failing build can never deploy. Vite's `base` is `./`, so the same build works at `/game/` and anywhere else.
+- Cloud sessions can't reach `tim39.github.io`, so confirm a deploy from the run's "Deploy to GitHub Pages" job instead.
 - Later, optionally: preview builds for PRs, so the owner can play a branch before merging it.
 
 ## Assets
