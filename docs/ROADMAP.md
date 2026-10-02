@@ -11,7 +11,7 @@ Start a session and say **"next task"**, or name one. Claude takes the first unc
 ## Owner to-dos
 
 - [ ] 🧑 **Turn on GitHub Pages:** repo Settings → Pages → Source: **GitHub Actions**. M0's deploy needs it.
-- [ ] 🧑 **Get the art pack (needed by M1).** Download *Ninja Adventure* from itch.io and check that its license file says CC0. Then upload the zip to a branch named `assets-inbox` (GitHub's web uploader takes files up to 25 MB), or allow the download site in this cloud environment's network settings so Claude can fetch it.
+- [x] 🧑 **Get the art pack.** Done: *Ninja Adventure* (CC0) is attached to the [`ninja-adventure` release](https://github.com/tim39/game/releases/tag/ninja-adventure). Add any future pack the same way, as its own release, since GitHub's web uploader stops at 25 MB.
 - [ ] 🧑 **Read STORY.md** and change anything you don't love: names, Rowan's gender, the ending, the title.
 - [ ] 🧑 **Play at every ★** and file what you notice.
 
@@ -26,14 +26,14 @@ Start a session and say **"next task"**, or name one. Claude takes the first unc
 - [ ] CI workflow and GitHub Pages deploy. **Done when** a push to `main` is live at the Pages URL.
 - [ ] Pixel-perfect scaling (640×360, whole-number scale, letterbox, fit on phones), Boot and Preload scenes with a progress bar, a placeholder Title screen. **Done when** the title is crisp at 720p and 1080p and fits a phone screen.
 - [ ] Input layer mapping keyboard and gamepad to logical actions. **Done when** both move a cursor on the title screen.
-- [ ] Pixel font: pick a CC0 or OFL pixel font and render it crisply with BitmapText. **Done when** it's recorded in TECH.md and CREDITS.md, with a screenshot.
+- [ ] Pixel font and UI scale: render the pack's 8×8 bitmap font crisply (not its TTF; see Assets in TECH.md) in a dialogue-sized sample. **Done when** the sample is readable on a phone, and the choice is recorded in TECH.md and CREDITS.md, with a screenshot.
 - [ ] `window.__game` debug hook skeleton, dev and test builds only. **Done when** the smoke test calls it and it's absent from the production bundle.
 
 ## M1: Walk around
 
 *Goal: walk around Saltmere, on desktop and on a phone.*
 
-- [ ] Import the art pack: curate tiles and character sprites into `public/assets/`, build the asset manifest, fill in CREDITS.md. **Done when** validation confirms every manifest key points at a real file.
+- [ ] Import the art pack: `npm run fetch-assets` downloads it from its release into `assets-src/` and checks its hash; curate tiles and character sprites into `public/assets/`, build the asset manifest, fill in CREDITS.md. **Done when** validation confirms every manifest key points at a real file.
 - [ ] ASCII map format and compiler: autotiling, prefabs, collision, overhead layer. **Done when** a test map renders with clean shorelines and the player walks behind treetops.
 - [ ] Grid movement (walk and run, 4-direction animation) and a camera that follows the player but stays inside the map.
 - [ ] Map transitions through doors, stairs and map edges, with fades and spawn points.

@@ -24,7 +24,7 @@ Versions were checked in October 2026. M0 installs the latest compatible ones.
 .
 ├── CLAUDE.md  README.md  CREDITS.md
 ├── docs/                 DESIGN, STORY, TECH, ROADMAP
-├── assets-src/           raw asset packs exactly as downloaded (not shipped)
+├── assets-src/           raw asset packs fetched from GitHub Releases (gitignored)
 ├── public/assets/        the curated files the game loads (shipped as-is)
 ├── src/
 │   ├── main.ts           Phaser config, scene list, boot
@@ -58,9 +58,9 @@ ESLint's `no-restricted-imports` enforces the first two.
 ## Rendering
 
 - Canvas **640×360** with `pixelArt: true` and `roundPixels: true`.
-- The world camera uses zoom 2, so the world is effectively 320×180 pixels: 20×11 tiles of 16 px. The UI uses zoom 1, so text is drawn at canvas resolution and stays sharp.
+- The world camera uses zoom 2, so the world is effectively 320×180 pixels: 20×11 tiles of 16 px.
+- The pack's UI art and its 8×8 bitmap font are drawn at world-pixel scale (the dialogue box is 300×58), so by default the UI is drawn at 2× too. That gives about 28–36 characters per dialogue line, like SNES-era RPGs. If text proves too big or too cramped on a phone, a separate UI camera at zoom 1 can draw finer text. M0's font task decides and records the result here.
 - Scaling uses whole-number multiples of 640×360 where the window allows (720p, 1080p, 1440p and 4K are all exact), letterboxed. Smaller screens such as phones fall back to fit-to-screen.
-- Text uses a pixel font through BitmapText. M0 tries this out, picks a CC0 or OFL font and records it here.
 
 ## Scenes
 
@@ -255,11 +255,42 @@ The **debug menu** (backtick key, or a three-finger tap on a phone) offers the s
 
 ## Assets
 
-- Raw packs go in `assets-src/<pack>/` exactly as downloaded, license file included. They aren't shipped.
+- **Raw packs live in this repo's GitHub Releases, one release per pack, never in git.** GitHub's web uploader stops at 25 MB and cloud sessions can't reach itch.io, but they can download release files. `npm run fetch-assets` (built in M1) downloads each pack into `assets-src/` (gitignored), checks its SHA-256 and unzips it. Until then:
+
+  ```sh
+  mkdir -p assets-src && curl -sSL -o assets-src/ninja-adventure.zip \
+    https://github.com/tim39/game/releases/download/ninja-adventure/Ninja.Adventure.-.Asset.Pack.zip
+  echo "95a06f4fdcfd1882f061a45ff313b7c905dbe2de1e8512b281d7937df62a7b15  assets-src/ninja-adventure.zip" | sha256sum -c -
+  unzip -q assets-src/ninja-adventure.zip -d assets-src/
+  ```
+
 - Files the game actually uses are copied to `public/assets/{tiles,sprites,portraits,monsters,ui,fonts,vfx,bgm,sfx}/` and registered under logical keys (`sprite.rowan`, `bgm.town-saltmere`) in `src/systems/asset-manifest.ts`. Game code only ever uses the keys.
 - Every pack is listed in `CREDITS.md` with its source URL, author and license.
-- **What the pack needs:** 16×16 tiles; characters with 4-direction walk cycles; monsters; ideally portraits, UI frames, effects, music and sound effects; a CC0 license (CC-BY is acceptable with credits).
-- **Recommended:** *Ninja Adventure* by Pixel-Boy and AAA (itch.io), which covers almost all of that in one CC0 pack, with Kenney's CC0 packs to fill gaps.
+- Older Safari versions (including on iPhone) can't play Ogg, so ship each music track as both `.ogg` and `.m4a` (Phaser picks whichever the browser supports), and convert the pack's `.wav` sound effects the same way to keep downloads small.
+
+### Ninja Adventure
+
+| | |
+|---|---|
+| Release | [`ninja-adventure`](https://github.com/tim39/game/releases/tag/ninja-adventure), file `Ninja.Adventure.-.Asset.Pack.zip` (94 MB) |
+| SHA-256 | `95a06f4fdcfd1882f061a45ff313b7c905dbe2de1e8512b281d7937df62a7b15` |
+| Authors | Pixel-boy and AAA, https://pixel-boy.itch.io/ninja-adventure-asset-pack |
+| License | CC0 1.0 (`LICENSE.txt`). Credit isn't required but is appreciated, so the game credits them anyway. |
+
+What's inside, under `Ninja Adventure - Asset Pack/`:
+
+- **Tilesets** (`Backgrounds/Tilesets/`), 16×16: field, nature, water, cliffs (`TilesetRelief`), houses, interiors, dungeon, desert, towers, and an abandoned village that suits the Gloam-covered world. Terrain comes as rounded 3×3 patches plus inner corners, which is what the autotiler targets. Animated water, waterfalls, flags and mills are in `Backgrounds/Animated/`; boats and fishing nets for Saltmere are in `Backgrounds/Vehicles/`.
+- **Characters** (`Actor/Character/`, about 90): `SpriteSheet.png` is 64×112, a grid of 16×16 frames with one column per direction (down, up, left, right) and rows for walking (0–3), attack (4), jump (5) and a special pose (6). `SeparateAnim/` has Idle, Walk, Attack, Jump, Dead, Item, Special1 and Special2 strips, and `Faceset.png` is a 38×38 portrait. Fantasy-friendly picks include Knight, KnightGold, Princess, Noble, Monk, the Sorcerers, OldWoman and the Villagers; the ninjas suit Cass.
+- **Monsters** (`Actor/Monster/`, 66): 64×64 sheets (4 directions × 4 frames), each with a faceset. **Bosses** (`Actor/Boss/`, 20): larger multi-frame strips, including dragons, a giant slime, squids, a giant spirit and a fire giant.
+- **Effects** (`FX/`): slashes, elemental hits (fire, water, ice, rock, thunder, plant, explosion), magic (aura, shield, circle, spark), particles, projectiles and smoke.
+- **UI** (`Ui/`): dialogue and choice boxes, a wooden window theme, HP/MP bars (`Receptacle`), 30 emotes, 121 skill icons, and keyboard and gamepad button glyphs. Item icons are in `Items/`.
+- **Audio** (`Audio/`): 41 music tracks (`.ogg`), 15 jingles (victory, level up, game over, secret found) and 132 sound effects (`.wav`).
+- **Fonts** (`Ui/Font/`): the `font8x8.png` and `font24x30.png` bitmap fonts.
+
+Watch out for:
+
+- **`Ui/Font/NormalFont.ttf`: don't use it.** Its embedded metadata says *FontStruct Non-Commercial License*, which contradicts the pack's CC0 notice. Use the bitmap fonts instead, or a separately licensed CC0 or OFL font.
+- **Gaps:** there's no mine cart sprite (for the Stone Deeps) and no dedicated wind effect (for Gale Spire). Build them from tiles and tinted effects, or adjust the gimmick.
 
 ## Performance budget
 

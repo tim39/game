@@ -27,7 +27,7 @@ A compact, complete, classic JRPG in the spirit of SNES-era Final Fantasy and Ch
 | Skills | ~14 per character by the end |
 | Items | ~25 consumables and key items, ~45 pieces of equipment |
 | Side quests | 5–8 small Memory Shard quests (see STORY.md) |
-| Music | ~12 tracks from the asset pack |
+| Music | ~18 tracks from the asset pack (see [Draft soundtrack](#draft-soundtrack)) |
 
 Anything beyond this goes in the [parking lot](#parking-lot) until v1.0 ships.
 
@@ -236,12 +236,38 @@ The on-screen controls appear only on touch devices.
 ## Art and audio
 
 - **Tiles:** 16×16 top-down tiles from the CC0 pack. The world is drawn at 2× in a 640×360 canvas, so 20×11 tiles are on screen.
-- **UI:** drawn at full canvas resolution with a pixel font, so text stays crisp.
+- **UI:** the pack's dialogue boxes, wooden window theme, icons and 8×8 bitmap font, drawn at the same pixel scale as the world. M0 checks that it's readable on a phone.
 - **Battles** reuse the field sprites at 2× scale, animated with tweens (step forward, lunge, flash, shake, KO fade), so no separate battle art is needed. Spells use particles and the pack's effects, colored by element. Bosses are drawn larger.
 - **Portraits** (the pack's facesets) appear in dialogue and battle status.
 - **Mood:** warm gold for Beacon light and towns; desaturated violet-grey for the Gloam. Act 3 reuses existing maps with a Gloam tint and a fog overlay.
 - **Music:** title, town, overworld, two dungeon themes, battle, boss, final boss, victory fanfare, a sorrow theme and the ending. Field music crossfades between maps; battle music interrupts it, and the field track resumes where it left off.
 - **Sound effects:** cursor, confirm, cancel, buzzer, hits for each element, critical hit, heal, status, KO, level up, chest, door.
+
+### Draft soundtrack
+
+Picked from the pack's 41 tracks by title only. Listen and swap freely.
+
+| Where | Track |
+|---|---|
+| Title | 38 - Intro |
+| Saltmere | 33 - Calm Village |
+| Overworld | 35 - Adventure |
+| Tide Caves | 18 - Aquatic |
+| Wardenhold | 12 - Temple |
+| Gale Spire | 19 - Ascension |
+| Deepholm | 4 - Village |
+| Stone Deeps | 30 - Ruins |
+| Ember Caldera | 10 - Dark Castle |
+| Battle | 17 - Fight |
+| Boss battle | 28 - Tension |
+| The midpoint twist | 3 - Revelation |
+| Sad scenes | 7 - Sad Theme |
+| The Gloam-covered world | 26 - Lost Village |
+| The Hollow Below | 22 - Dream |
+| Final boss | 24 - Final Area |
+| Ending | 8 - End Theme |
+| Credits | 15 - Credit Theme |
+| Victory, level up | Jingles: Success1, LevelUp1 |
 
 ## Accessibility
 

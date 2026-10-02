@@ -71,6 +71,6 @@ A task is done when:
 
 ## Cloud session notes
 
-- Outbound network is restricted. npm works, but asset sites (kenney.nl, itch.io, opengameart.org) are blocked unless the owner allows them. If you need an asset, ask the owner; never substitute something unlicensed.
+- Outbound network is restricted. npm and GitHub release downloads work, but asset sites (kenney.nl, itch.io, opengameart.org) are blocked. Raw art packs are attached to this repo's GitHub Releases (see Assets in TECH.md): fetch them from there and never commit them. If you need an asset that isn't in a pack, ask the owner; never substitute something unlicensed.
 - Chromium for Playwright is preinstalled under `/opt/pw-browsers`. Don't run `playwright install`. If the pinned `@playwright/test` expects a different Chromium build, see the note at the end of TECH.md.
 - TypeScript is pinned to 6.0.x because typescript-eslint doesn't support TS 7 yet. Revisit when it does.
