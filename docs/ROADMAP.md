@@ -24,7 +24,7 @@ Start a session and say **"next task"**, or name one. Claude takes the first unc
 - [x] Vitest and the seeded RNG (`src/core/rng.ts`). **Done when** a test proves the same seed gives the same sequence.
 - [x] Playwright smoke test: the game boots with no console errors and saves a screenshot. **Done when** it passes locally and in CI.
 - [x] CI workflow and GitHub Pages deploy. **Done when** a push to `main` is live at the Pages URL.
-- [ ] Pixel-perfect scaling (640×360, whole-number scale, letterbox, fit on phones), Boot and Preload scenes with a progress bar, a placeholder Title screen. **Done when** the title is crisp at 720p and 1080p and fits a phone screen.
+- [x] Pixel-perfect scaling (640×360, whole-number scale, letterbox, fit on phones), Boot and Preload scenes with a progress bar, a placeholder Title screen. **Done when** the title is crisp at 720p and 1080p and fits a phone screen.
 - [ ] Input layer mapping keyboard and gamepad to logical actions. **Done when** both move a cursor on the title screen.
 - [ ] Pixel font and UI scale: render the pack's 8×8 bitmap font crisply (not its TTF; see Assets in TECH.md) in a dialogue-sized sample. **Done when** the sample is readable on a phone, and the choice is recorded in TECH.md and CREDITS.md, with a screenshot.
 - [x] `window.__game` debug hook skeleton, dev and test builds only. **Done when** the smoke test calls it and it's absent from the production bundle.
@@ -39,7 +39,7 @@ Start a session and say **"next task"**, or name one. Claude takes the first unc
 - [ ] Map transitions through doors, stairs and map edges, with fades and spawn points.
 - [ ] NPCs that stand, wander and turn to face the player, and block movement.
 - [ ] Interaction: face something, press Confirm, run its handler.
-- [ ] Touch controls (d-pad, A, B, Menu) on touch devices.
+- [ ] Touch controls (d-pad, A, B, Menu) on touch devices, and a "turn your phone sideways" hint in portrait, where the game is tiny.
 - [ ] Debug menu v1: warp to any map, noclip, show collision.
 - [ ] Draft maps: Saltmere outdoors, two house interiors, the lighthouse.
 

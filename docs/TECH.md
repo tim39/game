@@ -62,7 +62,7 @@ TypeScript is split in two: `tsconfig.app.json` covers `src/` (browser code, DOM
 - Canvas **640×360** with `pixelArt: true` and `roundPixels: true`.
 - The world camera uses zoom 2, so the world is effectively 320×180 pixels: 20×11 tiles of 16 px.
 - The pack's UI art and its 8×8 bitmap font are drawn at world-pixel scale (the dialogue box is 300×58), so by default the UI is drawn at 2× too. That gives about 28–36 characters per dialogue line, like SNES-era RPGs. If text proves too big or too cramped on a phone, a separate UI camera at zoom 1 can draw finer text. M0's font task decides and records the result here.
-- Scaling uses whole-number multiples of 640×360 where the window allows (720p, 1080p, 1440p and 4K are all exact), letterboxed. Smaller screens such as phones fall back to fit-to-screen.
+- Scaling uses whole-number multiples of 640×360 where the window allows (720p, 1080p, 1440p and 4K are all exact), letterboxed. Smaller screens such as phones fall back to fit-to-screen. `pickZoom()` in `src/systems/display.ts` decides, and `main.ts` applies it with `game.scale.setZoom()` on every resize; `tests/e2e/scaling.spec.ts` checks five screen sizes.
 
 ## Scenes
 

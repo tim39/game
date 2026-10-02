@@ -11,9 +11,9 @@ test('the game boots without errors', async ({ page }) => {
   await page.goto('/');
   await expect(page.locator('#game canvas')).toBeVisible();
 
-  await page.waitForFunction(() => (window.__game?.activeScenes().length ?? 0) > 0);
-  expect(await page.evaluate(() => window.__game?.activeScenes())).toEqual(['boot']);
+  await page.waitForFunction(() => window.__game?.activeScenes().includes('title') ?? false);
+  expect(await page.evaluate(() => window.__game?.activeScenes())).toEqual(['title']);
 
-  await page.screenshot({ path: 'test-results/screenshots/boot.png' });
+  await page.screenshot({ path: 'test-results/screenshots/title.png' });
   expect(errors).toEqual([]);
 });
