@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import type {} from '../../src/debug/api';
 
 test('the game boots without errors', async ({ page }) => {
   const errors: string[] = [];
@@ -10,14 +11,9 @@ test('the game boots without errors', async ({ page }) => {
   await page.goto('/');
   await expect(page.locator('#game canvas')).toBeVisible();
 
-  // Give the first scene a couple of frames to draw before the screenshot.
-  await page.evaluate(
-    () =>
-      new Promise<void>((resolve) => {
-        requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
-      }),
-  );
-  await page.screenshot({ path: 'test-results/screenshots/boot.png' });
+  await page.waitForFunction(() => (window.__game?.activeScenes().length ?? 0) > 0);
+  expect(await page.evaluate(() => window.__game?.activeScenes())).toEqual(['boot']);
 
+  await page.screenshot({ path: 'test-results/screenshots/boot.png' });
   expect(errors).toEqual([]);
 });

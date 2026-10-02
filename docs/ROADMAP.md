@@ -27,7 +27,7 @@ Start a session and say **"next task"**, or name one. Claude takes the first unc
 - [ ] Pixel-perfect scaling (640×360, whole-number scale, letterbox, fit on phones), Boot and Preload scenes with a progress bar, a placeholder Title screen. **Done when** the title is crisp at 720p and 1080p and fits a phone screen.
 - [ ] Input layer mapping keyboard and gamepad to logical actions. **Done when** both move a cursor on the title screen.
 - [ ] Pixel font and UI scale: render the pack's 8×8 bitmap font crisply (not its TTF; see Assets in TECH.md) in a dialogue-sized sample. **Done when** the sample is readable on a phone, and the choice is recorded in TECH.md and CREDITS.md, with a screenshot.
-- [ ] `window.__game` debug hook skeleton, dev and test builds only. **Done when** the smoke test calls it and it's absent from the production bundle.
+- [x] `window.__game` debug hook skeleton, dev and test builds only. **Done when** the smoke test calls it and it's absent from the production bundle.
 
 ## M1: Walk around
 

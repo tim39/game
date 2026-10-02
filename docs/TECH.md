@@ -251,6 +251,8 @@ __game.battle('tide-caves-boss');
 __game.state(); // the current GameState
 ```
 
+So far it has `activeScenes()` and `startScene(key, data?)`; the rest arrive with the features they test. `src/main.ts` installs it only when `import.meta.env.DEV` is true or the build mode is `e2e`, so production builds drop it entirely, and `npm run build` runs `tools/check-bundle.mjs` afterwards, failing the build if `__game` ever leaks in. Tests get its types with `import type {} from '../../src/debug/api'`.
+
 The **debug menu** (backtick key, or a three-finger tap on a phone) offers the same, plus: start any battle, encounters on/off, noclip, show collision, 4× game speed.
 
 ## CI/CD

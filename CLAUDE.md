@@ -30,7 +30,7 @@ Keep the names stable. Scripts whose tooling hasn't landed yet run `tools/not-ye
 | Command | What it does |
 |---|---|
 | `npm run dev` | Vite dev server |
-| `npm run build` | Production build into `dist/` |
+| `npm run build` | Production build into `dist/`, then a check that no debug code leaked in |
 | `npm run preview` | Serve the production build locally |
 | `npm run typecheck` | `tsc --noEmit` |
 | `npm run lint` | ESLint + Prettier check |

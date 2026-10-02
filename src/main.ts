@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { BootScene } from './scenes/boot';
 
-new Phaser.Game({
+const game = new Phaser.Game({
   type: Phaser.AUTO,
   parent: 'game',
   width: 640,
@@ -15,3 +15,8 @@ new Phaser.Game({
   },
   scene: [BootScene],
 });
+
+// Vite replaces these with constants, so production builds drop the debug code entirely.
+if (import.meta.env.DEV || import.meta.env.MODE === 'e2e') {
+  void import('./debug/hooks').then(({ installDebugHooks }) => installDebugHooks(game));
+}
