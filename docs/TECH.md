@@ -234,6 +234,8 @@ battleResult(battle): 'ongoing' | 'victory' | 'defeat' | 'fled'
 | Balance | `npm run sim` | Win rates and battle length against the targets |
 | Game | Playwright | Boots with no console errors; new game → walk → talk → battle → save → reload; screenshots of key screens |
 
+**Randomness.** `src/core/rng.ts` is sfc32 (checked against a C translation of the PractRand reference), seeded through splitmix32. `state()` and `Rng.fromState()` snapshot it for saves and Retry battle, and a golden-value test pins the exact sequence so replays and simulator baselines can't drift by accident.
+
 **Debug hooks.** Dev and test builds expose `window.__game`, which tests use to jump straight to what they're testing:
 
 ```ts

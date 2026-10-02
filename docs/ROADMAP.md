@@ -21,7 +21,7 @@ Start a session and say **"next task"**, or name one. Claude takes the first unc
 
 - [x] Scaffold Vite + TypeScript (strict) + Phaser 4 with every npm script listed in CLAUDE.md. **Done when** `npm run dev` shows a Phaser canvas.
 - [x] ESLint + Prettier, including the rule that `src/core` can't import Phaser. **Done when** a deliberate bad import fails `npm run lint`.
-- [ ] Vitest and the seeded RNG (`src/core/rng.ts`). **Done when** a test proves the same seed gives the same sequence.
+- [x] Vitest and the seeded RNG (`src/core/rng.ts`). **Done when** a test proves the same seed gives the same sequence.
 - [ ] Playwright smoke test: the game boots with no console errors and saves a screenshot. **Done when** it passes locally and in CI.
 - [ ] CI workflow and GitHub Pages deploy. **Done when** a push to `main` is live at the Pages URL.
 - [ ] Pixel-perfect scaling (640×360, whole-number scale, letterbox, fit on phones), Boot and Preload scenes with a progress bar, a placeholder Title screen. **Done when** the title is crisp at 720p and 1080p and fits a phone screen.

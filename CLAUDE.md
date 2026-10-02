@@ -25,7 +25,7 @@ It's vibe coded. The owner directs and playtests; Claude writes nearly all of th
 
 ## Commands
 
-Keep the names stable. Scripts whose tooling hasn't landed yet run `tools/not-yet.mjs`, which prints `SKIPPED` and exits 0: `test` and `test:e2e` until their M0 tasks, `validate` and `sim` until M3. When you build one of those tools, swap its script over and stop calling the stand-in.
+Keep the names stable. Scripts whose tooling hasn't landed yet run `tools/not-yet.mjs`, which prints `SKIPPED` and exits 0: `test:e2e` until its M0 task, `validate` and `sim` until M3. When you build one of those tools, swap its script over and stop calling the stand-in.
 
 | Command | What it does |
 |---|---|
