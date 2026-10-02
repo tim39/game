@@ -1,5 +1,6 @@
 import type Phaser from 'phaser';
 import type { DebugApi } from './api';
+import { AssetGalleryScene } from './asset-gallery';
 
 interface Inspectable {
   debugInfo(): Record<string, unknown>;
@@ -9,6 +10,9 @@ const isInspectable = (scene: object): scene is Inspectable =>
   typeof (scene as Partial<Inspectable>).debugInfo === 'function';
 
 export function installDebugHooks(game: Phaser.Game): void {
+  // Debug-only scenes, which production builds never include.
+  game.scene.add('asset-gallery', AssetGalleryScene);
+
   const api: DebugApi = {
     activeScenes: () => game.scene.getScenes(true).map((scene) => scene.scene.key),
     startScene: (key, data) => {

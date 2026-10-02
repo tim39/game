@@ -25,7 +25,7 @@ It's vibe coded. The owner directs and playtests; Claude writes nearly all of th
 
 ## Commands
 
-Keep the names stable. Scripts whose tooling hasn't landed yet run `tools/not-yet.mjs`, which prints `SKIPPED` and exits 0: `validate` and `sim`, until M3. When you build one of those tools, swap its script over and stop calling the stand-in.
+Keep the names stable. Scripts whose tooling hasn't landed yet run `tools/not-yet.mjs`, which prints `SKIPPED` and exits 0: `sim`, until M3. When you build one of those tools, swap its script over and stop calling the stand-in.
 
 | Command | What it does |
 |---|---|
@@ -36,9 +36,10 @@ Keep the names stable. Scripts whose tooling hasn't landed yet run `tools/not-ye
 | `npm run lint` | ESLint + Prettier check |
 | `npm run format` | Prettier rewrite + ESLint autofix |
 | `npm test` | Vitest unit tests |
-| `npm run validate` | Schema and cross-reference check of all game data |
+| `npm run validate` | Checks game data: so far, that every asset manifest key points at a real, credited file; from M3, schemas and cross-references |
 | `npm run sim` | Headless battle simulator; prints a balance report |
 | `npm run test:e2e` | Playwright smoke tests + screenshots |
+| `npm run fetch-assets` | Downloads the raw asset packs into `assets-src/` (see Assets in TECH.md) |
 | `npm run check` | typecheck + lint + test + validate. Run it before every push |
 
 ## Golden rules
@@ -73,7 +74,7 @@ A task is done when:
 
 ## Cloud session notes
 
-- Outbound network is restricted. npm and GitHub release downloads work, but asset sites (kenney.nl, itch.io, opengameart.org) are blocked. Raw art packs are attached to this repo's GitHub Releases (see Assets in TECH.md): fetch them from there and never commit them. If you need an asset that isn't in a pack, ask the owner; never substitute something unlicensed.
+- Outbound network is restricted. npm and GitHub release downloads work, but asset sites (kenney.nl, itch.io, opengameart.org) are blocked. Raw art packs are attached to this repo's GitHub Releases: `npm run fetch-assets` downloads them into `assets-src/` (see Assets in TECH.md). Never commit them. If you need an asset that isn't in a pack, ask the owner; never substitute something unlicensed.
 - The live site (`tim39.github.io`) isn't reachable from cloud sessions. Confirm a deploy from the CI run's "Deploy to GitHub Pages" job.
 - Chromium for Playwright is preinstalled under `/opt/pw-browsers`. Don't run `playwright install`. If the pinned `@playwright/test` expects a different Chromium build, see the note at the end of TECH.md.
 - TypeScript is pinned to 6.0.x because typescript-eslint doesn't support TS 7 yet. Revisit when it does.

@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
-import { loadFonts, registerFonts } from '../ui/fonts';
+import { ASSETS } from '../systems/asset-manifest';
+import { registerFonts } from '../ui/fonts';
 
 const BAR_WIDTH = 240;
 const BAR_HEIGHT = 6;
@@ -25,11 +26,20 @@ export class PreloadScene extends Phaser.Scene {
       fill.fillRect(x, y, Math.round(BAR_WIDTH * progress), BAR_HEIGHT);
     });
 
-    // M1 moves these into the asset manifest (see Assets in docs/TECH.md).
-    loadFonts(this);
-    this.load.image('ui.dialogue-box', 'assets/ui/dialog-box.png');
-    this.load.image('ui.dialogue-box-portrait', 'assets/ui/dialog-box-portrait.png');
-    this.load.image('portrait.tamsin', 'assets/portraits/old-woman.png');
+    // Everything in the manifest is small, so it all loads up front for now.
+    for (const [key, entry] of Object.entries(ASSETS)) {
+      switch (entry.type) {
+        case 'image':
+          this.load.image(key, entry.url);
+          break;
+        case 'spritesheet':
+          this.load.spritesheet(key, entry.url, {
+            frameWidth: entry.frameWidth,
+            frameHeight: entry.frameHeight,
+          });
+          break;
+      }
+    }
   }
 
   create(): void {

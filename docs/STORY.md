@@ -85,5 +85,6 @@ Memory Shards, fragments of things the Beacons burned, are scattered through the
 ## Open questions for the owner
 
 - The title, and Rowan's gender: fixed, or chosen by the player? (Player choice means writing dialogue with pronoun placeholders.)
+- The cast's looks. For now Rowan uses the pack's *Hunter* sprite and portrait as a placeholder, and Bram its *Knight*. Any of the pack's ~90 characters can stand in instead: just say which.
 - Is the ending too bittersweet? One alternative: each party member gives up one memory, sharing the cost.
 - How dark should Act 3 get?

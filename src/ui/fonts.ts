@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import type { AssetKey } from '../systems/asset-manifest';
 import { measureGlyphColumns } from './glyph-metrics';
 
 /** Bitmap font keys. Both are pixel fonts from the Ninja Adventure pack, recolored white so they can be tinted. */
@@ -7,7 +8,7 @@ export const FONT = {
   body: 'font.body',
   /** 8×10 grid. Titles and headings. Drawn at 4×. */
   display: 'font.display',
-} as const;
+} as const satisfies Record<string, AssetKey>;
 
 /** Both fonts share one 15×8 grid: printable ASCII, a blank, then the IBM PC accented letters. */
 const CHARS =
@@ -30,15 +31,10 @@ interface FontEntry {
   data: { chars: Record<number, Glyph | undefined> };
 }
 
-export function loadFonts(scene: Phaser.Scene): void {
-  scene.load.image('font.body.image', 'assets/fonts/font-8x8.png');
-  scene.load.image('font.display.image', 'assets/fonts/font-8x10.png');
-}
-
-/** Call once the font images have loaded. */
+/** Call once the font images have loaded. They're in the asset manifest under the same keys. */
 export function registerFonts(scene: Phaser.Scene): void {
-  register(scene, FONT.body, 'font.body.image', 8, 8);
-  register(scene, FONT.display, 'font.display.image', 8, 10);
+  register(scene, FONT.body, 8, 8);
+  register(scene, FONT.display, 8, 10);
 }
 
 /** A function giving the drawn width of a string in `fontKey`, in font pixels (before scaling). */
@@ -51,15 +47,9 @@ export function textMeasurer(scene: Phaser.Scene, fontKey: string): (text: strin
   };
 }
 
-function register(
-  scene: Phaser.Scene,
-  fontKey: string,
-  imageKey: string,
-  cellWidth: number,
-  cellHeight: number,
-): void {
+function register(scene: Phaser.Scene, key: string, cellWidth: number, cellHeight: number): void {
   const entry = Phaser.GameObjects.RetroFont.Parse(scene, {
-    image: imageKey,
+    image: key,
     width: cellWidth,
     height: cellHeight,
     chars: CHARS,
@@ -67,10 +57,10 @@ function register(
     lineSpacing: 4,
     ...GRID_ORIGIN,
   }) as unknown as FontEntry;
-  scene.cache.bitmapFont.add(fontKey, entry);
+  scene.cache.bitmapFont.add(key, entry);
 
   // RetroFont spaces every glyph a full cell apart. Measure each glyph's real width instead.
-  const image = scene.textures.get(imageKey).getSourceImage() as HTMLImageElement;
+  const image = scene.textures.get(key).getSourceImage() as HTMLImageElement;
   const canvas = document.createElement('canvas');
   canvas.width = image.width;
   canvas.height = image.height;

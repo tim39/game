@@ -13,7 +13,7 @@ Architecture and tooling. Until the code exists, this is the plan; once it does,
 | Data validation | Zod 4 | A schema for every kind of content |
 | End-to-end tests | Playwright 1.56.1 (pinned) | Drives the real game in Chromium and takes screenshots. Pinned because it uses Chromium build 1194, the one preinstalled in cloud sessions; bump the two together |
 | Lint and format | ESLint 10 + typescript-eslint, Prettier | |
-| Scripts | tsx | Runs the TypeScript tools (`validate`, `sim`) |
+| Scripts | tsx | Runs the TypeScript tools (`fetch-assets`, `validate`, `sim`) |
 | Hosting | GitHub Pages via GitHub Actions | Every push to `main` deploys to https://tim39.github.io/game/ |
 
 Versions were checked in October 2026. M0 installs the latest compatible ones.
@@ -41,7 +41,7 @@ Versions were checked in October 2026. M0 installs the latest compatible ones.
 │   ├── scenes/           boot, preload, title, field, battle, menu, dialogue, shop, game-over
 │   ├── ui/               the UI kit
 │   └── debug/            debug menu and window.__game (dev and test builds only)
-├── tools/                validate.ts, sim.ts and other scripts
+├── tools/                fetch-assets.ts, validate.ts, sim.ts and other scripts
 ├── tests/e2e/            Playwright specs
 └── .github/workflows/    ci.yml (checks, then deploy)
 ```
@@ -131,7 +131,7 @@ export const skills = defineSkills({
 });
 ```
 
-`npm run validate` checks:
+`npm run validate` checks the asset manifest so far (see [Assets](#assets)). M3 makes it check:
 
 - every collection against its schema, with unique IDs;
 - that every reference resolves: skills in learnsets; items in shops, chests and drops; encounter tables on maps; warp targets; event script IDs; sprite and audio keys in the asset manifest;
@@ -160,7 +160,7 @@ export default defineMap({
   legend: { T: 'tree', '.': 'grass', ',': 'path', '~': 'water' },
   objects: [
     { type: 'building', prefab: 'house-small', at: [6, 1], door: 'saltmere-tamsin-house' },
-    { type: 'npc', id: 'tamsin', sprite: 'old-woman', at: [9, 4], facing: 'down', script: 'saltmere/tamsin' },
+    { type: 'npc', id: 'tamsin', sprite: 'tamsin', at: [9, 4], facing: 'down', script: 'saltmere/tamsin' },
     { type: 'chest', at: [21, 1], item: 'potion', flag: 'chest.saltmere-01' },
     { type: 'warp', at: [4, 5], to: { map: 'overworld', at: [40, 22] } },
   ],
@@ -237,7 +237,7 @@ battleResult(battle): 'ongoing' | 'victory' | 'defeat' | 'fled'
 | Layer | Tool | Covers |
 |---|---|---|
 | Rules | Vitest | Formulas, CTB order, statuses, inventory, equipment, EXP, saves and migrations, event scripts against a fake context |
-| Content | `npm run validate` (also run as a test) | Schemas and cross-references |
+| Content | `npm run validate` (also run as a test) | The asset manifest against the files; from M3, schemas and cross-references |
 | Balance | `npm run sim` | Win rates and battle length against the targets |
 | Game | Playwright | Boots with no console errors; new game → walk → talk → battle → save → reload; screenshots of key screens |
 
@@ -256,7 +256,7 @@ __game.battle('tide-caves-boss');
 __game.state(); // the current GameState
 ```
 
-So far it has `activeScenes()` and `startScene(key, data?)`; the rest arrive with the features they test. `src/main.ts` installs it only when `import.meta.env.DEV` is true or the build mode is `e2e`, so production builds drop it entirely, and `npm run build` runs `tools/check-bundle.mjs` afterwards, failing the build if `__game` ever leaks in. Tests get its types with `import type {} from '../../src/debug/api'`.
+So far it has `activeScenes()`, `startScene(key, data?)` and `inspect(sceneKey)`; the rest arrive with the features they test. `installDebugHooks` also registers the debug-only scenes; so far that's `asset-gallery`, which shows every character sheet in all four directions and the portraits, at the world's scale (`__game.startScene('asset-gallery')`). `src/main.ts` installs all of it only when `import.meta.env.DEV` is true or the build mode is `e2e`, so production builds drop it entirely, and `npm run build` runs `tools/check-bundle.mjs` afterwards, failing the build if `__game` or a debug scene ever leaks in. Tests get its types with `import type {} from '../../src/debug/api'`.
 
 The **debug menu** (backtick key, or a three-finger tap on a phone) offers the same, plus: start any battle, encounters on/off, noclip, show collision, 4× game speed.
 
@@ -269,16 +269,11 @@ The **debug menu** (backtick key, or a three-finger tap on a phone) offers the s
 
 ## Assets
 
-- **Raw packs live in this repo's GitHub Releases, one release per pack, never in git.** GitHub's web uploader stops at 25 MB and cloud sessions can't reach itch.io, but they can download release files. `npm run fetch-assets` (built in M1) downloads each pack into `assets-src/` (gitignored), checks its SHA-256 and unzips it. Until then:
+- **Raw packs live in this repo's GitHub Releases, one release per pack, never in git.** GitHub's web uploader stops at 25 MB and cloud sessions can't reach itch.io, but they can download release files. **`npm run fetch-assets`** downloads each pack listed in `tools/fetch-assets.ts`, checks its SHA-256 and unzips it to `assets-src/<pack>/` (gitignored), dropping the zip's top-level folder. Re-running it skips packs that are already there. It needs `curl` (which uses the cloud proxy) and `unzip`. To add a pack, attach it to a new release and add a line to that list with its hash.
 
-  ```sh
-  mkdir -p assets-src && curl -sSL -o assets-src/ninja-adventure.zip \
-    https://github.com/tim39/game/releases/download/ninja-adventure/Ninja.Adventure.-.Asset.Pack.zip
-  echo "95a06f4fdcfd1882f061a45ff313b7c905dbe2de1e8512b281d7937df62a7b15  assets-src/ninja-adventure.zip" | sha256sum -c -
-  unzip -q assets-src/ninja-adventure.zip -d assets-src/
-  ```
-
-- Files the game actually uses are copied to `public/assets/{tiles,sprites,portraits,monsters,ui,fonts,vfx,bgm,sfx}/` and registered under logical keys (`sprite.rowan`, `bgm.town-saltmere`) in `src/systems/asset-manifest.ts`. Game code only ever uses the keys.
+- Files the game actually uses are copied to `public/assets/{tiles,sprites,portraits,monsters,ui,fonts,vfx,bgm,sfx}/` and registered under logical keys (`sprite.rowan`, `bgm.town-saltmere`) in **`src/systems/asset-manifest.ts`**. Game code only ever uses the keys.
+- **Keys say what a file is for; file names say what it is.** `sprite.rowan` loads `sprites/hunter.png`, so giving a character a different look means copying in the new file, crediting it and changing one line of the manifest; no game code changes. Tilesets and character sheets are sprite sheets of 16×16 frames, and everything else is a plain image. The manifest is plain data with no imports, so tools can read it too. The Preload scene loads all of it at boot, which is fine while it's a few hundred KB.
+- **`npm run validate` checks the manifest** (`tools/asset-checks.ts`, also run as a unit test): every key points at a PNG that exists, sprite sheets divide into whole frames, and no two keys share a file. Every file in `public/assets/` must be in the manifest, be credited in `CREDITS.md`, and have a kebab-case name. The `asset-gallery` debug scene (see [Testing](#testing)) shows the characters in the engine, and `tests/e2e/assets.spec.ts` checks that every key loads with the right number of frames.
 - Every pack is listed in `CREDITS.md` with its source URL, author and license.
 - Older Safari versions (including on iPhone) can't play Ogg, so ship each music track as both `.ogg` and `.m4a` (Phaser picks whichever the browser supports), and convert the pack's `.wav` sound effects the same way to keep downloads small.
 
@@ -291,7 +286,7 @@ The **debug menu** (backtick key, or a three-finger tap on a phone) offers the s
 | Authors | Pixel-boy and AAA, https://pixel-boy.itch.io/ninja-adventure-asset-pack |
 | License | CC0 1.0 (`LICENSE.txt`). Credit isn't required but is appreciated, so the game credits them anyway. |
 
-What's inside, under `Ninja Adventure - Asset Pack/`:
+What's inside, under `assets-src/ninja-adventure/` (the paths `CREDITS.md` uses):
 
 - **Tilesets** (`Backgrounds/Tilesets/`), 16×16: field, nature, water, cliffs (`TilesetRelief`), houses, interiors, dungeon, desert, towers, and an abandoned village that suits the Gloam-covered world. Terrain comes as rounded 3×3 patches plus inner corners, which is what the autotiler targets. Animated water, waterfalls, flags and mills are in `Backgrounds/Animated/`; boats and fishing nets for Saltmere are in `Backgrounds/Vehicles/`.
 - **Characters** (`Actor/Character/`, about 90): `SpriteSheet.png` is 64×112, a grid of 16×16 frames with one column per direction (down, up, left, right) and rows for walking (0–3), attack (4), jump (5) and a special pose (6). `SeparateAnim/` has Idle, Walk, Attack, Jump, Dead, Item, Special1 and Special2 strips, and `Faceset.png` is a 38×38 portrait. Fantasy-friendly picks include Knight, KnightGold, Princess, Noble, Monk, the Sorcerers, OldWoman and the Villagers; the ninjas suit Cass.
@@ -305,7 +300,9 @@ Watch out for:
 
 - **`Ui/Font/NormalFont.ttf`: don't use it.** Its embedded metadata says *FontStruct Non-Commercial License*, which contradicts the pack's CC0 notice. Use the bitmap fonts instead, or a separately licensed CC0 or OFL font.
 - **The bitmap fonts' "i"** ended in a stray curl and read like ";". Our copies redraw its bottom row to match "l" and "t" (see CREDITS.md).
-- **Gaps:** there's no mine cart sprite (for the Stone Deeps) and no dedicated wind effect (for Gale Spire). Build them from tiles and tinted effects, or adjust the gimmick.
+- **`Backgrounds/Tilesets/TilesetFloor.png` is 417 px tall**, one blank row more than its 26 rows of tiles. Our copy is cropped to 416.
+- **`OldWoman` and `Child` have short sheets** (64×32): two walking rows, no attack or jump poses.
+- **Gaps:** there's no mine cart sprite (for the Stone Deeps), no dedicated wind effect (for Gale Spire), and no lighthouse (for Saltmere). Build them from tiles and tinted effects, or adjust the gimmick.
 
 ## Performance budget
 
