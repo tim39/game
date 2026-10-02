@@ -1,6 +1,20 @@
 import { expect, test, type Page } from '@playwright/test';
 import type {} from '../../src/debug/api';
 
+interface FieldInfo {
+  map: string;
+  x: number;
+  y: number;
+  facing: string;
+  moving: boolean;
+  frame: number;
+  pixel: { x: number; y: number };
+  view: { x: number; y: number; width: number; height: number };
+  size: { width: number; height: number };
+  blocked: Record<string, boolean>;
+  underOverhead: boolean;
+}
+
 /** Lets the game run a couple of frames, so input has been read and the screen redrawn. */
 const nextFrames = (page: Page) =>
   page.evaluate(
@@ -10,14 +24,22 @@ const nextFrames = (page: Page) =>
       }),
   );
 
+const field = async (page: Page): Promise<FieldInfo> =>
+  (await page.evaluate(() => window.__game?.inspect('field'))) as unknown as FieldInfo;
+
+/** Waits for the player to finish stepping, then for the camera to catch up. */
+async function waitUntilStill(page: Page): Promise<void> {
+  await page.waitForFunction(() => window.__game?.inspect('field')?.moving === false);
+  await nextFrames(page);
+}
+
 async function tapKey(page: Page, key: string, times = 1): Promise<void> {
   for (let i = 0; i < times; i++) {
     await page.keyboard.press(key);
     await nextFrames(page);
+    await waitUntilStill(page);
   }
 }
-
-const field = (page: Page) => page.evaluate(() => window.__game?.inspect('field'));
 
 async function warp(page: Page, x: number, y: number): Promise<void> {
   await page.goto('/');
@@ -43,7 +65,7 @@ test('the player walks behind a treetop, but not through trunks or water', async
   expect(await field(page)).toMatchObject({ x: 6, y: 6, underOverhead: true });
   await page.screenshot({ path: 'test-results/screenshots/field-behind-tree.png' });
 
-  // Its trunk blocks the way down; turning to face it still counts.
+  // Its trunk blocks the way down; the player turns to face it.
   await tapKey(page, 'ArrowDown');
   expect(await field(page)).toMatchObject({ x: 6, y: 6, facing: 'down', underOverhead: true });
 
@@ -52,16 +74,72 @@ test('the player walks behind a treetop, but not through trunks or water', async
   expect(await field(page)).toMatchObject({ x: 8, y: 6, underOverhead: false });
   await tapKey(page, 'ArrowRight', 5);
   expect(await field(page)).toMatchObject({ x: 12, y: 6, facing: 'right' });
-  expect((await field(page))?.blocked).toMatchObject({ right: true, left: false });
+  expect((await field(page)).blocked).toMatchObject({ right: true, left: false });
 
   expect(errors).toEqual([]);
 });
 
-test('holding a direction keeps walking', async ({ page }) => {
-  await warp(page, 12, 6);
-  await page.keyboard.down('ArrowLeft');
-  await page.waitForTimeout(600); // a step straight away, then one every 180 ms
-  await page.keyboard.up('ArrowLeft');
+test('a step slides between tiles, animating, and ends exactly on the next one', async ({
+  page,
+}) => {
+  await warp(page, 4, 15);
+  await page.keyboard.down('ArrowRight');
   await nextFrames(page);
-  expect(Number((await field(page))?.x)).toBeLessThanOrEqual(9);
+  const during = await field(page);
+  await page.keyboard.up('ArrowRight');
+  // The step claims its cell at once, and the sprite is on its way there, in a stride.
+  expect(during).toMatchObject({ x: 5, moving: true, facing: 'right' });
+  expect(during.pixel.x).toBeGreaterThan(4 * 16);
+  expect(during.pixel.x).toBeLessThan(5 * 16);
+  expect(during.frame).not.toBe(3);
+
+  await waitUntilStill(page);
+  // Standing again: on the tile, feet together (row 0, the right-facing column).
+  expect(await field(page)).toMatchObject({ x: 5, pixel: { x: 5 * 16, y: 15 * 16 }, frame: 3 });
+});
+
+test('a second tap during a step still counts', async ({ page }) => {
+  await warp(page, 4, 15);
+  await page.keyboard.press('ArrowRight');
+  await nextFrames(page);
+  await page.keyboard.press('ArrowRight');
+  await waitUntilStill(page);
+  await waitUntilStill(page);
+  expect((await field(page)).x).toBe(6);
+});
+
+test('holding Run covers ground faster than walking', async ({ page }) => {
+  const distanceAfter = async (keys: string[]): Promise<number> => {
+    await warp(page, 4, 15);
+    for (const key of keys) await page.keyboard.down(key);
+    await page.waitForTimeout(500);
+    for (const key of keys) await page.keyboard.up(key);
+    await waitUntilStill(page);
+    return (await field(page)).x - 4;
+  };
+  const walked = await distanceAfter(['ArrowRight']);
+  const ran = await distanceAfter(['ShiftLeft', 'ArrowRight']);
+  expect(walked).toBeGreaterThanOrEqual(2);
+  expect(ran).toBeGreaterThan(walked);
+});
+
+test('the camera follows the player, but never past the map’s edges', async ({ page }) => {
+  // Near the top-left corner, the view stops at the edges.
+  await warp(page, 3, 2);
+  let info = await field(page);
+  expect(info.size).toEqual({ width: 640, height: 384 });
+  expect(info.view).toMatchObject({ x: 0, y: 0, width: 320, height: 180 });
+
+  // Out in the open, the player is in the middle of the view.
+  await warp(page, 20, 15);
+  info = await field(page);
+  expect(info.view.x + info.view.width / 2).toBe(info.pixel.x + 8);
+  expect(info.view.y + info.view.height / 2).toBe(info.pixel.y + 8);
+  await page.screenshot({ path: 'test-results/screenshots/field-camera.png' });
+
+  // Walking towards the bottom-right corner, the view stops at the edges.
+  await warp(page, 36, 22);
+  info = await field(page);
+  expect(info.view.x + info.view.width).toBe(640);
+  expect(info.view.y + info.view.height).toBe(384);
 });

@@ -31,6 +31,7 @@ Versions were checked in October 2026. M0 installs the latest compatible ones.
 │   ├── core/             pure game rules: no Phaser, no DOM
 │   │   ├── battle/       CTB engine, damage, statuses, enemy AI
 │   │   ├── map/          map format, autotiler, compiler, collision
+│   │   ├── walker.ts     grid movement
 │   │   ├── state.ts      GameState and the operations on it
 │   │   ├── save.ts       serialization, versions, migrations
 │   │   ├── events.ts     EventContext types for scripts
@@ -77,7 +78,10 @@ Boot → Preload → Title ──▶ Field ◀──▶ Battle ──▶ GameOve
                               └── Shop      (overlay)
 ```
 
-- **Field** owns the current map, the actors and the event runner. Until the real opening exists, New Game shows the M0 dialogue preview and then puts the player on the test map (`NEW_GAME_START` in `src/data/new-game.ts`). For now the player hops a tile per press, and every 180 ms while a direction is held; the grid movement task brings smooth steps, running and a camera that follows.
+- **Field** owns the current map, the actors and the event runner. Until the real opening exists, New Game shows the M0 dialogue preview and then puts the player on the test map (`NEW_GAME_START` in `src/data/new-game.ts`).
+- **Grid movement** is `updateWalker` in `src/core/walker.ts`, pure and unit-tested. A step claims its cell as it starts, so nothing else can move in, then slides there; it always finishes. Holding a direction chains steps with the leftover time carried over, so walking never stutters, and a tap during a step is buffered for when it ends. A direction towards a blocked cell turns the player without moving them. Speeds are `FIELD_SPEEDS` in `src/data/balance.ts`. The scene caps a frame at 100 ms so the player can't jump after the tab was hidden.
+- **The walk cycle** is rows 0–3 of a character sheet (feet together, stride, feet together, other stride), two rows per step, starting on a stride; short sheets use rows 0–1 (`src/systems/character-frames.ts`).
+- **The camera** follows the player in whole pixels and stops at the map's edges. On a map smaller than the view it centres the map instead (`cameraBounds` in `src/systems/camera.ts`), since Phaser alone would pin it to the top-left.
 - **Battle** starts on top of Field (which sleeps) and hands back a result: victory, defeat or fled.
 - **Overlays** run above Field. A focus stack decides which one gets input.
 
