@@ -22,6 +22,7 @@ const nextFrames = (page: Page) =>
   );
 
 const title = (page: Page) => page.evaluate(() => window.__game?.inspect('title'));
+const activeScenes = (page: Page) => page.evaluate(() => window.__game?.activeScenes());
 
 async function tapKey(page: Page, key: string): Promise<void> {
   await page.keyboard.press(key);
@@ -43,10 +44,10 @@ test('the keyboard moves the title cursor, wraps around, and confirms', async ({
 
   // Disabled items ignore Confirm; New Game responds.
   await tapKey(page, 'Enter');
-  expect((await title(page))?.notice).toBe('');
+  expect(await activeScenes(page)).toEqual(['title']);
   await tapKey(page, 'ArrowDown');
   await tapKey(page, 'KeyZ');
-  expect((await title(page))?.notice).toContain('M1');
+  expect(await activeScenes(page)).toEqual(['dialogue-sample']);
 });
 
 test('holding a direction repeats, and letting go stops it', async ({ page }) => {
@@ -109,5 +110,5 @@ test('a gamepad moves the title cursor and confirms', async ({ page }) => {
   await nextFrames(page);
   await setButton(0, false);
   await nextFrames(page);
-  expect((await title(page))?.notice).toContain('M1');
+  expect(await activeScenes(page)).toEqual(['dialogue-sample']);
 });

@@ -61,7 +61,9 @@ TypeScript is split in two: `tsconfig.app.json` covers `src/` (browser code, DOM
 
 - Canvas **640×360** with `pixelArt: true` and `roundPixels: true`.
 - The world camera uses zoom 2, so the world is effectively 320×180 pixels: 20×11 tiles of 16 px.
-- The pack's UI art and its 8×8 bitmap font are drawn at world-pixel scale (the dialogue box is 300×58), so by default the UI is drawn at 2× too. That gives about 28–36 characters per dialogue line, like SNES-era RPGs. If text proves too big or too cramped on a phone, a separate UI camera at zoom 1 can draw finer text. M0's font task decides and records the result here.
+- **The UI is drawn at world scale too (2×)**, because the pack's UI art is (the dialogue box is 300×58). Decided in M0 from screenshots: text is clearly readable on a phone held sideways. Held upright, the whole 640×360 game shrinks to about 0.6× and nothing is comfortable, so M1 asks players to turn the phone.
+- **Fonts** (`src/ui/fonts.ts`): two pixel fonts from the pack, registered as RetroFonts. `FONT.body` is the 8×8 sheet, drawn at 2×, for text, menus and dialogue. `FONT.display` is the 24×30 sheet shrunk back to its native 8×10 grid, drawn at 4×, for titles. Both are recolored white and tinted per use. RetroFont spaces glyphs in fixed cells, so at load time `measureGlyphColumns()` measures each glyph's real width and the font becomes proportional (1 px between letters, 4 px spaces).
+- **Text layout:** `textMeasurer(scene, font)` gives a string's width in font pixels, and `wrapText(text, maxWidth, widthOf)` wraps by width. The dialogue box's measured layout lives in `src/ui/dialogue-layout.ts`: 3 lines of up to 236 px with a portrait (about 48 characters) or 280 px without (about 56).
 - Scaling uses whole-number multiples of 640×360 where the window allows (720p, 1080p, 1440p and 4K are all exact), letterboxed. Smaller screens such as phones fall back to fit-to-screen. `pickZoom()` in `src/systems/display.ts` decides, and `main.ts` applies it with `game.scale.setZoom()` on every resize; `tests/e2e/scaling.spec.ts` checks five screen sizes.
 
 ## Scenes
@@ -302,6 +304,7 @@ What's inside, under `Ninja Adventure - Asset Pack/`:
 Watch out for:
 
 - **`Ui/Font/NormalFont.ttf`: don't use it.** Its embedded metadata says *FontStruct Non-Commercial License*, which contradicts the pack's CC0 notice. Use the bitmap fonts instead, or a separately licensed CC0 or OFL font.
+- **The bitmap fonts' "i"** ended in a stray curl and read like ";". Our copies redraw its bottom row to match "l" and "t" (see CREDITS.md).
 - **Gaps:** there's no mine cart sprite (for the Stone Deeps) and no dedicated wind effect (for Gale Spire). Build them from tiles and tinted effects, or adjust the gimmick.
 
 ## Performance budget

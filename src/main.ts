@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { BootScene } from './scenes/boot';
+import { DialogueSampleScene } from './scenes/dialogue-sample';
 import { PreloadScene } from './scenes/preload';
 import { TitleScene } from './scenes/title';
 import { GAME_HEIGHT, GAME_WIDTH, pickZoom } from './systems/display';
@@ -22,7 +23,7 @@ const game = new Phaser.Game({
     autoCenter: Phaser.Scale.CENTER_BOTH,
     zoom: zoomForContainer(),
   },
-  scene: [BootScene, PreloadScene, TitleScene],
+  scene: [BootScene, PreloadScene, TitleScene, DialogueSampleScene],
 });
 
 window.addEventListener('resize', () => game.scale.setZoom(zoomForContainer()));

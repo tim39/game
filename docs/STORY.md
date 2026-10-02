@@ -76,7 +76,7 @@ Memory Shards, fragments of things the Beacons burned, are scattered through the
 ## Writing guide
 
 - Earnest first, funny second. The characters are kind to each other even when they disagree.
-- Dialogue boxes hold at most 3 lines. Line width depends on the UI font; M2 measures it and records it here.
+- Dialogue boxes hold at most 3 lines, about 48 characters each with a portrait (56 without), so roughly 140 characters a box. The game wraps by measured width, so treat those as averages.
 - Most lines fit in one box. Big speeches can run 3–4 boxes, never more.
 - Every NPC line is flavor, a hint or a joke. NPCs get new lines after major story flags.
 - Plant the twist early: festival dialogue, the murals, NPCs who "can't remember why they're sad".

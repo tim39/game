@@ -236,7 +236,7 @@ The on-screen controls appear only on touch devices.
 ## Art and audio
 
 - **Tiles:** 16×16 top-down tiles from the CC0 pack. The world is drawn at 2× in a 640×360 canvas, so 20×11 tiles are on screen.
-- **UI:** the pack's dialogue boxes, wooden window theme, icons and 8×8 bitmap font, drawn at the same pixel scale as the world. M0 checks that it's readable on a phone.
+- **UI:** the pack's dialogue boxes, wooden window theme, icons and pixel fonts, drawn at the same pixel scale as the world. Readable on a phone held sideways; the game is landscape-only.
 - **Battles** reuse the field sprites at 2× scale, animated with tweens (step forward, lunge, flash, shake, KO fade), so no separate battle art is needed. Spells use particles and the pack's effects, colored by element. Bosses are drawn larger.
 - **Portraits** (the pack's facesets) appear in dialogue and battle status.
 - **Mood:** warm gold for Beacon light and towns; desaturated violet-grey for the Gloam. Act 3 reuses existing maps with a Gloam tint and a fog overlay.

@@ -4,7 +4,7 @@ A classic high-fantasy JRPG for the browser, with turn-order-timeline battles, 1
 
 Built with TypeScript and Phaser 4, and vibe coded with Claude Code.
 
-> **Status:** building the foundation (milestone M0). Nothing is playable yet; see the roadmap.
+> **Status:** the foundation (milestone M0) is done: a title screen and a dialogue preview, with tests and auto-deploy. Next is M1, walking around Saltmere; see the roadmap.
 
 ## Run it locally
 

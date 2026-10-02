@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { input } from '../systems/input/game-input';
+import { FONT } from '../ui/fonts';
 
 interface MenuItem {
   readonly label: string;
@@ -12,18 +13,18 @@ const MENU: readonly MenuItem[] = [
   { label: 'Options', enabled: false },
 ];
 
-const GOLD = '#f5c46b';
-const TEXT = '#e8e0f5';
-const DIM = '#5a5270';
-const MENU_TOP = 196;
-const MENU_SPACING = 22;
+const GOLD = 0xf5c46b;
+const TEXT = 0xe8e0f5;
+const DIM = 0x5a5270;
+const MENU_X = 264;
+const MENU_TOP = 192;
+const MENU_SPACING = 24;
 
-/** Placeholder title screen. M0's font task makes the text crisp. */
+/** Placeholder title screen until the real one arrives with the vertical slice (M6). */
 export class TitleScene extends Phaser.Scene {
   private selected = 0;
   private cursorMoves = 0;
   private cursor?: Phaser.GameObjects.Graphics;
-  private notice?: Phaser.GameObjects.Text;
 
   constructor() {
     super('title');
@@ -34,7 +35,7 @@ export class TitleScene extends Phaser.Scene {
     this.selected = 0;
     this.cursorMoves = 0;
 
-    const ember = this.add.circle(centerX, 64, 8, 0xffa040);
+    const ember = this.add.circle(centerX, 56, 8, 0xffa040);
     this.tweens.add({
       targets: ember,
       scale: 1.35,
@@ -46,30 +47,24 @@ export class TitleScene extends Phaser.Scene {
     });
 
     this.add
-      .text(centerX, 116, 'The Fifth Flame', {
-        fontFamily: 'monospace',
-        fontSize: '32px',
-        color: GOLD,
-      })
-      .setOrigin(0.5);
+      .bitmapText(centerX, 104, FONT.display, 'The Fifth Flame')
+      .setScale(4)
+      .setOrigin(0.5)
+      .setTint(GOLD);
 
     MENU.forEach((item, index) => {
       this.add
-        .text(centerX - 40, MENU_TOP + index * MENU_SPACING, item.label, {
-          fontFamily: 'monospace',
-          fontSize: '16px',
-          color: item.enabled ? TEXT : DIM,
-        })
-        .setOrigin(0, 0.5);
+        .bitmapText(MENU_X, MENU_TOP + index * MENU_SPACING, FONT.body, item.label)
+        .setScale(2)
+        .setOrigin(0, 0.5)
+        .setTint(item.enabled ? TEXT : DIM);
     });
 
-    this.notice = this.add
-      .text(centerX, MENU_TOP + MENU.length * MENU_SPACING + 24, '', {
-        fontFamily: 'monospace',
-        fontSize: '12px',
-        color: GOLD,
-      })
-      .setOrigin(0.5);
+    this.add
+      .bitmapText(centerX, 330, FONT.body, 'Z, Enter or tap to choose')
+      .setScale(2)
+      .setOrigin(0.5)
+      .setTint(DIM);
 
     this.cursor = this.add.graphics();
     this.drawCursor();
@@ -84,11 +79,7 @@ export class TitleScene extends Phaser.Scene {
 
   /** Read by `window.__game.inspect('title')` in dev and test builds. */
   debugInfo(): Record<string, unknown> {
-    return {
-      selected: MENU[this.selected]?.label,
-      cursorMoves: this.cursorMoves,
-      notice: this.notice?.text ?? '',
-    };
+    return { selected: MENU[this.selected]?.label, cursorMoves: this.cursorMoves };
   }
 
   private moveCursor(step: number): void {
@@ -99,16 +90,16 @@ export class TitleScene extends Phaser.Scene {
 
   private choose(): void {
     if (!MENU[this.selected]?.enabled) return;
-    // There's no game to start yet; M1 replaces this with the opening.
-    this.notice?.setText('The adventure begins in milestone M1.');
+    // There's no game to start yet, so New Game previews the dialogue box instead.
+    this.scene.start('dialogue-sample');
   }
 
   private drawCursor(): void {
     if (!this.cursor) return;
-    const x = this.scale.width / 2 - 56;
+    const x = MENU_X - 20;
     const y = MENU_TOP + this.selected * MENU_SPACING;
     this.cursor.clear();
-    this.cursor.fillStyle(0xf5c46b);
-    this.cursor.fillTriangle(x, y - 5, x, y + 5, x + 6, y);
+    this.cursor.fillStyle(GOLD);
+    this.cursor.fillTriangle(x, y - 6, x, y + 6, x + 8, y);
   }
 }
