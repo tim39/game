@@ -20,7 +20,7 @@ It's vibe coded. The owner directs and playtests; Claude writes nearly all of th
 
 1. Check open GitHub issues labeled `bug`; fix anything that blocks play first.
 2. Otherwise take the next unchecked task in the current ROADMAP milestone, or the one the owner names.
-3. Work on a branch, one task per PR, unless the owner says to push straight to `main`.
+3. Work on a branch, one task per branch. When every check passes, merge it into `main` yourself (fast-forward) and push; the owner chose this over PRs. Open a PR only if the owner asks for one. After pushing `main`, check that CI and the deploy went green.
 4. Finish against the definition of done below, then tell the owner what changed and what to try in the build.
 
 ## Commands

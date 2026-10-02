@@ -6,7 +6,7 @@ The build order for v1.0. Every milestone ends with something you can play at ht
 
 ## How to use this
 
-Start a session and say **"next task"**, or name one. Claude takes the first unchecked task in the current milestone, builds it on a branch, runs every check, ticks the box and tells you what to try. You play the build and merge. File anything you notice as a GitHub issue, one per thing. Open bugs get fixed before new roadmap work.
+Start a session and say **"next task"**, or name one. Claude takes the first unchecked task in the current milestone, builds it on a branch, runs every check, ticks the box, merges it into `main` and tells you what to try in the live build. File anything you notice as a GitHub issue, one per thing. Open bugs get fixed before new roadmap work.
 
 ## Owner to-dos
 
