@@ -3,6 +3,7 @@ import {
   compileMap,
   exitAt,
   isBlocked,
+  scriptAt,
   terrainRows,
   type CompiledMap,
   type LayerName,
@@ -326,4 +327,22 @@ describe('npcs', () => {
     expect(() => compile('..', [npc('a', 0, 0), npc('a', 1, 0)])).toThrow('two npcs are called a');
     expect(() => compile('..', [npc('a', 0, 0, -1)])).toThrow("npc a can't wander -1");
   });
+});
+
+test('a prefab with a script runs it from any of its tiles under characters', () => {
+  const compiled = compile('..\n..', [
+    { type: 'prefab', prefab: 'shed', at: [0, 0], script: 'shed' },
+  ]);
+  // The shed's top row is a roof drawn over characters, so only its bottom row counts.
+  expect(scriptAt(compiled, 0, 0)).toBeNull();
+  expect(scriptAt(compiled, 0, 1)).toBe('shed');
+  expect(scriptAt(compiled, 1, 1)).toBe('shed');
+  expect(scriptAt(compiled, -1, 1)).toBeNull();
+});
+
+test('an npc keeps its script', () => {
+  const compiled = compile('..', [
+    { type: 'npc', id: 'a', sprite: 'villager', at: [0, 0], facing: 'down', script: 'hello' },
+  ]);
+  expect(compiled.npcs[0]?.script).toBe('hello');
 });

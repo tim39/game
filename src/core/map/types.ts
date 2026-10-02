@@ -70,12 +70,16 @@ export interface WarpTarget {
   readonly spawn: string;
 }
 
-/** A prefab placed on a map, by its top-left cell. With `to`, its doorway leads there. */
+/**
+ * A prefab placed on a map, by its top-left cell. With `to`, its doorway leads there; with
+ * `script`, facing any of its cells and pressing Confirm runs that event script (a sign, say).
+ */
 export interface PrefabObject {
   readonly type: 'prefab';
   readonly prefab: string;
   readonly at: GridPoint;
   readonly to?: WarpTarget;
+  readonly script?: string;
 }
 
 /** A cell that takes whoever steps into it to `to`. Doorways are usually simpler. */
@@ -104,6 +108,8 @@ export interface NpcObject {
   readonly facing: Direction;
   /** How far it may wander from `at`, in cells across or down. Without it, it stands still. */
   readonly wander?: number;
+  /** The event script that runs when the player talks to it. */
+  readonly script?: string;
 }
 
 export type MapObject = PrefabObject | WarpObject | SpawnObject | NpcObject;

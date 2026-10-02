@@ -23,6 +23,8 @@ export interface NpcPlacement {
   readonly facing: Direction;
   /** How far it may wander from where it's placed, in cells across or down; 0 stands still. */
   readonly wander: number;
+  /** The event script talking to it runs, if any (an ID in src/data/events). */
+  readonly script?: string;
 }
 
 export interface Npc {

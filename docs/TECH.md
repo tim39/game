@@ -39,7 +39,7 @@ Versions were checked in October 2026. M0 installs the latest compatible ones.
 │   │   ├── schema.ts     Zod schemas and the types derived from them
 │   │   └── rng.ts        seeded RNG
 │   ├── data/             content: characters, skills, items, enemies, encounters,
-│   │                     shops, balance.ts, terrain.ts, maps/, events/
+│   │                     shops, balance.ts, terrain.ts, maps/, events/, speakers.ts
 │   ├── systems/          Phaser-side services: input, audio, storage, assets, event runner
 │   ├── scenes/           boot, preload, title, field, battle, menu, dialogue, shop, game-over
 │   ├── ui/               the UI kit
@@ -83,6 +83,8 @@ Boot → Preload → Title ──▶ Field ◀──▶ Battle ──▶ GameOve
 - **Going between maps:** when a step heads into a way out (a doorway, a warp or an edge exit), the controls stop and the camera fades to black while the step finishes; then the field scene restarts on the target map at its spawn, and fades back in. Both fades take `MAP_FADE_MS` (250 ms, in `balance.ts`). The fade out is forced, so a way out taken while the fade in is still running can't get stuck. The walker always stops on an exit cell, so it can't walk through one in a long frame.
 - **Grid movement** is `updateWalker` in `src/core/walker.ts`, pure and unit-tested. A step claims its cell as it starts, so nothing else can move in, then slides there; it always finishes. Holding a direction chains steps with the leftover time carried over, so walking never stutters, and a tap during a step is buffered for when it ends. A direction towards a blocked cell turns the player without moving them. Speeds are `FIELD_SPEEDS` in `src/data/balance.ts`. The scene caps a frame at 100 ms so the player can't jump after the tab was hidden.
 - **NPCs** come from a map's `npc` objects and move by the rules in `src/core/npc.ts`, on the same walker as the player, with `NPC_TUNING` from `balance.ts`. Without `wander` they stand still; with it, they wait a random 1.5–4 s, then step a random way if the cell is free and within `wander` cells of home, or else just turn to look. Their randomness comes from an `Rng` seeded with `field:<map id>` each time the map loads. A walker takes up its cell, and mid-step the cell it's leaving too, so nobody overlaps: the player can't walk into an NPC, and NPCs keep out of walls, ways out, the player and each other. Walking into an NPC makes them turn and look at the player for `lookMs` (3 s); one that stands still then turns back the way it was placed. Characters are sorted by height on screen, so a lower one is drawn in front, still under the overhead layer.
+- **Talking and examining:** Confirm, pressed while standing still, looks at the cell the player faces. An NPC there turns to look at the player (as when bumped) and runs their `script`, if they have one; one partway through a step is ignored. Otherwise the map's script for that cell runs, if any: a prefab's `script` covers its cells under characters. While a script runs (`running` in the field's debug info) the player can't move and NPCs stand still, with their look timers paused, so a conversation never ends with someone walking off.
+- **The dialogue box** is an overlay scene, `DialogueScene` (`src/scenes/dialogue.ts`), registered after Field so it draws on top. A script's `say` launches it with one line and a callback; Confirm closes it and calls back, which resumes the script. Scene operations are queued until the next frame, and the script resumes after the frame's updates, so the Confirm that closes a box never opens the next one or talks to someone again. `drawDialogueBox` (`src/ui/dialogue-box.ts`) draws it: the portrait box for a speaker with a portrait, the plain one with a name tab otherwise, and for a speaker with no name (a sign) the pack's tab-less box, nine-sliced to the same size and place. A line too long for three lines logs an error. The typewriter, skipping and choices are M2's dialogue task.
 - **The walk cycle** is rows 0–3 of a character sheet (feet together, stride, feet together, other stride), two rows per step, starting on a stride; short sheets use rows 0–1 (`src/systems/character-frames.ts`).
 - **The camera** follows the player in whole pixels and stops at the map's edges. On a map smaller than the view it centres the map instead (`cameraBounds` in `src/systems/camera.ts`), since Phaser alone would pin it to the top-left.
 - **Battle** starts on top of Field (which sleeps) and hands back a result: victory, defeat or fled.
@@ -139,10 +141,10 @@ export const skills = defineSkills({
 });
 ```
 
-`npm run validate` checks the asset manifest and the maps so far (see [Assets](#assets) and [Maps](#maps)). M3 makes it check:
+`npm run validate` checks the asset manifest, the maps and the event scripts so far (see [Assets](#assets), [Maps](#maps) and [Event scripts](#event-scripts)). M3 makes it check:
 
 - every collection against its schema, with unique IDs;
-- that every reference resolves: skills in learnsets; items in shops, chests and drops; encounter tables on maps; warp targets; event script IDs; sprite and audio keys in the asset manifest;
+- that every reference resolves: skills in learnsets; items in shops, chests and drops; encounter tables on maps; sprite and audio keys in the asset manifest;
 - that every map can be reached from the start, and that no chest flag is used twice.
 
 ## Maps
@@ -176,11 +178,11 @@ export default defineMap({
   - **`fill`**: one tile everywhere, or weighted variants (plain grass with the odd tuft). A hash of the cell's position picks the variant, so it looks random but never changes.
   - **`blob`** (autotiled): a cell's tile depends on which of its 8 neighbours share its terrain, so water gets shorelines and paths get grassy edges. A corner only counts when both sides next to it do, which leaves 47 shapes; cells off the map count as the same terrain. The pack's water and path blocks share one layout, `GRASS_EDGED_BLOB`, worked out from the tiles' pixels. Those tiles have grass around their edges, so these terrains belong on grass. There's no water tile for a lone cell, so ponds and channels need at least two.
   - **`trees`**: along each row, every two cells grow a 2-wide tree (picked from a list by position) and an odd cell out gets a 1-wide filler. A tree's trunk row stands on its cells, which are solid, and its canopy overhangs the row above, where characters can walk behind it.
-- **Prefabs** are blocks of tiles drawn as one: trees, the house, doors and stairs now, the lighthouse later. Each character of a prefab's `layout` marks a tile: `#` solid, drawn under characters; `.` walkable, drawn under characters; `^` walkable, drawn over characters; `D` a doorway; a space for no tile. Maps place prefabs as `{ type: 'prefab', prefab, at, to? }` objects, by their top-left cell. With `to`, the doorway is walkable and leads there, even when it's in a wall; without, it's solid.
+- **Prefabs** are blocks of tiles drawn as one: trees, the house, doors and stairs now, the lighthouse later. Each character of a prefab's `layout` marks a tile: `#` solid, drawn under characters; `.` walkable, drawn under characters; `^` walkable, drawn over characters; `D` a doorway; a space for no tile. Maps place prefabs as `{ type: 'prefab', prefab, at, to?, script? }` objects, by their top-left cell. With `to`, the doorway is walkable and leads there, even when it's in a wall; without, it's solid. With `script`, facing any of its cells drawn under characters and pressing Confirm runs that event script (the test shore's `sign`).
 - **Ways between maps** all lead to a named spawn: `to: { map, spawn }`. A map's objects include its spawns, `{ type: 'spawn', id, at, facing }`, where arrivals appear. Doors and stairs are prefabs with a doorway; `{ type: 'warp', at, to }` makes any walkable cell a way out; and a map's `edges` say where walking off each side leads (`edges: { east: { map: 'test-meadow', spawn: 'west' } }`). An edge with no entry is a wall, and every cell along an edge with one leads out, so give the map a gap in its border. Put spawns next to ways in, not on them, and clear of treetops so the player can be seen arriving.
-- **People** are `{ type: 'npc', id, sprite, at, facing, wander? }` objects: `sprite` names a character sheet (`sprite.<sprite>` in the manifest), and `wander` is how many cells they may stray from `at`. The compiler won't let one start on a solid cell, a way out, a spawn or another NPC.
+- **People** are `{ type: 'npc', id, sprite, at, facing, wander?, script? }` objects: `sprite` names a character sheet (`sprite.<sprite>` in the manifest), `wander` is how many cells they may stray from `at`, and `script` is the event script talking to them runs. The compiler won't let one start on a solid cell, a way out, a spawn or another NPC.
 - **Rooms** use the `house-wall` and `cellar-wall` terrains, from the pack's simple room frame. It has only the shapes a rectangle needs (four corners, four sides, solid wall), so their rooms must be rectangles with walls one cell thick; anything else won't compile. Proper interiors come with the draft maps.
-- **The compiler** (`compileMap` in `src/core/map/compile.ts`, pure and unit-tested) turns a map into three layers, `ground`, `base` (trunks, walls) and `overhead` (treetops, roof tops), plus a `solid` grid. `isBlocked(map, x, y)` answers whether a cell can be walked into (off the map is blocked unless that edge leads somewhere), and `exitAt(map, x, y)` where stepping into it leads. Anything that doesn't fit throws an error naming the map and the cell: an unknown character, ragged rows, a shape with no tile, a prefab off the map or on top of another, a spawn or warp on a solid cell, two spawns with one ID.
+- **The compiler** (`compileMap` in `src/core/map/compile.ts`, pure and unit-tested) turns a map into three layers, `ground`, `base` (trunks, walls) and `overhead` (treetops, roof tops), plus a `solid` grid. `isBlocked(map, x, y)` answers whether a cell can be walked into (off the map is blocked unless that edge leads somewhere), `exitAt(map, x, y)` where stepping into it leads, and `scriptAt(map, x, y)` the script examining it runs. Anything that doesn't fit throws an error naming the map and the cell: an unknown character, ragged rows, a shape with no tile, a prefab off the map or on top of another, a spawn or warp on a solid cell, two spawns with one ID.
 - **The field scene** draws the layers as a Phaser tilemap (`src/systems/tilemap.ts`). Every tile sheet a map uses becomes a tileset with its own range of tile IDs, so any layer can mix sheets. Characters are drawn between `base` and `overhead` (see `DEPTH`), and the world camera is zoomed 2×.
 - **`npm run validate`** compiles every map, checks that every tile a terrain or prefab names is inside a 16×16 sprite sheet from the asset manifest, that every way out leads to a spawn that exists, and that every NPC's sprite is a character sheet. `src/data/maps/maps.test.ts` also checks that the layout covers all 47 shapes.
 - If the owner wants to hand-paint a map, add a Tiled (`.tmj`) importer and let that map opt out of ASCII. Each map keeps one source of truth.
@@ -190,8 +192,8 @@ export default defineMap({
 Cutscenes and interactions are **async TypeScript functions** run against a typed `EventContext`. There's no scripting language to build or learn:
 
 ```ts
-// src/data/events/saltmere/tamsin.ts
-export default defineEvent(async (ev) => {
+// src/data/events/saltmere.ts
+export const tamsin = defineEvent(async (ev) => {
   if (!ev.flag('story.beacon-out')) {
     await ev.say('tamsin', "Lamps won't light themselves, Rowan. Off you go!");
     return;
@@ -205,9 +207,12 @@ export default defineEvent(async (ev) => {
 });
 ```
 
+- **Where they live:** a file per area in `src/data/events/` exports its scripts by name, and `src/data/events/index.ts` registers each as `<area>/<name>` in `EVENTS` (the test maps' are `test/tamsin`, `test/sign` and so on). Maps name them in an NPC's or prefab's `script`.
+- **Speakers** (`src/data/speakers.ts`) are who `say` names: the name in the box's tab, and a portrait if they have one. A speaker with an empty name, `sign`, is for signs and narration.
+- **So far** (M1) `EventContext` has one verb, `say(speaker, text)`, and the only trigger is `interact`; the field runs scripts (see [Scenes](#scenes)). `npm run validate` (`tools/event-checks.ts`) checks that every script a map names exists, that every speaker's portrait is an image in the manifest, and runs every script against a stand-in context that answers at once, to check it finishes and only names speakers that exist.
 - **The first `EventContext` API:** `say`, `choice`, `wait`, `move`, `face`, `emote`, `fadeOut`/`fadeIn`, `cameraPan`, `flag`/`setFlag`, `var`/`setVar`, `hasItem`/`giveItem`/`takeItem`, `gold`/`giveGold`/`takeGold`, `joinParty`, `heal`, `battle(encounterId, { canFlee, canLose })`, `shop`, `inn`, `bgm`/`sfx`, `teleport`, `savePrompt`. Add verbs as content needs them, keep each one small, and test them against a fake context.
 - **Triggers:** `interact` (NPCs, objects), `touch` (stepping on a tile), `enter` (when a map loads), `auto` (runs once when a flag condition becomes true).
-- While a script runs, the player can't move, open menus or save.
+- While a script runs, the player can't move, open menus or save, and NPCs stand still.
 
 ## Battle engine
 
@@ -249,7 +254,7 @@ battleResult(battle): 'ongoing' | 'victory' | 'defeat' | 'fled'
 | Layer | Tool | Covers |
 |---|---|---|
 | Rules | Vitest | Formulas, CTB order, statuses, inventory, equipment, EXP, saves and migrations, event scripts against a fake context |
-| Content | `npm run validate` (also run as a test) | The asset manifest against the files; from M3, schemas and cross-references |
+| Content | `npm run validate` (also run as a test) | The asset manifest against the files, the maps, and the event scripts and speakers; from M3, schemas and cross-references |
 | Balance | `npm run sim` | Win rates and battle length against the targets |
 | Game | Playwright | Boots with no console errors; new game → walk → talk → battle → save → reload; screenshots of key screens |
 

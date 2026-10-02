@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest';
 import type { Direction } from './direction';
 import {
+  facingCell,
   standingWalker,
   updateWalker,
   walkerPosition,
@@ -105,4 +106,9 @@ test('a walk ends on a cell the world stops at, even with the direction held', (
     x: 2,
     step: null,
   });
+});
+
+test('facingCell is the cell a walker would step into next', () => {
+  expect(facingCell(standingWalker(3, 3, 'up'))).toEqual([3, 2]);
+  expect(facingCell(standingWalker(3, 3, 'right'))).toEqual([4, 3]);
 });

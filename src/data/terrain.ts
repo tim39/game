@@ -133,6 +133,8 @@ export const PREFABS = definePrefabs({
   door: { sheet: 'tiles.element', origin: [6, 13], layout: ['D'] },
   'stairs-down': { sheet: 'tiles.element', origin: [6, 11], layout: ['D'] },
   'stairs-up': { sheet: 'tiles.element', origin: [6, 12], layout: ['D'] },
+  // A wooden signboard, to read.
+  sign: { sheet: 'tiles.element', origin: [0, 2], layout: ['#'] },
 });
 
 export const MAP_CONTENT: MapContent = { terrains: TERRAINS, prefabs: PREFABS };

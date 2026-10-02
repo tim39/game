@@ -1,10 +1,19 @@
 import Phaser from 'phaser';
 import { DIRECTIONS, STEP, type Direction } from '../core/direction';
-import { compileMap, exitAt, isBlocked, type CompiledMap, type Spawn } from '../core/map/compile';
+import type { EventContext } from '../core/events';
+import {
+  compileMap,
+  exitAt,
+  isBlocked,
+  scriptAt,
+  type CompiledMap,
+  type Spawn,
+} from '../core/map/compile';
 import type { WarpTarget } from '../core/map/types';
 import { createNpc, lookAt, updateNpc, type Npc } from '../core/npc';
 import { Rng } from '../core/rng';
 import {
+  facingCell,
   occupies,
   standingWalker,
   updateWalker,
@@ -13,12 +22,15 @@ import {
   type WalkWorld,
 } from '../core/walker';
 import { FIELD_SPEEDS, MAP_FADE_MS, NPC_TUNING } from '../data/balance';
+import { EVENTS } from '../data/events';
 import { MAPS } from '../data/maps';
+import { SPEAKERS } from '../data/speakers';
 import { MAP_CONTENT } from '../data/terrain';
 import { cameraBounds } from '../systems/camera';
 import { characterFrame, sheetRows } from '../systems/character-frames';
 import { input } from '../systems/input/game-input';
 import { DEPTH, TILE, createTilemap } from '../systems/tilemap';
+import type { DialogueRequest } from './dialogue';
 
 /** Where to put the player, `scene.start('field', start)`: a cell, or one of the map's spawns. */
 export type FieldStart = { readonly map: string } & (
@@ -66,6 +78,8 @@ export class FieldScene extends Phaser.Scene {
   private buffered: Direction | null = null;
   /** Set once the player steps into a way out: the screen fades and the controls stop. */
   private leaving = false;
+  /** Set while an event script runs: the player can't move, and everyone else waits. */
+  private running = false;
 
   constructor() {
     super('field');
@@ -92,6 +106,7 @@ export class FieldScene extends Phaser.Scene {
     this.lastDirection = null;
     this.buffered = null;
     this.leaving = false;
+    this.running = false;
     const player = this.figure(PLAYER_SPRITE);
     this.player = player;
     this.drawFigures();
@@ -112,6 +127,15 @@ export class FieldScene extends Phaser.Scene {
     const { map, world } = this;
     if (!map || !world) return;
     const dt = Math.min(delta, MAX_FRAME_MS);
+
+    // Confirm while standing still talks to whoever is in front, or examines what's there.
+    if (!this.leaving && !this.running && !this.walker.step && input.pressed('confirm')) {
+      this.interact(map);
+    }
+    if (this.running) {
+      this.drawFigures();
+      return;
+    }
 
     // While leaving, the step into the way out finishes, and nothing else happens.
     const pressed = this.leaving ? undefined : DIRECTIONS.find((d) => input.pressed(d));
@@ -163,6 +187,7 @@ export class FieldScene extends Phaser.Scene {
     return {
       map: map.id,
       leaving: this.leaving,
+      running: this.running,
       fading: camera.fadeEffect.isRunning,
       x: walker.x,
       y: walker.y,
@@ -199,6 +224,49 @@ export class FieldScene extends Phaser.Scene {
   /** The NPC taking up (x, y), if any. */
   private npcAt(x: number, y: number): NpcOnMap | undefined {
     return this.npcs.find(({ npc }) => occupies(npc.walker, x, y));
+  }
+
+  /**
+   * Talks to the NPC in front of the player, who turns to face them, or else runs the script of
+   * whatever is there. Someone partway through a step can't be talked to until they've finished it.
+   */
+  private interact(map: CompiledMap): void {
+    const [x, y] = facingCell(this.walker);
+    const someone = this.npcAt(x, y);
+    if (someone) {
+      if (someone.npc.walker.step) return;
+      someone.npc = lookAt(someone.npc, this.walker.x, this.walker.y, NPC_TUNING);
+      if (someone.npc.placement.script) this.run(someone.npc.placement.script);
+      return;
+    }
+    const script = scriptAt(map, x, y);
+    if (script) this.run(script);
+  }
+
+  /** Runs an event script; until it ends the field stands still. */
+  private run(id: string): void {
+    const script = EVENTS[id];
+    if (!script) {
+      console.error(`There's no event script called ${id}`);
+      return;
+    }
+    this.running = true;
+    const ev: EventContext = { say: (speaker, text) => this.say(speaker, text) };
+    void script(ev)
+      .catch((error: unknown) => console.error(`Event script ${id} failed:`, error))
+      .finally(() => (this.running = false));
+  }
+
+  /** Opens the dialogue box over the field, and resolves once the player closes it. */
+  private say(speakerId: string, text: string): Promise<void> {
+    const speaker = SPEAKERS[speakerId];
+    if (!speaker) return Promise.reject(new Error(`There's no speaker called ${speakerId}`));
+    return new Promise((resolve) => {
+      this.scene.launch('dialogue', {
+        line: { ...speaker, text },
+        onClose: resolve,
+      } satisfies DialogueRequest);
+    });
   }
 
   /** Fades out while the step into the way out finishes, then starts the field over there. */

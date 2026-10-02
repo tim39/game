@@ -5,6 +5,12 @@
 export const DIALOGUE_BOX = {
   width: 300,
   height: 58,
+  /**
+   * The box under the name tab. Lines with no name draw the pack's tab-less box
+   * (`DialogueBoxSimple.png`, the same frame in another size) here instead, sliced at its 8-pixel
+   * corners and stretched to fit.
+   */
+  panel: { x: 0, y: 8, width: 300, height: 50, corner: 8 },
   /** The dark frame for a 38×38 portrait (portrait box only). */
   portrait: { x: 6, y: 14, size: 38 },
   /** The brown tab above the box, for the speaker's name. */

@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { BootScene } from './scenes/boot';
+import { DialogueScene } from './scenes/dialogue';
 import { DialogueSampleScene } from './scenes/dialogue-sample';
 import { FieldScene } from './scenes/field';
 import { PreloadScene } from './scenes/preload';
@@ -24,7 +25,8 @@ const game = new Phaser.Game({
     autoCenter: Phaser.Scale.CENTER_BOTH,
     zoom: zoomForContainer(),
   },
-  scene: [BootScene, PreloadScene, TitleScene, DialogueSampleScene, FieldScene],
+  // Later scenes draw over earlier ones: the dialogue box goes over the field.
+  scene: [BootScene, PreloadScene, TitleScene, DialogueSampleScene, FieldScene, DialogueScene],
 });
 
 window.addEventListener('resize', () => game.scale.setZoom(zoomForContainer()));

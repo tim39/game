@@ -12,6 +12,7 @@ By **Pixel-boy** and **AAA**: https://pixel-boy.itch.io/ninja-adventure-asset-pa
 | `public/assets/fonts/font-8x10.png` | Titles | `Ui/Font/font24x30.png` | Shrunk 3× to its native 8×10 grid; recolored white; bottom row of "i" redrawn |
 | `public/assets/ui/dialog-box-portrait.png` | Dialogue box with a portrait | `Ui/Dialog/DialogBoxFaceset.png` | None |
 | `public/assets/ui/dialog-box.png` | Dialogue box | `Ui/Dialog/DialogBox.png` | None |
+| `public/assets/ui/dialog-box-plain.png` | Dialogue box with no name tab, for signs and narration | `Ui/Dialog/DialogueBoxSimple.png` | None |
 | `public/assets/portraits/old-woman.png` | Tamsin's portrait | `Actor/Character/OldWoman/Faceset.png` | None |
 | `public/assets/portraits/hunter.png` | Rowan's portrait (a placeholder look) | `Actor/Character/Hunter/Faceset.png` | None |
 | `public/assets/portraits/knight.png` | Bram's portrait | `Actor/Character/Knight/Faceset.png` | None |

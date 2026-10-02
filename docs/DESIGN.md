@@ -40,7 +40,7 @@ Town (story, shops, inn) → overworld → dungeon (explore, fight, treasure, a 
 - **Grid movement** in 4 directions on 16×16 tiles, with smooth steps between tiles: about 4 tiles a second walking. Hold Run to go twice as fast; an *Always run* option flips this. A step always finishes, and taps during a step aren't lost. The camera follows the player and stops at the map's edges; a map smaller than the screen sits in the middle of it.
 - **Trees, water and walls block the way**, but you can walk behind treetops and the tops of roofs, which are drawn over you.
 - **People** stand still or wander a little way from home, and block the way too. Walk into one and they turn to look at you.
-- **Interact** by facing something and pressing Confirm: NPCs, signs, chests, doors, switches. Some events fire when you step on a tile or enter a map.
+- **Interact** by facing something and pressing Confirm: NPCs, signs, chests, doors, switches. People turn to face you when you talk to them, and everyone waits while the conversation lasts, so nobody wanders off mid-sentence. Some events fire when you step on a tile or enter a map.
 - **Map kinds:** town, interior, dungeon floor, overworld. Doors, stairs and paths off a map's edge lead to other maps; transitions fade through black (about 250 ms each way), and you arrive at a fixed spot just inside, facing into the new place.
 - **Chests** open once and stay open (each has a flag).
 - **HP and MP carry over between battles.** **Light Shrines** at each dungeon's entrance and before each boss fully heal the party, so a dungeon is about managing resources between shrines.
@@ -214,7 +214,7 @@ Fixed characters with their own kits; no job system. Full skill lists live in `s
 
 - **Title:** New Game, Continue, Options.
 - **Field:** no permanent HUD; the area name shows in a banner on entry.
-- **Dialogue:** a box at the bottom with the speaker's name and portrait, typewriter text (Confirm shows it all at once), a ▼ prompt and up to 4 choices.
+- **Dialogue:** a box at the bottom with the speaker's name and portrait (signs and narration have neither), typewriter text (Confirm shows it all at once), a ▼ prompt and up to 4 choices.
 - **Menu:** Items, Skills, Equip, Status, Options, Save, with a party summary (HP, MP, level, EXP to next level), gold, play time and location.
 - **Equip:** stat comparison with up and down arrows.
 - **Shop:** Buy and Sell with quantities, showing who can equip each item and how it changes their stats.

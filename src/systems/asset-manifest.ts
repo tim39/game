@@ -43,6 +43,7 @@ export const ASSETS = {
 
   'ui.dialogue-box': image('ui/dialog-box.png'),
   'ui.dialogue-box-portrait': image('ui/dialog-box-portrait.png'),
+  'ui.dialogue-box-plain': image('ui/dialog-box-plain.png'),
 
   // Tilesets
   'tiles.floor': sheet('tiles/floor.png'), // grass, sand, dirt paths

@@ -92,6 +92,12 @@ export function updateWalker(
   return current;
 }
 
+/** The cell in front of a walker: the one it would step into next. */
+export function facingCell(walker: Walker): [x: number, y: number] {
+  const [dx, dy] = STEP[walker.facing];
+  return [walker.x + dx, walker.y + dy];
+}
+
 /** Whether a walker takes up (x, y): its cell, and mid-step the cell it's leaving too. */
 export function occupies(walker: Walker, x: number, y: number): boolean {
   if (walker.x === x && walker.y === y) return true;

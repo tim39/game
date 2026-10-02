@@ -40,6 +40,8 @@ export interface CompiledMap {
   readonly edges: Readonly<Partial<Record<Side, WarpTarget>>>;
   readonly spawns: Readonly<Record<string, Spawn>>;
   readonly npcs: readonly NpcPlacement[];
+  /** The event script that facing each cell and pressing Confirm runs, if any. */
+  readonly scripts: readonly (string | null)[];
 }
 
 /** The edge a cell just off the map is past, or null for a cell on the map. */
@@ -56,6 +58,12 @@ export function exitAt(map: CompiledMap, x: number, y: number): WarpTarget | nul
   const side = sideOf(map, x, y);
   if (side) return map.edges[side] ?? null;
   return map.warps[y * map.width + x] ?? null;
+}
+
+/** The event script for examining (x, y), if any. NPCs carry their own. */
+export function scriptAt(map: CompiledMap, x: number, y: number): string | null {
+  if (sideOf(map, x, y)) return null;
+  return map.scripts[y * map.width + x] ?? null;
 }
 
 /** Can't step into (x, y): it's solid, or off an edge that leads nowhere. */
@@ -122,6 +130,7 @@ export function compileMap(def: MapDef, content: MapContent): CompiledMap {
   const warps = cells<WarpTarget | null>(null);
   const spawns: Record<string, Spawn> = {};
   const npcs: NpcPlacement[] = [];
+  const scripts = cells<string | null>(null);
 
   function fillTile(terrain: FillTerrain, x: number, y: number): TileRef {
     const total = terrain.tiles.reduce((sum, [, , weight = 1]) => sum + weight, 0);
@@ -141,9 +150,16 @@ export function compileMap(def: MapDef, content: MapContent): CompiledMap {
 
   /**
    * Draws a prefab with its top-left at `at`. Off-map tiles are an error unless `clip` is set.
-   * With `to`, its doorway is walkable and leads there; without, the doorway is solid.
+   * With `to`, its doorway is walkable and leads there; without, the doorway is solid. With
+   * `script`, examining any of its tiles under characters runs it.
    */
-  function stamp(id: string, [left, top]: GridPoint, clip: boolean, to?: WarpTarget): void {
+  function stamp(
+    id: string,
+    [left, top]: GridPoint,
+    clip: boolean,
+    to?: WarpTarget,
+    script?: string,
+  ): void {
     const prefab = prefabOf(id);
     const doorways = prefab.layout.join('').split('D').length - 1;
     if (doorways > 1) fail(`prefab ${id} has ${doorways} doorways; one at most`);
@@ -165,6 +181,7 @@ export function compileMap(def: MapDef, content: MapContent): CompiledMap {
         const [col, row] = prefab.origin;
         layer[index] = { sheet: prefab.sheet, col: col + dx, row: row + dy };
         if (char === '#') solid[index] = true;
+        if (script && char !== '^') scripts[index] = script;
         if (char === 'D') {
           // A doorway cuts through whatever the terrain is: a door in a wall still opens.
           solid[index] = !to;
@@ -234,7 +251,7 @@ export function compileMap(def: MapDef, content: MapContent): CompiledMap {
     const [x, y] = object.at;
     switch (object.type) {
       case 'prefab':
-        stamp(object.prefab, object.at, false, object.to);
+        stamp(object.prefab, object.at, false, object.to, object.script);
         break;
       case 'warp':
         if (!onMap(x, y)) fail(`the warp at (${x}, ${y}) is off the map`);
@@ -251,7 +268,15 @@ export function compileMap(def: MapDef, content: MapContent): CompiledMap {
         if (npcs.some((npc) => npc.id === object.id)) fail(`two npcs are called ${object.id}`);
         if (!Number.isInteger(wander) || wander < 0)
           fail(`npc ${object.id} can't wander ${wander}`);
-        npcs.push({ id: object.id, sprite: object.sprite, x, y, facing: object.facing, wander });
+        npcs.push({
+          id: object.id,
+          sprite: object.sprite,
+          x,
+          y,
+          facing: object.facing,
+          wander,
+          ...(object.script ? { script: object.script } : {}),
+        });
         break;
       }
     }
@@ -278,5 +303,6 @@ export function compileMap(def: MapDef, content: MapContent): CompiledMap {
       fail(`the warp at (${index % width}, ${Math.floor(index / width)}) is on a solid cell`);
   });
 
-  return { id: def.id, width, height, layers, solid, warps, edges: def.edges ?? {}, spawns, npcs };
+  const edges = def.edges ?? {};
+  return { id: def.id, width, height, layers, solid, warps, edges, spawns, npcs, scripts };
 }
