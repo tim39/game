@@ -3,6 +3,7 @@ import { BootScene } from './scenes/boot';
 import { PreloadScene } from './scenes/preload';
 import { TitleScene } from './scenes/title';
 import { GAME_HEIGHT, GAME_WIDTH, pickZoom } from './systems/display';
+import { input } from './systems/input/game-input';
 
 const container = document.getElementById('game');
 if (!container) throw new Error('index.html needs a <div id="game">');
@@ -25,6 +26,7 @@ const game = new Phaser.Game({
 });
 
 window.addEventListener('resize', () => game.scale.setZoom(zoomForContainer()));
+input.attach(game);
 
 // Vite replaces these with constants, so production builds drop the debug code entirely.
 if (import.meta.env.DEV || import.meta.env.MODE === 'e2e') {

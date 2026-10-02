@@ -216,7 +216,10 @@ battleResult(battle): 'ongoing' | 'victory' | 'defeat' | 'fled'
 
 - Logical actions: `up`, `down`, `left`, `right`, `confirm`, `cancel`, `menu`, `run`. Keyboard, gamepad and touch all map to these, and game code never reads raw keys.
 - Holding a direction in a menu repeats after 300 ms, then every 80 ms.
-- The touch overlay (d-pad, A, B, Menu) appears only on touch devices.
+- The touch overlay (d-pad, A, B, Menu) appears only on touch devices. Until M1 builds it, tapping the game counts as Confirm.
+- Code lives in `src/systems/input/`: `actions.ts` (actions, key bindings, gamepad mapping), `action-state.ts` (held / pressed / pressedOrRepeated; pure and unit-tested) and `game-input.ts` (the `input` singleton, which reads every device once per frame before scenes update). Scenes ask things like `input.pressedOrRepeated('down')`.
+- A press shorter than a frame still counts: key and pointer presses are latched until the next frame reads them.
+- Gamepads use the browser's "standard" button layout. Headless browsers have none, so `tests/e2e/input.spec.ts` swaps in a fake pad through `navigator.getGamepads`. E2E tests hold inputs for a couple of frames (see `nextFrames()` there) rather than polling, so auto-repeat can't race them.
 
 ## Audio
 

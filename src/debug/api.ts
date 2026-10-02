@@ -7,6 +7,8 @@ export interface DebugApi {
   activeScenes(): string[];
   /** Stops every running scene and starts `key`. */
   startScene(key: string, data?: object): void;
+  /** What a scene reports about itself through its `debugInfo()` method, if it has one. */
+  inspect(sceneKey: string): Record<string, unknown> | undefined;
 }
 
 declare global {

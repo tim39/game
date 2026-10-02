@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { input } from '../systems/input/game-input';
 
 interface MenuItem {
   readonly label: string;
@@ -17,10 +18,12 @@ const DIM = '#5a5270';
 const MENU_TOP = 196;
 const MENU_SPACING = 22;
 
-/** Placeholder title screen. M0's input and font tasks make the menu move and the text crisp. */
+/** Placeholder title screen. M0's font task makes the text crisp. */
 export class TitleScene extends Phaser.Scene {
   private selected = 0;
+  private cursorMoves = 0;
   private cursor?: Phaser.GameObjects.Graphics;
+  private notice?: Phaser.GameObjects.Text;
 
   constructor() {
     super('title');
@@ -28,6 +31,8 @@ export class TitleScene extends Phaser.Scene {
 
   create(): void {
     const centerX = this.scale.width / 2;
+    this.selected = 0;
+    this.cursorMoves = 0;
 
     const ember = this.add.circle(centerX, 64, 8, 0xffa040);
     this.tweens.add({
@@ -58,8 +63,44 @@ export class TitleScene extends Phaser.Scene {
         .setOrigin(0, 0.5);
     });
 
+    this.notice = this.add
+      .text(centerX, MENU_TOP + MENU.length * MENU_SPACING + 24, '', {
+        fontFamily: 'monospace',
+        fontSize: '12px',
+        color: GOLD,
+      })
+      .setOrigin(0.5);
+
     this.cursor = this.add.graphics();
     this.drawCursor();
+  }
+
+  override update(): void {
+    // Confirm first, so a press that lands in the same frame as a move picks what was on screen.
+    if (input.pressed('confirm')) this.choose();
+    if (input.pressedOrRepeated('down')) this.moveCursor(1);
+    if (input.pressedOrRepeated('up')) this.moveCursor(-1);
+  }
+
+  /** Read by `window.__game.inspect('title')` in dev and test builds. */
+  debugInfo(): Record<string, unknown> {
+    return {
+      selected: MENU[this.selected]?.label,
+      cursorMoves: this.cursorMoves,
+      notice: this.notice?.text ?? '',
+    };
+  }
+
+  private moveCursor(step: number): void {
+    this.selected = (this.selected + step + MENU.length) % MENU.length;
+    this.cursorMoves += 1;
+    this.drawCursor();
+  }
+
+  private choose(): void {
+    if (!MENU[this.selected]?.enabled) return;
+    // There's no game to start yet; M1 replaces this with the opening.
+    this.notice?.setText('The adventure begins in milestone M1.');
   }
 
   private drawCursor(): void {
