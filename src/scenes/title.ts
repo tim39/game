@@ -90,7 +90,7 @@ export class TitleScene extends Phaser.Scene {
 
   private choose(): void {
     if (!MENU[this.selected]?.enabled) return;
-    // There's no game to start yet, so New Game previews the dialogue box instead.
+    // No real opening yet: New Game previews the dialogue box, then walks onto the test map.
     this.scene.start('dialogue-sample');
   }
 

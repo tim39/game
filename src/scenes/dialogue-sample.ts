@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { NEW_GAME_START } from '../data/new-game';
 import { input } from '../systems/input/game-input';
 import { DIALOGUE_BOX, MAX_LINES, lineWidth } from '../ui/dialogue-layout';
 import { FONT, textMeasurer } from '../ui/fonts';
@@ -33,7 +34,8 @@ const PAPER = 0xf2eaf1;
 
 /**
  * A static preview of the dialogue box, so the font and UI scale can be judged on a real screen.
- * M2 replaces it with the real dialogue system (typewriter text, choices, scripts).
+ * M2 replaces it with the real dialogue system (typewriter text, choices, scripts). After the last
+ * page, New Game carries on to the field; Cancel goes back to the title.
  */
 export class DialogueSampleScene extends Phaser.Scene {
   private page = 0;
@@ -58,7 +60,7 @@ export class DialogueSampleScene extends Phaser.Scene {
     } else if (input.pressed('confirm')) {
       this.page += 1;
       if (this.page < PAGES.length) this.showPage();
-      else this.scene.start('title');
+      else this.scene.start('field', NEW_GAME_START);
     }
   }
 

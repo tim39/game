@@ -30,13 +30,14 @@ Versions were checked in October 2026. M0 installs the latest compatible ones.
 │   ├── main.ts           Phaser config, scene list, boot
 │   ├── core/             pure game rules: no Phaser, no DOM
 │   │   ├── battle/       CTB engine, damage, statuses, enemy AI
+│   │   ├── map/          map format, autotiler, compiler, collision
 │   │   ├── state.ts      GameState and the operations on it
 │   │   ├── save.ts       serialization, versions, migrations
 │   │   ├── events.ts     EventContext types for scripts
 │   │   ├── schema.ts     Zod schemas and the types derived from them
 │   │   └── rng.ts        seeded RNG
 │   ├── data/             content: characters, skills, items, enemies, encounters,
-│   │                     shops, balance.ts, maps/, events/
+│   │                     shops, balance.ts, terrain.ts, maps/, events/
 │   ├── systems/          Phaser-side services: input, audio, storage, assets, event runner
 │   ├── scenes/           boot, preload, title, field, battle, menu, dialogue, shop, game-over
 │   ├── ui/               the UI kit
@@ -76,7 +77,7 @@ Boot → Preload → Title ──▶ Field ◀──▶ Battle ──▶ GameOve
                               └── Shop      (overlay)
 ```
 
-- **Field** owns the current map, the actors and the event runner.
+- **Field** owns the current map, the actors and the event runner. Until the real opening exists, New Game shows the M0 dialogue preview and then puts the player on the test map (`NEW_GAME_START` in `src/data/new-game.ts`). For now the player hops a tile per press, and every 180 ms while a direction is held; the grid movement task brings smooth steps, running and a camera that follows.
 - **Battle** starts on top of Field (which sleeps) and hands back a result: victory, defeat or fled.
 - **Overlays** run above Field. A focus stack decides which one gets input.
 
@@ -131,7 +132,7 @@ export const skills = defineSkills({
 });
 ```
 
-`npm run validate` checks the asset manifest so far (see [Assets](#assets)). M3 makes it check:
+`npm run validate` checks the asset manifest and the maps so far (see [Assets](#assets) and [Maps](#maps)). M3 makes it check:
 
 - every collection against its schema, with unique IDs;
 - that every reference resolves: skills in learnsets; items in shops, chests and drops; encounter tables on maps; warp targets; event script IDs; sprite and audio keys in the asset manifest;
@@ -139,27 +140,24 @@ export const skills = defineSkills({
 
 ## Maps
 
-Maps are written as ASCII so Claude can author, read and diff them:
+Maps are written as ASCII so Claude can author, read and diff them. `src/data/maps/test-shore.ts` is the working example; this sketch of Saltmere shows where the format is heading (the `npc`, `chest` and `warp` objects arrive with their M1 and M2 tasks):
 
 ```ts
 // src/data/maps/saltmere.ts
 export default defineMap({
   id: 'saltmere',
   name: 'Saltmere',
-  tileset: 'village',
-  music: 'town-saltmere',
-  encounters: null,
   terrain: `
     TTTTTTTTTTTTTTTTTTTTTTTT
-    T......................T
-    T...,,,,,,,,,,,,,,.....T
-    T...,..............TT..T
-    T...,.........~~~~~~~~~~
+    TT.....................T
+    TT..,,,,,,,,,,,,,,.....T
+    TT..,..............TT..T
+    TT..,.........~~~~~~~~~~
     TTTT,TTTTTTTT~~~~~~~~~~~
   `,
-  legend: { T: 'tree', '.': 'grass', ',': 'path', '~': 'water' },
+  legend: { T: 'trees', '.': 'grass', ',': 'path', '~': 'water' },
   objects: [
-    { type: 'building', prefab: 'house-small', at: [6, 1], door: 'saltmere-tamsin-house' },
+    { type: 'prefab', prefab: 'house-small', at: [6, 1] },
     { type: 'npc', id: 'tamsin', sprite: 'tamsin', at: [9, 4], facing: 'down', script: 'saltmere/tamsin' },
     { type: 'chest', at: [21, 1], item: 'potion', flag: 'chest.saltmere-01' },
     { type: 'warp', at: [4, 5], to: { map: 'overworld', at: [40, 22] } },
@@ -167,10 +165,14 @@ export default defineMap({
 });
 ```
 
-- Each terrain character maps to a terrain type. An **autotiler** chooses edge and corner tiles (shorelines, cliff edges) so maps don't look like graph paper.
-- **Prefabs** are multi-tile structures placed as objects: houses, the lighthouse, big trees.
-- Collision and the **overhead** layer (roofs and treetops drawn above the player) come from the terrain and prefab definitions.
-- Maps are compiled into Phaser tilemap layers at load time.
+- **Terrains** live in `src/data/terrain.ts`, in three kinds:
+  - **`fill`**: one tile everywhere, or weighted variants (plain grass with the odd tuft). A hash of the cell's position picks the variant, so it looks random but never changes.
+  - **`blob`** (autotiled): a cell's tile depends on which of its 8 neighbours share its terrain, so water gets shorelines and paths get grassy edges. A corner only counts when both sides next to it do, which leaves 47 shapes; cells off the map count as the same terrain. The pack's water and path blocks share one layout, `GRASS_EDGED_BLOB`, worked out from the tiles' pixels. Those tiles have grass around their edges, so these terrains belong on grass. There's no water tile for a lone cell, so ponds and channels need at least two.
+  - **`trees`**: along each row, every two cells grow a 2-wide tree (picked from a list by position) and an odd cell out gets a 1-wide filler. A tree's trunk row stands on its cells, which are solid, and its canopy overhangs the row above, where characters can walk behind it.
+- **Prefabs** are blocks of tiles drawn as one: the trees now, houses and the lighthouse later. Each character of a prefab's `layout` marks a tile: `#` solid, drawn under characters; `.` walkable, drawn under characters; `^` walkable, drawn over characters; a space for no tile. Maps place prefabs as `{ type: 'prefab', prefab, at }` objects, by their top-left cell.
+- **The compiler** (`compileMap` in `src/core/map/compile.ts`, pure and unit-tested) turns a map into three layers, `ground`, `base` (trunks, walls) and `overhead` (treetops, roof tops), plus a `solid` grid. `isBlocked(map, x, y)` answers whether a cell can be walked into; off the map always is. Anything that doesn't fit throws an error naming the map and the cell: an unknown character, ragged rows, a shape with no tile, a prefab off the map or on top of another.
+- **The field scene** draws the layers as a Phaser tilemap (`src/systems/tilemap.ts`). Every tile sheet a map uses becomes a tileset with its own range of tile IDs, so any layer can mix sheets. Characters are drawn between `base` and `overhead` (see `DEPTH`), and the world camera is zoomed 2×.
+- **`npm run validate`** compiles every map and checks that every tile a terrain or prefab names is inside a 16×16 sprite sheet from the asset manifest. `src/data/maps/maps.test.ts` also checks that the layout covers all 47 shapes.
 - If the owner wants to hand-paint a map, add a Tiled (`.tmj`) importer and let that map opt out of ASCII. Each map keeps one source of truth.
 
 ## Event scripts
@@ -256,7 +258,7 @@ __game.battle('tide-caves-boss');
 __game.state(); // the current GameState
 ```
 
-So far it has `activeScenes()`, `startScene(key, data?)` and `inspect(sceneKey)`; the rest arrive with the features they test. `installDebugHooks` also registers the debug-only scenes; so far that's `asset-gallery`, which shows every character sheet in all four directions and the portraits, at the world's scale (`__game.startScene('asset-gallery')`). `src/main.ts` installs all of it only when `import.meta.env.DEV` is true or the build mode is `e2e`, so production builds drop it entirely, and `npm run build` runs `tools/check-bundle.mjs` afterwards, failing the build if `__game` or a debug scene ever leaks in. Tests get its types with `import type {} from '../../src/debug/api'`.
+So far it has `activeScenes()`, `startScene(key, data?)`, `inspect(sceneKey)` and `warp(map, x, y, facing?)`; the rest arrive with the features they test. `installDebugHooks` also registers the debug-only scenes; so far that's `asset-gallery`, which shows every character sheet in all four directions and the portraits, at the world's scale (`__game.startScene('asset-gallery')`). `src/main.ts` installs all of it only when `import.meta.env.DEV` is true or the build mode is `e2e`, so production builds drop it entirely, and `npm run build` runs `tools/check-bundle.mjs` afterwards, failing the build if `__game` or a debug scene ever leaks in. Tests get its types with `import type {} from '../../src/debug/api'`.
 
 The **debug menu** (backtick key, or a three-finger tap on a phone) offers the same, plus: start any battle, encounters on/off, noclip, show collision, 4× game speed.
 

@@ -38,6 +38,7 @@ Town (story, shops, inn) → overworld → dungeon (explore, fight, treasure, a 
 ## Exploration
 
 - **Grid movement** in 4 directions on 16×16 tiles, with smooth steps between tiles. Hold Run to go faster; an *Always run* option flips this.
+- **Trees, water and walls block the way**, but you can walk behind treetops and the tops of roofs, which are drawn over you.
 - **Interact** by facing something and pressing Confirm: NPCs, signs, chests, doors, switches. Some events fire when you step on a tile or enter a map.
 - **Map kinds:** town, interior, dungeon floor, overworld. Transitions fade through black (about 250 ms each way).
 - **Chests** open once and stay open (each has a flag).

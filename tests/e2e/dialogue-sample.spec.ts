@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import type {} from '../../src/debug/api';
+import { NEW_GAME_START } from '../../src/data/new-game';
 
 const nextFrames = (page: Page) =>
   page.evaluate(
@@ -35,7 +36,7 @@ function expectFits(info: Record<string, unknown> | undefined): void {
   for (const width of widths) expect(width).toBeLessThanOrEqual(info?.maxWidth as number);
 }
 
-test('New Game shows the dialogue preview, one page per Confirm, then returns', async ({
+test('New Game shows the dialogue preview, one page per Confirm, then the field', async ({
   page,
 }) => {
   await openSample(page);
@@ -52,7 +53,8 @@ test('New Game shows the dialogue preview, one page per Confirm, then returns', 
   expectFits(last);
 
   await tapKey(page, 'KeyZ');
-  expect(await activeScenes(page)).toEqual(['title']);
+  expect(await activeScenes(page)).toEqual(['field']);
+  expect(await page.evaluate(() => window.__game?.inspect('field'))).toMatchObject(NEW_GAME_START);
 });
 
 test('Cancel leaves the preview straight away', async ({ page }) => {
