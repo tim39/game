@@ -11,7 +11,7 @@ Architecture and tooling. Until the code exists, this is the plan; once it does,
 | Build | Vite 8 | Dev server and static build |
 | Unit tests | Vitest 5 | Runs `src/core` and the data checks in Node |
 | Data validation | Zod 4 | A schema for every kind of content |
-| End-to-end tests | Playwright | Drives the real game in Chromium and takes screenshots |
+| End-to-end tests | Playwright 1.56.1 (pinned) | Drives the real game in Chromium and takes screenshots. Pinned because it uses Chromium build 1194, the one preinstalled in cloud sessions; bump the two together |
 | Lint and format | ESLint 10 + typescript-eslint, Prettier | |
 | Scripts | tsx | Runs the TypeScript tools (`validate`, `sim`) |
 | Hosting | GitHub Pages via GitHub Actions | Every push to `main` deploys to https://tim39.github.io/game/ |
@@ -54,6 +54,8 @@ Versions were checked in October 2026. M0 installs the latest compatible ones.
 - Only `main.ts` imports `debug`, and only in dev and test builds.
 
 `eslint.config.js` enforces the first two with `no-restricted-imports`, and also bans `Math.random`, `Date.now` and browser globals (`window`, `document`, `localStorage`, `performance`) inside `src/core`.
+
+TypeScript is split in two: `tsconfig.app.json` covers `src/` (browser code, DOM types), and `tsconfig.node.json` covers the config files, `tests/` and `tools/` (Node types). `tsconfig.json` only references the two, which is what editors and ESLint pick up.
 
 ## Rendering
 
@@ -234,6 +236,8 @@ battleResult(battle): 'ongoing' | 'victory' | 'defeat' | 'fled'
 | Balance | `npm run sim` | Win rates and battle length against the targets |
 | Game | Playwright | Boots with no console errors; new game → walk → talk → battle → save → reload; screenshots of key screens |
 
+`npm run test:e2e` builds the game with `vite build --mode e2e` into `dist-e2e/`, serves it with `vite preview` on port 4173 and runs `tests/e2e/` against it. The `e2e` mode is a production build with debug hooks switched on. Screenshots go to `test-results/screenshots/`. If the port is busy, a stray preview server from an earlier run is the usual cause.
+
 **Randomness.** `src/core/rng.ts` is sfc32 (checked against a C translation of the PractRand reference), seeded through splitmix32. `state()` and `Rng.fromState()` snapshot it for saves and Retry battle, and a golden-value test pins the exact sequence so replays and simulator baselines can't drift by accident.
 
 **Debug hooks.** Dev and test builds expose `window.__game`, which tests use to jump straight to what they're testing:
@@ -300,7 +304,7 @@ Watch out for:
 
 ## Cloud session notes
 
-- Chromium for Playwright is preinstalled under `/opt/pw-browsers`; don't run `playwright install` there. If the pinned `@playwright/test` expects a different Chromium build, `playwright.config.ts` should read a `PW_CHROMIUM_PATH` env var and pass it as `launchOptions.executablePath`. In cloud sessions, set it to `/opt/pw-browsers/chromium`.
+- Chromium for Playwright is preinstalled under `/opt/pw-browsers` (build 1194), which is why `@playwright/test` is pinned to 1.56.1. Don't run `playwright install` there. If the image's Chromium changes, pin the matching Playwright release, or set `PW_CHROMIUM_PATH=/opt/pw-browsers/chromium`, which `playwright.config.ts` passes as `launchOptions.executablePath`.
 - In CI, install the browser with `npx playwright install --with-deps chromium`.
 - Chromium logs "Noise was added to a canvas readback" while Phaser runs its startup feature checks. It's a privacy notice, not an error, so the smoke test should fail only on `console.error` and uncaught page errors.
 - For a quick screenshot without Playwright, run `/opt/pw-browsers/chromium --headless=new --no-sandbox --use-angle=swiftshader --enable-unsafe-swiftshader --screenshot=out.png <url>`. Its `--window-size` includes about 87 px of invisible browser chrome, so the page viewport is shorter than the image.
