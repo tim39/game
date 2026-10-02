@@ -1,5 +1,12 @@
 import { describe, expect, test } from 'vitest';
-import { compileMap, isBlocked, terrainRows, type CompiledMap, type LayerName } from './compile';
+import {
+  compileMap,
+  exitAt,
+  isBlocked,
+  terrainRows,
+  type CompiledMap,
+  type LayerName,
+} from './compile';
 import type { MapContent, MapDef, MapObject } from './types';
 
 const CONTENT: MapContent = {
@@ -41,6 +48,8 @@ const CONTENT: MapContent = {
     bush: { sheet: 'tiles.nature', origin: [0, 10], layout: ['#'] },
     hut: { sheet: 'tiles.house', origin: [4, 4], layout: ['^^', '#.', '# '] },
     oops: { sheet: 'tiles.house', origin: [0, 0], layout: ['#x'] },
+    shed: { sheet: 'tiles.house', origin: [0, 0], layout: ['^^', '#D'] },
+    'two-doors': { sheet: 'tiles.house', origin: [0, 0], layout: ['DD'] },
   },
 };
 
@@ -54,16 +63,17 @@ const LEGEND = {
   '?': 'no-such-terrain',
 };
 
-const map = (terrain: string, objects: MapObject[] = []): MapDef => ({
+const map = (terrain: string, objects: MapObject[] = [], edges?: MapDef['edges']): MapDef => ({
   id: 'test',
   name: 'Test',
   terrain,
   legend: LEGEND,
   objects,
+  edges,
 });
 
-const compile = (terrain: string, objects?: MapObject[]): CompiledMap =>
-  compileMap(map(terrain, objects), CONTENT);
+const compile = (terrain: string, objects?: MapObject[], edges?: MapDef['edges']): CompiledMap =>
+  compileMap(map(terrain, objects, edges), CONTENT);
 
 /** One layer as a grid of "col,row" strings ("" for no tile), for readable expectations. */
 function grid(compiled: CompiledMap, layer: LayerName): string[][] {
@@ -222,4 +232,63 @@ test('isBlocked treats everything off the map as blocked', () => {
   expect(isBlocked(compiled, 0, 0)).toBe(false);
   expect(isBlocked(compiled, -1, 0)).toBe(true);
   expect(isBlocked(compiled, 0, 2)).toBe(true);
+});
+
+describe('exits and arrivals', () => {
+  const HOME = { map: 'home', spawn: 'door' };
+  const FIELD = { map: 'field', spawn: 'gate' };
+
+  test('a prefab’s doorway leads where the map says, and is walkable even in solid terrain', () => {
+    const compiled = compile('rr\nrr', [{ type: 'prefab', prefab: 'shed', at: [0, 0], to: HOME }]);
+    expect(isBlocked(compiled, 1, 1)).toBe(false);
+    expect(exitAt(compiled, 1, 1)).toEqual(HOME);
+    expect(exitAt(compiled, 0, 1)).toBeNull();
+    expect(grid(compiled, 'base')[1]).toEqual(['0,1', '1,1']);
+  });
+
+  test('a doorway with nowhere to go is a wall', () => {
+    const compiled = compile('..\n..', [{ type: 'prefab', prefab: 'shed', at: [0, 0] }]);
+    expect(isBlocked(compiled, 1, 1)).toBe(true);
+    expect(exitAt(compiled, 1, 1)).toBeNull();
+  });
+
+  test('warps and spawns are placed by cell', () => {
+    const compiled = compile('...\n...', [
+      { type: 'warp', at: [2, 0], to: HOME },
+      { type: 'spawn', id: 'start', at: [0, 1], facing: 'up' },
+    ]);
+    expect(exitAt(compiled, 2, 0)).toEqual(HOME);
+    expect(compiled.spawns).toEqual({ start: { x: 0, y: 1, facing: 'up' } });
+  });
+
+  test('an edge with an exit is open, and the others are walls', () => {
+    const compiled = compile('...\n...', [], { west: FIELD });
+    expect(isBlocked(compiled, -1, 0)).toBe(false);
+    expect(exitAt(compiled, -1, 1)).toEqual(FIELD);
+    expect(isBlocked(compiled, 3, 0)).toBe(true);
+    expect(exitAt(compiled, 0, -1)).toBeNull();
+  });
+
+  test('must be reachable, unique and on the map', () => {
+    const spawn = (id: string, x: number, y: number): MapObject => ({
+      type: 'spawn',
+      id,
+      at: [x, y],
+      facing: 'down',
+    });
+    const warp = (x: number, y: number): MapObject => ({ type: 'warp', at: [x, y], to: HOME });
+    expect(() => compile('.r', [spawn('a', 1, 0)])).toThrow('spawn a is on a solid cell');
+    expect(() => compile('..', [spawn('a', 0, 0), spawn('a', 1, 0)])).toThrow(
+      'two spawns are called a',
+    );
+    expect(() => compile('..', [spawn('a', 2, 0)])).toThrow('spawn a at (2, 0) is off the map');
+    expect(() => compile('.r', [warp(1, 0)])).toThrow('the warp at (1, 0) is on a solid cell');
+    expect(() => compile('..', [warp(0, 0), warp(0, 0)])).toThrow('two warps share (0, 0)');
+    expect(() => compile('..', [{ type: 'prefab', prefab: 'hut', at: [0, 0], to: HOME }])).toThrow(
+      'prefab hut at (0, 0) has no doorway to lead anywhere',
+    );
+    expect(() => compile('..', [{ type: 'prefab', prefab: 'two-doors', at: [0, 0] }])).toThrow(
+      'prefab two-doors has 2 doorways; one at most',
+    );
+  });
 });

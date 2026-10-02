@@ -40,7 +40,7 @@ Town (story, shops, inn) → overworld → dungeon (explore, fight, treasure, a 
 - **Grid movement** in 4 directions on 16×16 tiles, with smooth steps between tiles: about 4 tiles a second walking. Hold Run to go twice as fast; an *Always run* option flips this. A step always finishes, and taps during a step aren't lost. The camera follows the player and stops at the map's edges; a map smaller than the screen sits in the middle of it.
 - **Trees, water and walls block the way**, but you can walk behind treetops and the tops of roofs, which are drawn over you.
 - **Interact** by facing something and pressing Confirm: NPCs, signs, chests, doors, switches. Some events fire when you step on a tile or enter a map.
-- **Map kinds:** town, interior, dungeon floor, overworld. Transitions fade through black (about 250 ms each way).
+- **Map kinds:** town, interior, dungeon floor, overworld. Doors, stairs and paths off a map's edge lead to other maps; transitions fade through black (about 250 ms each way), and you arrive at a fixed spot just inside, facing into the new place.
 - **Chests** open once and stay open (each has a flag).
 - **HP and MP carry over between battles.** **Light Shrines** at each dungeon's entrance and before each boss fully heal the party, so a dungeon is about managing resources between shrines.
 - **Saving:** from the menu, anywhere on the field (not in battle or cutscenes). Three manual slots, plus an autosave slot updated on every map change.

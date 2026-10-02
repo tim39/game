@@ -37,3 +37,4 @@ By **Pixel-boy** and **AAA**: https://pixel-boy.itch.io/ninja-adventure-asset-pa
 | `public/assets/tiles/floor-detail.png` | Grass tufts, flowers, leaves | `Backgrounds/Tilesets/TilesetFloorDetail.png` | None |
 | `public/assets/tiles/interior-wall.png` | Interior walls | `Backgrounds/Tilesets/Interior/TilesetInterior.png` | None |
 | `public/assets/tiles/interior-floor.png` | Interior floors | `Backgrounds/Tilesets/Interior/TilesetInteriorFloor.png` | None |
+| `public/assets/tiles/room-wall.png` | Walls of simple rectangular rooms | `Backgrounds/Tilesets/Interior/TilesetWallSimple.png` | None |

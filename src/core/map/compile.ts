@@ -1,3 +1,4 @@
+import type { Direction } from '../direction';
 import { blobLookup, blobMask, type BlobLayout } from './autotile';
 import type {
   FillTerrain,
@@ -5,16 +6,25 @@ import type {
   MapContent,
   MapDef,
   PrefabDef,
+  Side,
   TerrainDef,
   TileRef,
   TreesTerrain,
+  WarpTarget,
 } from './types';
 
 /** Drawn in this order: the ground, things on it (under characters), then things over characters. */
 export const LAYERS = ['ground', 'base', 'overhead'] as const;
 export type LayerName = (typeof LAYERS)[number];
 
-/** A map ready to draw and walk on. Cell (x, y) is at index y × width + x in every array. */
+/** Where arrivals appear on a map. */
+export interface Spawn {
+  readonly x: number;
+  readonly y: number;
+  readonly facing: Direction;
+}
+
+/** A map ready to draw and walk on. Cell (x, y) is at index y × width + x in the per-cell arrays. */
 export interface CompiledMap {
   readonly id: string;
   readonly width: number;
@@ -23,11 +33,33 @@ export interface CompiledMap {
   readonly layers: Readonly<Record<LayerName, readonly (TileRef | null)[]>>;
   /** True where characters can't stand. */
   readonly solid: readonly boolean[];
+  /** Where stepping into each cell leads, if anywhere. */
+  readonly warps: readonly (WarpTarget | null)[];
+  /** Where walking off each edge leads, if anywhere. */
+  readonly edges: Readonly<Partial<Record<Side, WarpTarget>>>;
+  readonly spawns: Readonly<Record<string, Spawn>>;
 }
 
-/** Can't step into (x, y): it's solid, or off the map. */
+/** The edge a cell just off the map is past, or null for a cell on the map. */
+export function sideOf(map: CompiledMap, x: number, y: number): Side | null {
+  if (x < 0) return 'west';
+  if (x >= map.width) return 'east';
+  if (y < 0) return 'north';
+  if (y >= map.height) return 'south';
+  return null;
+}
+
+/** Where stepping into (x, y) leads: a warp there, or the exit off that edge if it's off the map. */
+export function exitAt(map: CompiledMap, x: number, y: number): WarpTarget | null {
+  const side = sideOf(map, x, y);
+  if (side) return map.edges[side] ?? null;
+  return map.warps[y * map.width + x] ?? null;
+}
+
+/** Can't step into (x, y): it's solid, or off an edge that leads nowhere. */
 export function isBlocked(map: CompiledMap, x: number, y: number): boolean {
-  if (x < 0 || y < 0 || x >= map.width || y >= map.height) return true;
+  const side = sideOf(map, x, y);
+  if (side) return !map.edges[side];
   return map.solid[y * map.width + x] ?? true;
 }
 
@@ -49,10 +81,10 @@ export function cellHash(x: number, y: number, salt = 0): number {
 }
 
 const TREE_SALT = 1;
-const PREFAB_CHARS = new Set(['#', '.', '^', ' ']);
+const PREFAB_CHARS = new Set(['#', '.', '^', 'D', ' ']);
 const lookups = new WeakMap<BlobLayout, ReadonlyMap<number, readonly [number, number]>>();
 
-/** Builds a map's layers and collision from its terrain and objects. Throws if anything doesn't fit. */
+/** Builds a map's layers, collision and exits. Throws if anything doesn't fit. */
 export function compileMap(def: MapDef, content: MapContent): CompiledMap {
   function fail(message: string): never {
     throw new Error(`Map ${def.id}: ${message}`);
@@ -71,18 +103,22 @@ export function compileMap(def: MapDef, content: MapContent): CompiledMap {
       (char, x) => def.legend[char] ?? fail(`"${char}" at (${x}, ${y}) isn't in its legend`),
     ),
   );
+  const onMap = (x: number, y: number): boolean => x >= 0 && y >= 0 && x < width && y < height;
   const idAt = (x: number, y: number): string | undefined =>
-    x < 0 || y < 0 || x >= width || y >= height ? undefined : ids[y * width + x];
+    onMap(x, y) ? ids[y * width + x] : undefined;
   const terrainOf = (id: string): TerrainDef =>
     content.terrains[id] ?? fail(`its legend uses "${id}", which isn't a terrain`);
   const prefabOf = (id: string): PrefabDef => content.prefabs[id] ?? fail(`"${id}" isn't a prefab`);
 
+  const cells = <T>(value: T): T[] => new Array<T>(width * height).fill(value);
   const layers: Record<LayerName, (TileRef | null)[]> = {
-    ground: new Array<TileRef | null>(width * height).fill(null),
-    base: new Array<TileRef | null>(width * height).fill(null),
-    overhead: new Array<TileRef | null>(width * height).fill(null),
+    ground: cells<TileRef | null>(null),
+    base: cells<TileRef | null>(null),
+    overhead: cells<TileRef | null>(null),
   };
-  const solid = new Array<boolean>(width * height).fill(false);
+  const solid = cells(false);
+  const warps = cells<WarpTarget | null>(null);
+  const spawns: Record<string, Spawn> = {};
 
   function fillTile(terrain: FillTerrain, x: number, y: number): TileRef {
     const total = terrain.tiles.reduce((sum, [, , weight = 1]) => sum + weight, 0);
@@ -94,16 +130,29 @@ export function compileMap(def: MapDef, content: MapContent): CompiledMap {
     return fail(`a fill terrain at (${x}, ${y}) has no tiles`);
   }
 
-  /** Draws a prefab with its top-left at `at`. Off-map tiles are an error unless `clip` is set. */
-  function stamp(id: string, [left, top]: GridPoint, clip: boolean): void {
+  function addWarp(x: number, y: number, to: WarpTarget): void {
+    const index = y * width + x;
+    if (warps[index]) fail(`two warps share (${x}, ${y})`);
+    warps[index] = to;
+  }
+
+  /**
+   * Draws a prefab with its top-left at `at`. Off-map tiles are an error unless `clip` is set.
+   * With `to`, its doorway is walkable and leads there; without, the doorway is solid.
+   */
+  function stamp(id: string, [left, top]: GridPoint, clip: boolean, to?: WarpTarget): void {
     const prefab = prefabOf(id);
+    const doorways = prefab.layout.join('').split('D').length - 1;
+    if (doorways > 1) fail(`prefab ${id} has ${doorways} doorways; one at most`);
+    if (to && doorways === 0)
+      fail(`prefab ${id} at (${left}, ${top}) has no doorway to lead anywhere`);
     prefab.layout.forEach((line, dy) => {
       [...line].forEach((char, dx) => {
         if (!PREFAB_CHARS.has(char)) fail(`prefab ${id} uses "${char}" in its layout`);
         if (char === ' ') return;
         const x = left + dx;
         const y = top + dy;
-        if (idAt(x, y) === undefined) {
+        if (!onMap(x, y)) {
           if (clip) return;
           fail(`prefab ${id} at (${left}, ${top}) runs off the map`);
         }
@@ -113,6 +162,11 @@ export function compileMap(def: MapDef, content: MapContent): CompiledMap {
         const [col, row] = prefab.origin;
         layer[index] = { sheet: prefab.sheet, col: col + dx, row: row + dy };
         if (char === '#') solid[index] = true;
+        if (char === 'D') {
+          // A doorway cuts through whatever the terrain is: a door in a wall still opens.
+          solid[index] = !to;
+          if (to) addWarp(x, y, to);
+        }
       });
     });
   }
@@ -173,7 +227,32 @@ export function compileMap(def: MapDef, content: MapContent): CompiledMap {
     }
   }
 
-  for (const object of def.objects ?? []) stamp(object.prefab, object.at, false);
+  for (const object of def.objects ?? []) {
+    const [x, y] = object.at;
+    switch (object.type) {
+      case 'prefab':
+        stamp(object.prefab, object.at, false, object.to);
+        break;
+      case 'warp':
+        if (!onMap(x, y)) fail(`the warp at (${x}, ${y}) is off the map`);
+        addWarp(x, y, object.to);
+        break;
+      case 'spawn':
+        if (!onMap(x, y)) fail(`spawn ${object.id} at (${x}, ${y}) is off the map`);
+        if (spawns[object.id]) fail(`two spawns are called ${object.id}`);
+        spawns[object.id] = { x, y, facing: object.facing };
+        break;
+    }
+  }
 
-  return { id: def.id, width, height, layers, solid };
+  // Nobody could arrive at, or step into, a solid cell.
+  for (const [id, spawn] of Object.entries(spawns)) {
+    if (solid[spawn.y * width + spawn.x]) fail(`spawn ${id} is on a solid cell`);
+  }
+  warps.forEach((warp, index) => {
+    if (warp && solid[index])
+      fail(`the warp at (${index % width}, ${Math.floor(index / width)}) is on a solid cell`);
+  });
+
+  return { id: def.id, width, height, layers, solid, warps, edges: def.edges ?? {}, spawns };
 }

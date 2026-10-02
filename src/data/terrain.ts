@@ -56,6 +56,23 @@ const GRASS_EDGED_BLOB: BlobLayout = [
   [8, 4, 'N E S W'],
 ];
 
+/**
+ * The pack's simple room frame (TilesetWallSimple): walls one cell thick around a floor. It only has
+ * the shapes a rectangle needs, its four corners and four sides, so its rooms are rectangles. Each
+ * colour adds the plain dark tile for wall surrounded by wall, which sits in the sheet's row 5.
+ */
+const ROOM_WALL: BlobLayout = [
+  [0, 0, 'N NE E S SW W NW'], // top-left corner: the room is to the south-east
+  [3, 0, 'N NE E W NW'], // top side
+  [4, 0, 'N NE E SE S W NW'], // top-right corner
+  [0, 1, 'N S SW W NW'], // left side
+  [4, 1, 'N NE E SE S'], // right side
+  [0, 4, 'N E SE S SW W NW'], // bottom-left corner
+  [3, 4, 'E SE S SW W'], // bottom side
+  [4, 4, 'N NE E SE S SW W'], // bottom-right corner
+];
+const ALL_WALL = 'N NE E SE S SW W NW';
+
 export const TERRAINS = defineTerrains({
   grass: {
     kind: 'fill',
@@ -86,12 +103,36 @@ export const TERRAINS = defineTerrains({
     solid: true,
   },
   trees: { kind: 'trees', ground: 'grass', trees: ['tree', 'pine'], filler: 'bush' },
+
+  // Indoors.
+  'wood-floor': { kind: 'fill', sheet: 'tiles.interior-floor', tiles: [[1, 9]] },
+  'stone-floor': { kind: 'fill', sheet: 'tiles.interior-floor', tiles: [[14, 13]] },
+  'house-wall': {
+    kind: 'blob',
+    sheet: 'tiles.room-wall',
+    origin: [0, 0],
+    layout: [...ROOM_WALL, [0, 5, ALL_WALL]],
+    solid: true,
+  },
+  'cellar-wall': {
+    kind: 'blob',
+    sheet: 'tiles.room-wall',
+    origin: [0, 6],
+    layout: [...ROOM_WALL, [0, -1, ALL_WALL]],
+    solid: true,
+  },
 });
 
 export const PREFABS = definePrefabs({
   tree: { sheet: 'tiles.nature', origin: [0, 0], layout: ['^^', '##'] },
   pine: { sheet: 'tiles.nature', origin: [2, 0], layout: ['^^', '##'] },
   bush: { sheet: 'tiles.nature', origin: [4, 11], layout: ['#'] },
+  // The orange-roofed house; you can walk behind its roof.
+  house: { sheet: 'tiles.house', origin: [0, 0], layout: ['^^^^', '####', '#D##'] },
+  // One-tile ways in and out: a door for a wall, and stairs.
+  door: { sheet: 'tiles.element', origin: [6, 13], layout: ['D'] },
+  'stairs-down': { sheet: 'tiles.element', origin: [6, 11], layout: ['D'] },
+  'stairs-up': { sheet: 'tiles.element', origin: [6, 12], layout: ['D'] },
 });
 
 export const MAP_CONTENT: MapContent = { terrains: TERRAINS, prefabs: PREFABS };

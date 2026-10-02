@@ -10,9 +10,9 @@ import {
 } from './walker';
 
 const SPEEDS = { walkMs: 200, runMs: 100 };
-const open = (): boolean => false;
+const open = { isBlocked: (): boolean => false };
 /** A wall along x = 3. */
-const wallAtX3 = (x: number): boolean => x === 3;
+const wallAtX3 = { isBlocked: (x: number): boolean => x === 3 };
 
 const hold = (direction: Direction | null, run = false): WalkIntent => ({ direction, run });
 
@@ -92,4 +92,17 @@ test('the walk cycle advances two half-steps per step, starting on a stride', ()
   ).seen;
   // 10 ms: first half of step 1; 110: second half; 210: first half of step 2; 310: its second half.
   expect(phases).toEqual([1, 2, 3, 4]);
+});
+
+test('a walk ends on a cell the world stops at, even with the direction held', () => {
+  const doorAtX2 = { isBlocked: (): boolean => false, stopsAt: (x: number): boolean => x === 2 };
+  // 650 ms would cross four cells, but the walk stops at the door after two.
+  const walker = updateWalker(standingWalker(0, 0), hold('right'), 650, doorAtX2, SPEEDS);
+  expect(walker).toMatchObject({ x: 2, step: null, steps: 2 });
+  // Also when the step into it finishes on a later frame.
+  const started = updateWalker(standingWalker(1, 0), hold('right'), 50, doorAtX2, SPEEDS);
+  expect(updateWalker(started, hold('right'), 300, doorAtX2, SPEEDS)).toMatchObject({
+    x: 2,
+    step: null,
+  });
 });

@@ -27,6 +27,14 @@ export interface WalkIntent {
   readonly run: boolean;
 }
 
+/** What the walker needs to know about the map. */
+export interface WalkWorld {
+  /** Can't step into (x, y). */
+  isBlocked(x: number, y: number): boolean;
+  /** Arriving at (x, y) ends the walk even with a direction held: an exit, say. */
+  stopsAt?(x: number, y: number): boolean;
+}
+
 /** Milliseconds to cross one tile. */
 export interface WalkSpeeds {
   readonly walkMs: number;
@@ -44,23 +52,26 @@ export const standingWalker = (x: number, y: number, facing: Direction = 'down')
 /**
  * Moves a walker on by `dt` milliseconds. A step, once started, always finishes. While a direction
  * is held the next step starts straight away, with any time left over, so walking never stutters.
- * A direction towards a blocked cell turns the walker without moving them.
+ * A direction towards a blocked cell turns the walker without moving them, and a walk always ends
+ * on a cell the world `stopsAt`.
  */
 export function updateWalker(
   walker: Walker,
   intent: WalkIntent,
   dt: number,
-  isBlocked: (x: number, y: number) => boolean,
+  world: WalkWorld,
   speeds: WalkSpeeds,
 ): Walker {
   let current = walker;
   let time = dt;
+  const stopped = (): boolean => world.stopsAt?.(current.x, current.y) ?? false;
 
   if (current.step) {
     const elapsed = current.step.elapsed + time;
     if (elapsed < current.step.duration) return { ...current, step: { ...current.step, elapsed } };
     time = elapsed - current.step.duration;
     current = { ...current, step: null };
+    if (stopped()) return current;
   }
 
   const { direction } = intent;
@@ -68,7 +79,7 @@ export function updateWalker(
     const [dx, dy] = STEP[direction];
     const x = current.x + dx;
     const y = current.y + dy;
-    if (isBlocked(x, y)) return { ...current, facing: direction };
+    if (world.isBlocked(x, y)) return { ...current, facing: direction };
     const duration = intent.run ? speeds.runMs : speeds.walkMs;
     if (!(duration > 0)) throw new Error(`A step must take some time, not ${duration} ms`);
     const step = { fromX: current.x, fromY: current.y, elapsed: time, duration };
@@ -76,6 +87,7 @@ export function updateWalker(
     if (time < duration) return current;
     time -= duration;
     current = { ...current, step: null };
+    if (stopped()) return current;
   }
   return current;
 }

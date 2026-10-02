@@ -36,7 +36,7 @@ Start a session and say **"next task"**, or name one. Claude takes the first unc
 - [x] Import the art pack: `npm run fetch-assets` downloads it from its release into `assets-src/` and checks its hash; curate tiles and character sprites into `public/assets/`, build the asset manifest, fill in CREDITS.md. **Done when** validation confirms every manifest key points at a real file.
 - [x] ASCII map format and compiler: autotiling, prefabs, collision, overhead layer. **Done when** a test map renders with clean shorelines and the player walks behind treetops.
 - [x] Grid movement (walk and run, 4-direction animation) and a camera that follows the player but stays inside the map.
-- [ ] Map transitions through doors, stairs and map edges, with fades and spawn points.
+- [x] Map transitions through doors, stairs and map edges, with fades and spawn points.
 - [ ] NPCs that stand, wander and turn to face the player, and block movement.
 - [ ] Interaction: face something, press Confirm, run its handler.
 - [ ] Touch controls (d-pad, A, B, Menu) on touch devices, and a "turn your phone sideways" hint in portrait, where the game is tiny.

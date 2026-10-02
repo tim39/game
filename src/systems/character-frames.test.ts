@@ -3,7 +3,7 @@ import { standingWalker, updateWalker, type Walker } from '../core/walker';
 import { characterFrame, sheetRows } from './character-frames';
 
 const SPEEDS = { walkMs: 200, runMs: 100 };
-const open = (): boolean => false;
+const open = { isBlocked: (): boolean => false };
 
 /** The frames a walker shows at each of these moments (ms since setting off down). */
 function framesWalkingDown(rows: number, ...moments: number[]): number[] {

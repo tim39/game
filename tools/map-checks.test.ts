@@ -54,6 +54,30 @@ test('reports tiles outside their sheet, and sheets that are not 16×16 sprite s
   ]);
 });
 
+test('reports ways out that lead to missing maps or spawns', () => {
+  const grassMap = (id: string, overrides: Partial<MapDef>): MapDef => ({
+    id,
+    name: id,
+    terrain: '..',
+    legend: { '.': 'grass' },
+    ...overrides,
+  });
+  const problems = check(content({}), {
+    a: grassMap('a', {
+      objects: [
+        { type: 'warp', at: [0, 0], to: { map: 'b', spawn: 'nope' } },
+        { type: 'warp', at: [1, 0], to: { map: 'c', spawn: 'start' } },
+      ],
+      edges: { south: { map: 'b', spawn: 'start' } },
+    }),
+    b: grassMap('b', { objects: [{ type: 'spawn', id: 'start', at: [0, 0], facing: 'down' }] }),
+  });
+  expect(problems).toEqual([
+    'Map a: the way out at (0, 0) leads to spawn nope on b, which has no such spawn',
+    "Map a: the way out at (1, 0) leads to c, which isn't a map",
+  ]);
+});
+
 test('reports trees on missing ground or prefabs, and maps that do not compile', () => {
   const problems = check(
     content({

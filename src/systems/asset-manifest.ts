@@ -54,6 +54,7 @@ export const ASSETS = {
   'tiles.floor-detail': sheet('tiles/floor-detail.png'), // grass tufts, flowers, leaves
   'tiles.interior-wall': sheet('tiles/interior-wall.png'),
   'tiles.interior-floor': sheet('tiles/interior-floor.png'),
+  'tiles.room-wall': sheet('tiles/room-wall.png'), // simple rectangular rooms
 
   // Characters: one column per direction (down, up, left, right) and a row per pose. Most sheets
   // have 7 rows (walk 0–3, attack, jump, special); tamsin and child have just 2 walk rows.

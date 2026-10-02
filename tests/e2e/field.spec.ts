@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import type {} from '../../src/debug/api';
+import { FIELD_SPEEDS } from '../../src/data/balance';
 
 interface FieldInfo {
   map: string;
@@ -7,6 +8,7 @@ interface FieldInfo {
   y: number;
   facing: string;
   moving: boolean;
+  stepMs: number | null;
   frame: number;
   pixel: { x: number; y: number };
   view: { x: number; y: number; width: number; height: number };
@@ -46,6 +48,8 @@ async function warp(page: Page, x: number, y: number): Promise<void> {
   await page.waitForFunction(() => window.__game?.activeScenes().includes('title') ?? false);
   await page.evaluate(([x, y]) => window.__game?.warp('test-shore', x, y), [x, y] as const);
   await page.waitForFunction(() => window.__game?.activeScenes().includes('field') ?? false);
+  // Every arrival fades in from black.
+  await page.waitForFunction(() => window.__game?.inspect('field')?.fading === false);
   await nextFrames(page);
 }
 
@@ -108,19 +112,20 @@ test('a second tap during a step still counts', async ({ page }) => {
   expect((await field(page)).x).toBe(6);
 });
 
-test('holding Run covers ground faster than walking', async ({ page }) => {
-  const distanceAfter = async (keys: string[]): Promise<number> => {
-    await warp(page, 4, 15);
+test('holding Run takes steps twice as fast', async ({ page }) => {
+  // Reads each step's length from the game, so a slow machine can't make this flaky.
+  const stepWhileHolding = async (keys: string[]): Promise<number> => {
     for (const key of keys) await page.keyboard.down(key);
-    await page.waitForTimeout(500);
+    await nextFrames(page);
+    const { stepMs } = await field(page);
     for (const key of keys) await page.keyboard.up(key);
     await waitUntilStill(page);
-    return (await field(page)).x - 4;
+    return stepMs ?? 0;
   };
-  const walked = await distanceAfter(['ArrowRight']);
-  const ran = await distanceAfter(['ShiftLeft', 'ArrowRight']);
-  expect(walked).toBeGreaterThanOrEqual(2);
-  expect(ran).toBeGreaterThan(walked);
+  await warp(page, 4, 15);
+  expect(await stepWhileHolding(['ArrowRight'])).toBe(FIELD_SPEEDS.walkMs);
+  expect(await stepWhileHolding(['ShiftLeft', 'ArrowRight'])).toBe(FIELD_SPEEDS.runMs);
+  expect(FIELD_SPEEDS.runMs).toBeLessThan(FIELD_SPEEDS.walkMs);
 });
 
 test('the camera follows the player, but never past the map’s edges', async ({ page }) => {

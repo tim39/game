@@ -1,3 +1,4 @@
+import type { Direction } from '../direction';
 import type { BlobLayout } from './autotile';
 
 /** A cell position, or a tile's position in a sheet: [x, y] or [col, row]. */
@@ -56,19 +57,46 @@ export interface PrefabDef {
   /**
    * One string per row of tiles, one character per tile:
    * `#` solid, drawn under characters; `.` walkable, drawn under characters;
-   * `^` walkable, drawn over characters (treetops, roof tops); a space for no tile.
+   * `^` walkable, drawn over characters (treetops, roof tops); a space for no tile;
+   * `D` a doorway, drawn under characters: walkable and leading somewhere if the map gives the
+   * prefab a `to`, solid otherwise. A prefab has at most one.
    */
   readonly layout: readonly string[];
 }
 
-/** A prefab placed on a map, by its top-left cell. */
+/** Where a warp leads: a spawn point on another map (or this one). */
+export interface WarpTarget {
+  readonly map: string;
+  readonly spawn: string;
+}
+
+/** A prefab placed on a map, by its top-left cell. With `to`, its doorway leads there. */
 export interface PrefabObject {
   readonly type: 'prefab';
   readonly prefab: string;
   readonly at: GridPoint;
+  readonly to?: WarpTarget;
 }
 
-export type MapObject = PrefabObject;
+/** A cell that takes whoever steps into it to `to`. Doorways are usually simpler. */
+export interface WarpObject {
+  readonly type: 'warp';
+  readonly at: GridPoint;
+  readonly to: WarpTarget;
+}
+
+/** Where arrivals appear, and which way they face. Warps elsewhere name it by `id`. */
+export interface SpawnObject {
+  readonly type: 'spawn';
+  readonly id: string;
+  readonly at: GridPoint;
+  readonly facing: Direction;
+}
+
+export type MapObject = PrefabObject | WarpObject | SpawnObject;
+
+export const SIDES = ['north', 'south', 'east', 'west'] as const;
+export type Side = (typeof SIDES)[number];
 
 export interface MapDef {
   /** Kebab-case, like `saltmere` or `tide-caves-b1`. */
@@ -83,6 +111,8 @@ export interface MapDef {
   /** Terrain character → terrain ID. */
   readonly legend: Readonly<Record<string, string>>;
   readonly objects?: readonly MapObject[];
+  /** Walking off an edge leads here. Without an entry, that edge is a wall. */
+  readonly edges?: Readonly<Partial<Record<Side, WarpTarget>>>;
 }
 
 /** The terrains and prefabs maps are built from. Passed in, so tests can use small fixtures. */

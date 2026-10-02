@@ -41,5 +41,5 @@ const maps = Object.keys(MAPS).length;
 console.log(`Assets: all ${keys} manifest keys point at real files, and every file is credited.`);
 console.log(
   `Maps: ${maps === 1 ? 'the 1 map compiles' : `all ${maps} maps compile`}, and every tile ` +
-    'their terrains and prefabs use exists.',
+    'their terrains and prefabs use exists; every way out leads somewhere.',
 );

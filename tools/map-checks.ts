@@ -1,5 +1,5 @@
-import { compileMap } from '../src/core/map/compile';
-import type { GridPoint, MapContent, MapDef } from '../src/core/map/types';
+import { compileMap, type CompiledMap } from '../src/core/map/compile';
+import type { GridPoint, MapContent, MapDef, WarpTarget } from '../src/core/map/types';
 import type { AssetEntry } from '../src/systems/asset-manifest';
 
 const TILE = 16;
@@ -17,7 +17,7 @@ export interface MapSources {
  * Checks the map content against the asset manifest and itself. Returns one line per problem:
  * - every tile a terrain or prefab uses is inside a 16×16 sprite sheet from the manifest;
  * - the terrains and prefabs that terrains refer to exist;
- * - every map compiles.
+ * - every map compiles, and every warp, doorway and edge leads to a spawn that exists.
  */
 export function checkMaps({ maps, content, manifest, imageSize }: MapSources): string[] {
   const problems: string[] = [];
@@ -74,11 +74,29 @@ export function checkMaps({ maps, content, manifest, imageSize }: MapSources): s
     checkTiles(`Prefab ${id}`, prefab.sheet, tiles);
   }
 
+  const compiled = new Map<string, CompiledMap>();
   for (const map of Object.values(maps)) {
     try {
-      compileMap(map, content);
+      compiled.set(map.id, compileMap(map, content));
     } catch (error) {
       problems.push(error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  const checkTarget = (from: string, { map, spawn }: WarpTarget): void => {
+    const target = compiled.get(map);
+    if (!maps[map]) problems.push(`${from} leads to ${map}, which isn't a map`);
+    else if (target && !target.spawns[spawn]) {
+      problems.push(`${from} leads to spawn ${spawn} on ${map}, which has no such spawn`);
+    }
+  };
+  for (const map of compiled.values()) {
+    map.warps.forEach((warp, index) => {
+      const at = `(${index % map.width}, ${Math.floor(index / map.width)})`;
+      if (warp) checkTarget(`Map ${map.id}: the way out at ${at}`, warp);
+    });
+    for (const [side, edge] of Object.entries(map.edges)) {
+      checkTarget(`Map ${map.id}: its ${side} edge`, edge);
     }
   }
 
