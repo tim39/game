@@ -233,7 +233,7 @@ Fixed characters with their own kits; no job system. Full skill lists live in `s
 | Menu | C, Tab | Start / Y | START button |
 | Run | Hold Shift | Hold B while walking | Always run is on by default, so hold B to walk |
 
-The on-screen controls appear only on touch devices: phones and tablets from the start, and a laptop's touchscreen once it's touched. The d-pad sits bottom left, A and B bottom right and START top right, drawn with the pack's gamepad glyphs. Where the screen has room beside the game they sit in its bottom corners; where they'd cover the dialogue box they move up to sit just above it. Slide a thumb round the d-pad to change direction without lifting it. Held upright, a phone shows "Turn your phone sideways to play." over the game, which is landscape-only.
+The on-screen controls appear only on touch devices: phones and tablets from the start, and a laptop's touchscreen once it's touched. The d-pad sits bottom left, A and B bottom right and START top right, drawn with the pack's gamepad glyphs. Where the screen has room beside the game they sit in its bottom corners; where they'd cover the dialogue box they move up to sit just above it. Slide a thumb round the d-pad to change direction without lifting it. Held upright, a phone shows "Turn your phone sideways to play." over the game, which is landscape-only. The page itself never zooms: pinching and quick double taps do nothing, so the game always fits the screen.
 
 ## Art and audio
 

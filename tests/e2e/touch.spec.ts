@@ -4,7 +4,7 @@ import type {} from '../../src/debug/api';
 import { FIELD_SPEEDS } from '../../src/data/balance';
 import { UI_TEXT } from '../../src/data/ui-text';
 import { ASSETS } from '../../src/systems/asset-manifest';
-import { TOUCH_ART } from '../../src/systems/input/touch-layout';
+import { TOUCH_ART, layoutTouchControls } from '../../src/systems/input/touch-layout';
 import { DIALOGUE_BOX_ON_SCREEN } from '../../src/ui/dialogue-layout';
 
 // A phone held sideways (an iPhone 14's screen) with a touchscreen.
@@ -316,6 +316,66 @@ test('three fingers on the game open the debug menu, and the controls work it', 
   await menuOpen(false);
   await liftAll();
   expect(errors).toEqual([]);
+});
+
+test('the page can’t be zoomed, and a quick second tap still counts', async ({ page }) => {
+  const errors = watchErrors(page);
+  // Open grass to the right.
+  await warp(page, 'test-shore', 12, 12, 'right');
+  expect(await page.locator('meta[name="viewport"]').getAttribute('content')).toContain(
+    'maximum-scale=1, user-scalable=no',
+  );
+  // iOS Safari pinches with gesture events of its own, whatever the viewport tag says.
+  const pinchCancelled = await page.evaluate(
+    () => !document.dispatchEvent(new Event('gesturestart', { cancelable: true })),
+  );
+  expect(pinchCancelled).toBe(true);
+
+  // Two quick taps on the d-pad: two steps, and the browser can't take the second for a double tap.
+  await page.evaluate(() => {
+    const ends: boolean[] = [];
+    Object.assign(window, { touchEnds: ends });
+    window.addEventListener('touchend', (event) => ends.push(event.defaultPrevented));
+  });
+  const fingers = await Fingers.on(page);
+  await fingers.tap(await spot(page, 'dpad', 'right'));
+  await nextFrames(page);
+  await fingers.tap(await spot(page, 'dpad', 'right'));
+  await page.waitForFunction(() => {
+    const info = window.__game?.inspect('field');
+    return info?.x === 14 && info.moving === false;
+  });
+  expect(
+    await page.evaluate(() => (window as Window & { touchEnds?: boolean[] }).touchEnds),
+  ).toEqual([false, true]);
+  expect(await page.evaluate(() => window.visualViewport?.scale)).toBe(1);
+  expect(errors).toEqual([]);
+});
+
+test('the controls follow when the game’s space changes size, without a window resize', async ({
+  page,
+}) => {
+  await openTitle(page);
+  const dpad = () => page.locator('[data-control="dpad"] .touch-art').boundingBox();
+  // Where the layout puts the d-pad in a view this tall; an emulated phone has no notch.
+  const expected = (height: number) =>
+    layoutTouchControls({ width: 844, height }, { top: 0, right: 0, bottom: 0, left: 0 }).dpad;
+  const expectAt = (
+    box: { x: number; y: number; width: number; height: number } | null,
+    at: ReturnType<typeof expected>,
+  ) => {
+    expect(box?.x).toBeCloseTo(at.x, 0);
+    expect(box?.y).toBeCloseTo(at.y, 0);
+    expect(box?.width).toBeCloseTo(at.width, 0);
+  };
+  expectAt(await dpad(), expected(390));
+  expect(expected(300).y).not.toBeCloseTo(expected(390).y, 0);
+
+  // As when a browser toolbar comes in, which doesn't always resize the window.
+  await page.evaluate(() => document.getElementById('game')?.style.setProperty('height', '300px'));
+  await expect.poll(async () => (await dpad())?.y).toBeCloseTo(expected(300).y, 0);
+  expectAt(await dpad(), expected(300));
+  await page.screenshot({ path: 'test-results/screenshots/touch-shorter-view.png' });
 });
 
 test('held upright, the game asks to be turned sideways', async ({ page }) => {

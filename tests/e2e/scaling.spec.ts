@@ -39,6 +39,20 @@ for (const { name, view, canvas } of CASES) {
   });
 }
 
+test('refits when its space changes size, even without a window resize', async ({ page }) => {
+  await page.setViewportSize({ width: 844, height: 390 });
+  await openTitle(page);
+  await expectCanvasCentered(page, [844, 390], [640, 360]);
+
+  // As when a phone's browser toolbar comes in, which doesn't always resize the window.
+  await page.evaluate(() => document.getElementById('game')?.style.setProperty('height', '300px'));
+  await expect
+    .poll(async () => (await page.locator('#game canvas').boundingBox())?.height)
+    .toBeCloseTo(300, 0);
+  const width = (300 * 640) / 360;
+  await expectCanvasCentered(page, [844, 300], [width, 300]);
+});
+
 test('rescales when the window changes size', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 720 });
   await openTitle(page);

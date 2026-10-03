@@ -158,8 +158,9 @@ export class TouchControls {
     window.addEventListener('resize', () => {
       // Turned upright, the controls hide, and can't hear fingers lifting.
       if (window.matchMedia('(orientation: portrait)').matches) this.releaseAll();
-      this.layout();
     });
+    // Whenever the game's space changes size, as the game itself refits (see main.ts).
+    new ResizeObserver(() => this.layout()).observe(container);
     window.addEventListener('blur', () => this.releaseAll());
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) this.releaseAll();
