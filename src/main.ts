@@ -5,10 +5,10 @@ import { DialogueSampleScene } from './scenes/dialogue-sample';
 import { FieldScene } from './scenes/field';
 import { PreloadScene } from './scenes/preload';
 import { TitleScene } from './scenes/title';
+import { preventBrowserGestures } from './systems/browser-gestures';
 import { GAME_HEIGHT, GAME_WIDTH, pickZoom } from './systems/display';
 import { input } from './systems/input/game-input';
 import { prefersTouch } from './systems/input/touch-controls';
-import { preventPageZoom } from './systems/page-zoom';
 import { settings } from './systems/settings';
 
 const container = document.getElementById('game');
@@ -35,7 +35,7 @@ const game = new Phaser.Game({
 // Refit whenever the game's space changes size: the window resizing, a phone turning, or browser
 // toolbars coming and going, which don't always come with a window resize event.
 new ResizeObserver(() => game.scale.setZoom(zoomForContainer())).observe(container);
-preventPageZoom();
+preventBrowserGestures();
 input.attach(game, container);
 // Phones and tablets have no Run button to hold, so they run unless B is held (Controls in DESIGN.md).
 if (prefersTouch()) settings.alwaysRun = true;

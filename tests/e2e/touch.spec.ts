@@ -318,7 +318,9 @@ test('three fingers on the game open the debug menu, and the controls work it', 
   expect(errors).toEqual([]);
 });
 
-test('the page can’t be zoomed, and a quick second tap still counts', async ({ page }) => {
+test('the browser can’t zoom, magnify or select on any touch, and the controls still work', async ({
+  page,
+}) => {
   const errors = watchErrors(page);
   // Open grass to the right.
   await warp(page, 'test-shore', 12, 12, 'right');
@@ -331,13 +333,22 @@ test('the page can’t be zoomed, and a quick second tap still counts', async ({
   );
   expect(pinchCancelled).toBe(true);
 
-  // Two quick taps on the d-pad: two steps, and the browser can't take the second for a double tap.
+  // Heard last, after the game's own handlers: did any touch leave the browser free to act on it?
   await page.evaluate(() => {
-    const ends: boolean[] = [];
-    Object.assign(window, { touchEnds: ends });
-    window.addEventListener('touchend', (event) => ends.push(event.defaultPrevented));
+    const touches: { touch: string; cancelled: boolean }[] = [];
+    Object.assign(window, { touches });
+    for (const type of ['touchstart', 'touchmove', 'touchend']) {
+      window.addEventListener(type, (event) => {
+        const target = event.target as HTMLElement;
+        const where = target.closest<HTMLElement>('[data-control]')?.dataset.control;
+        const touch = `${event.type} on ${where ?? (target.id || target.tagName.toLowerCase())}`;
+        touches.push({ touch, cancelled: event.defaultPrevented });
+      });
+    }
   });
   const fingers = await Fingers.on(page);
+
+  // Two quick taps on the d-pad still take two steps.
   await fingers.tap(await spot(page, 'dpad', 'right'));
   await nextFrames(page);
   await fingers.tap(await spot(page, 'dpad', 'right'));
@@ -345,9 +356,34 @@ test('the page can’t be zoomed, and a quick second tap still counts', async ({
     const info = window.__game?.inspect('field');
     return info?.x === 14 && info.moving === false;
   });
-  expect(
-    await page.evaluate(() => (window as Window & { touchEnds?: boolean[] }).touchEnds),
-  ).toEqual([false, true]);
+  // A thumb sliding on B, a tap on the game, and one on the black bar beside it.
+  const b = await spot(page, 'b');
+  await fingers.press(1, b);
+  await fingers.move(1, { x: b.x + 6, y: b.y + 4 });
+  await fingers.lift(1);
+  const canvas = await page.locator('#game canvas').boundingBox();
+  if (!canvas) throw new Error('the game canvas is not on screen');
+  await fingers.tap({ x: canvas.x + canvas.width / 2, y: canvas.y + canvas.height / 2 });
+  await fingers.tap({ x: canvas.x / 2, y: 40 });
+  await nextFrames(page);
+
+  const touches = (await page.evaluate(
+    () => (window as Window & { touches?: unknown }).touches,
+  )) as { touch: string; cancelled: boolean }[];
+  expect(touches.filter(({ cancelled }) => !cancelled)).toEqual([]);
+  expect(new Set(touches.map(({ touch }) => touch))).toEqual(
+    new Set([
+      'touchstart on dpad',
+      'touchend on dpad',
+      'touchstart on b',
+      'touchmove on b',
+      'touchend on b',
+      'touchstart on canvas',
+      'touchend on canvas',
+      'touchstart on game',
+      'touchend on game',
+    ]),
+  );
   expect(await page.evaluate(() => window.visualViewport?.scale)).toBe(1);
   expect(errors).toEqual([]);
 });
