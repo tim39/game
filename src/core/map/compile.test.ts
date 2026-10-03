@@ -51,6 +51,7 @@ const CONTENT: MapContent = {
     hut: { sheet: 'tiles.house', origin: [4, 4], layout: ['^^', '#.', '# '] },
     oops: { sheet: 'tiles.house', origin: [0, 0], layout: ['#x'] },
     shed: { sheet: 'tiles.house', origin: [0, 0], layout: ['^^', '#D'] },
+    pier: { sheet: 'tiles.water', origin: [0, 12], layout: ['=', '='] },
     'two-doors': { sheet: 'tiles.house', origin: [0, 0], layout: ['DD'] },
   },
 };
@@ -256,6 +257,12 @@ describe('exits and arrivals', () => {
     expect(exitAt(compiled, 1, 1)).toEqual(HOME);
     expect(exitAt(compiled, 0, 1)).toBeNull();
     expect(grid(compiled, 'base')[1]).toEqual(['0,1', '1,1']);
+  });
+
+  test('a walkway can be walked on over solid terrain, like a pier over the sea', () => {
+    const compiled = compile('.r\n.r\n..', [{ type: 'prefab', prefab: 'pier', at: [1, 0] }]);
+    expect(solidRows(compiled)).toEqual(['..', '..', '..']);
+    expect(grid(compiled, 'base').map((row) => row[1])).toEqual(['0,12', '0,13', '']);
   });
 
   test('a doorway with nowhere to go is a wall', () => {

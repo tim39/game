@@ -81,7 +81,7 @@ Boot → Preload → Title ──▶ Field ◀──▶ Battle ──▶ GameOve
                               └── Shop      (overlay)
 ```
 
-- **Field** owns the current map, the actors and the event runner. Until the real opening exists, New Game shows the M0 dialogue preview and then puts the player on the test map (`NEW_GAME_START` in `src/data/new-game.ts`). It starts at a cell or at one of a map's spawns (`FieldStart`).
+- **Field** owns the current map, the actors and the event runner. Until the real opening exists, New Game shows the M0 dialogue preview and then puts the player in Saltmere, at Tamsin's door (`NEW_GAME_START` in `src/data/new-game.ts`). It starts at a cell or at one of a map's spawns (`FieldStart`).
 - **Going between maps:** when a step heads into a way out (a doorway, a warp or an edge exit), the controls stop and the camera fades to black while the step finishes; then the field scene restarts on the target map at its spawn, and fades back in. Both fades take `MAP_FADE_MS` (250 ms, in `balance.ts`). The fade out is forced, so a way out taken while the fade in is still running can't get stuck. The walker always stops on an exit cell, so it can't walk through one in a long frame.
 - **Grid movement** is `updateWalker` in `src/core/walker.ts`, pure and unit-tested. A step claims its cell as it starts, so nothing else can move in, then slides there; it always finishes. Holding a direction chains steps with the leftover time carried over, so walking never stutters, and a tap during a step is buffered for when it ends. A direction towards a blocked cell turns the player without moving them. Speeds are `FIELD_SPEEDS` in `src/data/balance.ts`. The scene caps a frame at 100 ms so the player can't jump after the tab was hidden.
 - **NPCs** come from a map's `npc` objects and move by the rules in `src/core/npc.ts`, on the same walker as the player, with `NPC_TUNING` from `balance.ts`. Without `wander` they stand still; with it, they wait a random 1.5–4 s, then step a random way if the cell is free and within `wander` cells of home, or else just turn to look. Their randomness comes from an `Rng` seeded with `field:<map id>` each time the map loads. A walker takes up its cell, and mid-step the cell it's leaving too, so nobody overlaps: the player can't walk into an NPC, and NPCs keep out of walls, ways out, the player and each other. Walking into an NPC makes them turn and look at the player for `lookMs` (3 s); one that stands still then turns back the way it was placed. Characters are sorted by height on screen, so a lower one is drawn in front, still under the overhead layer.
@@ -151,7 +151,7 @@ export const skills = defineSkills({
 
 ## Maps
 
-Maps are written as ASCII so Claude can author, read and diff them. The test maps in `src/data/maps/` (`test-shore` with a house to enter and a path east to `test-meadow`; inside, `test-house` and its `test-cellar`) are working examples; this sketch of Saltmere shows where the format is heading (the `npc`, `chest` and `warp` objects arrive with their M1 and M2 tasks):
+Maps are written as ASCII so Claude can author, read and diff them. Saltmere's are drafts of the real thing: `saltmere` itself, Tamsin's house (`saltmere-tamsin`), the fisher's cottage (`saltmere-cottage`), and the lighthouse (`saltmere-lighthouse`) with its lamp room (`saltmere-lighthouse-top`). The test maps (`test-shore` with a house to enter and a path east to `test-meadow`; inside, `test-house` and its `test-cellar`) are small working examples that the tests rely on. A map, trimmed:
 
 ```ts
 // src/data/maps/saltmere.ts
@@ -159,31 +159,32 @@ export default defineMap({
   id: 'saltmere',
   name: 'Saltmere',
   terrain: `
-    TTTTTTTTTTTTTTTTTTTTTTTT
-    TT.....................T
-    TT..,,,,,,,,,,,,,,.....T
-    TT..,..............TT..T
-    TT..,.........~~~~~~~~~~
-    TTTT,TTTTTTTT~~~~~~~~~~~
+    TTTTTTTTTTTTTTTTTTTT..TTTTTTTTTTTTTTTTTTTTTT
+    TT..................................TTTTTTTT
+    TT..........................................
+    ...............................~~~~~~.......
+    ~~~~~~......~~~~~~~~~~~~~~~~~~~~~~~~~.......
   `,
-  legend: { T: 'trees', '.': 'grass', ',': 'path', '~': 'water' },
+  legend: { T: 'sand-trees', '.': 'sand', '~': 'sea' },
   objects: [
-    { type: 'prefab', prefab: 'house-small', at: [6, 1] },
-    { type: 'npc', id: 'tamsin', sprite: 'tamsin', at: [9, 4], facing: 'down', script: 'saltmere/tamsin' },
-    { type: 'chest', at: [21, 1], item: 'potion', flag: 'chest.saltmere-01' },
-    { type: 'warp', at: [4, 5], to: { map: 'overworld', at: [40, 22] } },
+    { type: 'prefab', prefab: 'house', at: [6, 3], to: { map: 'saltmere-tamsin', spawn: 'door' } },
+    { type: 'spawn', id: 'tamsin', at: [7, 6], facing: 'down' },
+    { type: 'prefab', prefab: 'dock', at: [15, 22] },
+    { type: 'npc', id: 'fisher', sprite: 'old-man-3', at: [16, 24], facing: 'down', script: 'saltmere/fisher' },
   ],
 });
 ```
 
+Chests (`{ type: 'chest', at, item, flag }`) arrive with M2.
+
 - **Terrains** live in `src/data/terrain.ts`, in three kinds:
   - **`fill`**: one tile everywhere, or weighted variants (plain grass with the odd tuft). A hash of the cell's position picks the variant, so it looks random but never changes.
-  - **`blob`** (autotiled): a cell's tile depends on which of its 8 neighbours share its terrain, so water gets shorelines and paths get grassy edges. A corner only counts when both sides next to it do, which leaves 47 shapes; cells off the map count as the same terrain. The pack's water and path blocks share one layout, `GRASS_EDGED_BLOB`, worked out from the tiles' pixels. Those tiles have grass around their edges, so these terrains belong on grass. There's no water tile for a lone cell, so ponds and channels need at least two.
+  - **`blob`** (autotiled): a cell's tile depends on which of its 8 neighbours share its terrain, so water gets shorelines and paths get grassy edges. A corner only counts when both sides next to it do, which leaves 47 shapes; cells off the map count as the same terrain. The pack's grass-edged water, sand-edged sea and path blocks share one layout, `EDGED_BLOB`, worked out from the tiles' pixels. Water and paths have grass around their edges, so they belong on grass; the sea has sand around its edges, so it belongs on `sand`, which matches it exactly. There's no water tile for a lone cell, so ponds and channels need at least two.
   - **`trees`**: along each row, every two cells grow a 2-wide tree (picked from a list by position) and an odd cell out gets a 1-wide filler. A tree's trunk row stands on its cells, which are solid, and its canopy overhangs the row above, where characters can walk behind it.
-- **Prefabs** are blocks of tiles drawn as one: trees, the house, doors and stairs now, the lighthouse later. Each character of a prefab's `layout` marks a tile: `#` solid, drawn under characters; `.` walkable, drawn under characters; `^` walkable, drawn over characters; `D` a doorway; a space for no tile. Maps place prefabs as `{ type: 'prefab', prefab, at, to?, script? }` objects, by their top-left cell. With `to`, the doorway is walkable and leads there, even when it's in a wall; without, it's solid. With `script`, facing any of its cells drawn under characters and pressing Confirm runs that event script (the test shore's `sign`).
+- **Prefabs** are blocks of tiles drawn as one: trees, houses, doors and stairs, the lighthouse, the dock and the boat, lamps, furniture. Each character of a prefab's `layout` marks a tile: `#` solid, drawn under characters; `.` walkable, drawn under characters; `^` walkable, drawn over characters; `=` walkable whatever the terrain under it, drawn under characters (the dock out over the sea); `D` a doorway; a space for no tile. Tall furniture stands against a room's back wall, its top tile drawn over the wall. Maps place prefabs as `{ type: 'prefab', prefab, at, to?, script? }` objects, by their top-left cell. With `to`, the doorway is walkable and leads there, even when it's in a wall; without, it's solid. With `script`, facing any of its cells drawn under characters and pressing Confirm runs that event script (the test shore's `sign`).
 - **Ways between maps** all lead to a named spawn: `to: { map, spawn }`. A map's objects include its spawns, `{ type: 'spawn', id, at, facing }`, where arrivals appear. Doors and stairs are prefabs with a doorway; `{ type: 'warp', at, to }` makes any walkable cell a way out; and a map's `edges` say where walking off each side leads (`edges: { east: { map: 'test-meadow', spawn: 'west' } }`). An edge with no entry is a wall, and every cell along an edge with one leads out, so give the map a gap in its border. Put spawns next to ways in, not on them, and clear of treetops so the player can be seen arriving.
 - **People** are `{ type: 'npc', id, sprite, at, facing, wander?, script? }` objects: `sprite` names a character sheet (`sprite.<sprite>` in the manifest), `wander` is how many cells they may stray from `at`, and `script` is the event script talking to them runs. The compiler won't let one start on a solid cell, a way out, a spawn or another NPC.
-- **Rooms** use the `house-wall` and `cellar-wall` terrains, from the pack's simple room frame. It has only the shapes a rectangle needs (four corners, four sides, solid wall), so their rooms must be rectangles with walls one cell thick; anything else won't compile. Proper interiors come with the draft maps.
+- **Rooms** use the `house-wall` and `cellar-wall` terrains, from the pack's simple room frame. It has only the shapes a rectangle needs (four corners, four sides, solid wall), so their rooms must be rectangles with walls one cell thick; anything else won't compile. Saltmere's draft interiors use it, furnished with prefabs. The pack's fuller interior walls (`Interior/TilesetInterior.png`: walls drawn as lines, in four colours, with windows and arches) are still to be worked out.
 - **The compiler** (`compileMap` in `src/core/map/compile.ts`, pure and unit-tested) turns a map into three layers, `ground`, `base` (trunks, walls) and `overhead` (treetops, roof tops), plus a `solid` grid. `isBlocked(map, x, y)` answers whether a cell can be walked into (off the map is blocked unless that edge leads somewhere), `isOutOfBounds(map, x, y)` whether it's off an edge that leads nowhere (the one wall noclip doesn't open), `exitAt(map, x, y)` where stepping into it leads, and `scriptAt(map, x, y)` the script examining it runs. Anything that doesn't fit throws an error naming the map and the cell: an unknown character, ragged rows, a shape with no tile, a prefab off the map or on top of another, a spawn or warp on a solid cell, two spawns with one ID.
 - **The field scene** draws the layers as a Phaser tilemap (`src/systems/tilemap.ts`). Every tile sheet a map uses becomes a tileset with its own range of tile IDs, so any layer can mix sheets. Characters are drawn between `base` and `overhead` (see `DEPTH`), the debug collision view over everything, and the world camera is zoomed 2×.
 - **`npm run validate`** compiles every map, checks that every tile a terrain or prefab names is inside a 16×16 sprite sheet from the asset manifest, that every way out leads to a spawn that exists, and that every NPC's sprite is a character sheet. `src/data/maps/maps.test.ts` also checks that the layout covers all 47 shapes.
@@ -209,7 +210,7 @@ export const tamsin = defineEvent(async (ev) => {
 });
 ```
 
-- **Where they live:** a file per area in `src/data/events/` exports its scripts by name, and `src/data/events/index.ts` registers each as `<area>/<name>` in `EVENTS` (the test maps' are `test/tamsin`, `test/sign` and so on). Maps name them in an NPC's or prefab's `script`.
+- **Where they live:** a file per area in `src/data/events/` exports its scripts by name, and `src/data/events/index.ts` registers each as `<area>/<name>` in `EVENTS`, its name turned kebab-case (`lighthouseSign` in `saltmere.ts` is `saltmere/lighthouse-sign`; the test maps' are `test/tamsin`, `test/sign` and so on). Maps name them in an NPC's or prefab's `script`.
 - **Speakers** (`src/data/speakers.ts`) are who `say` names: the name in the box's tab, and a portrait if they have one. A speaker with an empty name, `sign`, is for signs and narration.
 - **So far** (M1) `EventContext` has one verb, `say(speaker, text)`, and the only trigger is `interact`; the field runs scripts (see [Scenes](#scenes)). `npm run validate` (`tools/event-checks.ts`) checks that every script a map names exists, that every speaker's portrait is an image in the manifest, and runs every script against a stand-in context that answers at once, to check it finishes and only names speakers that exist.
 - **The first `EventContext` API:** `say`, `choice`, `wait`, `move`, `face`, `emote`, `fadeOut`/`fadeIn`, `cameraPan`, `flag`/`setFlag`, `var`/`setVar`, `hasItem`/`giveItem`/`takeItem`, `gold`/`giveGold`/`takeGold`, `joinParty`, `heal`, `battle(encounterId, { canFlee, canLose })`, `shop`, `inn`, `bgm`/`sfx`, `teleport`, `savePrompt`. Add verbs as content needs them, keep each one small, and test them against a fake context.
@@ -330,7 +331,8 @@ Watch out for:
 - **The bitmap fonts' "i"** ended in a stray curl and read like ";". Our copies redraw its bottom row to match "l" and "t" (see CREDITS.md).
 - **`Backgrounds/Tilesets/TilesetFloor.png` is 417 px tall**, one blank row more than its 26 rows of tiles. Our copy is cropped to 416.
 - **`OldWoman` and `Child` have short sheets** (64×32): two walking rows, no attack or jump poses.
-- **Gaps:** there's no mine cart sprite (for the Stone Deeps), no dedicated wind effect (for Gale Spire), and no lighthouse (for Saltmere). Build them from tiles and tinted effects, or adjust the gimmick.
+- **Gaps:** there's no mine cart sprite (for the Stone Deeps) and no dedicated wind effect (for Gale Spire). Build them from tiles and tinted effects, or adjust the gimmick. There was no lighthouse either: Saltmere's is the desert sheet's domed tower, its dome recoloured red and its windows lit (`tiles/lighthouse.png`).
+- **Villages by the sea:** the pack's own examples build villages on sand, not grass. Its sand-edged sea (`TilesetWater.png` rows 0–4) and plain light sand (`TilesetFloor.png` column 1, row 1) meet without a seam; the grass-edged dirt path doesn't belong on sand, so Saltmere's streets are open sand.
 
 ## Performance budget
 

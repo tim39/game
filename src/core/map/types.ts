@@ -57,7 +57,8 @@ export interface PrefabDef {
   /**
    * One string per row of tiles, one character per tile:
    * `#` solid, drawn under characters; `.` walkable, drawn under characters;
-   * `^` walkable, drawn over characters (treetops, roof tops); a space for no tile;
+   * `^` walkable, drawn over characters (treetops, roof tops); `=` walkable even over solid terrain,
+   * drawn under characters (a pier over the sea, a bridge); a space for no tile;
    * `D` a doorway, drawn under characters: walkable and leading somewhere if the map gives the
    * prefab a `to`, solid otherwise. A prefab has at most one.
    */

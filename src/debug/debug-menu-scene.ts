@@ -19,7 +19,7 @@ const SCALE = 2; // the UI's scale, like the world's
 /** The most items a page shows at once; longer pages scroll. */
 const ROWS = 10;
 const ROW_HEIGHT = 24;
-const WIDTH = 368;
+const WIDTH = 560;
 const LEFT = (GAME_WIDTH - WIDTH) / 2;
 const PAD = 16;
 /** From the panel's top edge to its first row, and from its last row to its bottom edge. */
@@ -28,6 +28,8 @@ const FOOTER = 40;
 const CURSOR_X = LEFT + PAD;
 const LABEL_X = CURSOR_X + 16;
 const DETAIL_X = LEFT + WIDTH - PAD;
+/** The least room between a label and its detail. */
+const DETAIL_GAP = 16;
 
 const BACKDROP = 0x14101c;
 const GOLD = 0xf5c46b;
@@ -144,6 +146,8 @@ export class DebugMenuScene extends Phaser.Scene {
       } else {
         detail.setText(item?.detail ?? '').setTint(DIM);
       }
+      // A detail that would run into its label is left out, rather than drawn over it.
+      if (label.width + DETAIL_GAP > DETAIL_X - LABEL_X - detail.width) detail.setText('');
     });
 
     // The cursor, like the title screen's, and arrows when there's more above or below.

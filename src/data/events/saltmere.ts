@@ -1,0 +1,51 @@
+import { defineEvent } from '../../core/events';
+
+// Saltmere on Kindling day. Draft lines, to be rewritten with the opening (M2) and when the village
+// is fully populated (M6).
+
+export const tamsin = defineEvent(async (ev) => {
+  await ev.say(
+    'tamsin',
+    "Kindling's tonight, Rowan, and the lamps won't light themselves. Off you go!",
+  );
+});
+
+export const fishwife = defineEvent(async (ev) => {
+  await ev.say(
+    'villager',
+    "Mind the floor, it's just been swept. The whole village is getting spotless for the Kindling.",
+  );
+});
+
+export const fisher = defineEvent(async (ev) => {
+  await ev.say(
+    'villager',
+    "Sea's flat as a plate. The Beacon always keeps it calm for the Kindling.",
+  );
+});
+
+export const vendor = defineEvent(async (ev) => {
+  await ev.say('villager', 'Fish, greens, plums! Get them before the Kindling crowd does.');
+});
+
+export const kid = defineEvent(async (ev) => {
+  await ev.say(
+    'villager',
+    "Everyone gives the Beacon a memory at the Kindling. I'm giving it the taste of honey cake!",
+  );
+});
+
+export const lighthouseSign = defineEvent(async (ev) => {
+  await ev.say('sign', 'THE LIGHTHOUSE. The Tide Beacon burns here. Keep the flame.');
+});
+
+export const caveStairs = defineEvent(async (ev) => {
+  await ev.say(
+    'sign',
+    'Stairs down into the sea caves under the lighthouse. It is pitch dark down there.',
+  );
+});
+
+export const beacon = defineEvent(async (ev) => {
+  await ev.say('sign', 'The Tide Beacon burns, bright and steady. Its warmth fills the room.');
+});

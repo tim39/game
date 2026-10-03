@@ -97,7 +97,7 @@ export function cellHash(x: number, y: number, salt = 0): number {
 }
 
 const TREE_SALT = 1;
-const PREFAB_CHARS = new Set(['#', '.', '^', 'D', ' ']);
+const PREFAB_CHARS = new Set(['#', '.', '^', '=', 'D', ' ']);
 const lookups = new WeakMap<BlobLayout, ReadonlyMap<number, readonly [number, number]>>();
 
 /** Builds a map's layers, collision and exits. Throws if anything doesn't fit. */
@@ -187,6 +187,8 @@ export function compileMap(def: MapDef, content: MapContent): CompiledMap {
         const [col, row] = prefab.origin;
         layer[index] = { sheet: prefab.sheet, col: col + dx, row: row + dy };
         if (char === '#') solid[index] = true;
+        // A walkway (a pier, a bridge) can be walked on whatever is under it.
+        if (char === '=') solid[index] = false;
         if (script && char !== '^') scripts[index] = script;
         if (char === 'D') {
           // A doorway cuts through whatever the terrain is: a door in a wall still opens.

@@ -42,3 +42,9 @@ By **Pixel-boy** and **AAA**: https://pixel-boy.itch.io/ninja-adventure-asset-pa
 | `public/assets/tiles/interior-wall.png` | Interior walls | `Backgrounds/Tilesets/Interior/TilesetInterior.png` | None |
 | `public/assets/tiles/interior-floor.png` | Interior floors | `Backgrounds/Tilesets/Interior/TilesetInteriorFloor.png` | None |
 | `public/assets/tiles/room-wall.png` | Walls of simple rectangular rooms | `Backgrounds/Tilesets/Interior/TilesetWallSimple.png` | None |
+| `public/assets/tiles/desert.png` | Beach plants (and desert buildings, later) | `Backgrounds/Tilesets/TilesetDesert.png` | None |
+| `public/assets/tiles/camp.png` | Fire pits, logs, barrels, crates | `Backgrounds/Tilesets/tileset_camp.png` | None |
+| `public/assets/tiles/bed.png` | Beds and rugs | `Backgrounds/Tilesets/tileset_bed.png` | None |
+| `public/assets/tiles/dungeon.png` | The Tide Beacon (an orb on a pedestal) | `Backgrounds/Tilesets/TilesetDungeon.png` | None |
+| `public/assets/tiles/boat.png` | A fishing boat | `Backgrounds/Vehicles/Boat.png` | None |
+| `public/assets/tiles/lighthouse.png` | Saltmere's lighthouse | `Backgrounds/Tilesets/TilesetDesert.png`, the domed tower (columns 3–5, rows 0–4) | Cut out; the dome recoloured from greens to the pack's reds, and the two windows lit in its yellows |

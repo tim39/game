@@ -1,7 +1,15 @@
 import type { EventScript } from '../../core/events';
+import * as saltmere from './saltmere';
 import * as testMaps from './test-maps';
 
-/** Every event script, by ID: `test/tamsin` is `tamsin` in test-maps.ts. */
-export const EVENTS: Readonly<Record<string, EventScript>> = Object.fromEntries(
-  Object.entries(testMaps).map(([name, script]) => [`test/${name}`, script]),
-);
+/** `lighthouseSign` → `lighthouse-sign`: script IDs are kebab-case, like every other ID. */
+const kebab = (name: string): string => name.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`);
+
+const area = (prefix: string, scripts: Record<string, EventScript>): [string, EventScript][] =>
+  Object.entries(scripts).map(([name, script]) => [`${prefix}/${kebab(name)}`, script]);
+
+/** Every event script, by ID: `saltmere/lighthouse-sign` is `lighthouseSign` in saltmere.ts. */
+export const EVENTS: Readonly<Record<string, EventScript>> = Object.fromEntries([
+  ...area('saltmere', saltmere),
+  ...area('test', testMaps),
+]);

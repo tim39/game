@@ -3,11 +3,11 @@ import { definePrefabs, defineTerrains, type MapContent } from '../core/map/type
 
 /**
  * The Ninja Adventure tilesets' 47-shape blob block: where each shape sits, relative to the block's
- * top-left, and which neighbours it joins up with (see Maps in docs/TECH.md). Grass shows around
- * every edge. The water and path blocks share this layout; only the path block has a tile for a
- * cell with no neighbours at all.
+ * top-left, and which neighbours it joins up with (see Maps in docs/TECH.md). Grass, or for the sea
+ * sand, shows around every edge. The grass-edged water, the sand-edged sea and the path blocks share
+ * this layout; only the path block has a tile for a cell with no neighbours at all.
  */
-const GRASS_EDGED_BLOB: BlobLayout = [
+const EDGED_BLOB: BlobLayout = [
   [0, 0, 'E SE S'],
   [1, 0, 'E SE S SW W'],
   [2, 0, 'S SW W'],
@@ -92,17 +92,32 @@ export const TERRAINS = defineTerrains({
     kind: 'blob',
     sheet: 'tiles.floor',
     origin: [0, 7],
-    layout: [...GRASS_EDGED_BLOB, [3, 3, '']],
+    layout: [...EDGED_BLOB, [3, 3, '']],
   },
   // A lone cell of water has no tile, so ponds and channels need at least two cells.
   water: {
     kind: 'blob',
     sheet: 'tiles.water',
     origin: [0, 6],
-    layout: GRASS_EDGED_BLOB,
+    layout: EDGED_BLOB,
     solid: true,
   },
   trees: { kind: 'trees', ground: 'grass', trees: ['tree', 'pine'], filler: 'bush' },
+
+  // By the sea: Saltmere stands on sand.
+  sand: {
+    kind: 'fill',
+    sheet: 'tiles.floor',
+    // Mostly plain, with the odd scuff or pebble.
+    tiles: [
+      [1, 1, 60],
+      [0, 4, 2],
+      [1, 4, 1],
+    ],
+  },
+  // The sand-edged block shares the grass-edged water's layout, so its shores meet sand.
+  sea: { kind: 'blob', sheet: 'tiles.water', origin: [0, 0], layout: EDGED_BLOB, solid: true },
+  'sand-trees': { kind: 'trees', ground: 'sand', trees: ['tree', 'pine'], filler: 'bush' },
 
   // Indoors.
   'wood-floor': { kind: 'fill', sheet: 'tiles.interior-floor', tiles: [[1, 9]] },
@@ -135,6 +150,46 @@ export const PREFABS = definePrefabs({
   'stairs-up': { sheet: 'tiles.element', origin: [6, 12], layout: ['D'] },
   // A wooden signboard, to read.
   sign: { sheet: 'tiles.element', origin: [0, 2], layout: ['#'] },
+
+  // Saltmere. More houses, all with their door one cell in from the left.
+  'house-beige': { sheet: 'tiles.house', origin: [4, 0], layout: ['^^^^', '####', '#D##'] },
+  'house-pale': { sheet: 'tiles.house', origin: [8, 0], layout: ['^^^^', '####', '#D##'] },
+  'house-red': { sheet: 'tiles.house', origin: [12, 0], layout: ['^^^^', '####', '#D##'] },
+  // The pack has no lighthouse: this is its domed desert tower, recoloured (see CREDITS.md).
+  lighthouse: {
+    sheet: 'tiles.lighthouse',
+    origin: [0, 0],
+    layout: ['^^^', '^^^', '^^^', '###', '#D#'],
+  },
+  // A wooden platform out over the sea, and a fishing boat to tie up beside it.
+  dock: { sheet: 'tiles.water', origin: [4, 12], layout: ['====', '====', '====', '===='] },
+  boat: { sheet: 'tiles.boat', origin: [0, 0], layout: ['#####', '#####'] },
+  palm: { sheet: 'tiles.desert', origin: [10, 10], layout: ['^^', '##'] },
+  'palm-2': { sheet: 'tiles.desert', origin: [12, 10], layout: ['^^', '##'] },
+  // The Kindling pyre: logs in a ring of stones. A lamp on a post, for Rowan to light.
+  pyre: { sheet: 'tiles.camp', origin: [12, 5], layout: ['##', '##'] },
+  lamp: { sheet: 'tiles.camp', origin: [6, 5], layout: ['^', '#'] },
+  barrel: { sheet: 'tiles.house', origin: [18, 11], layout: ['#'] },
+  'basket-fish': { sheet: 'tiles.house', origin: [16, 13], layout: ['#'] },
+  'basket-greens': { sheet: 'tiles.house', origin: [17, 13], layout: ['#'] },
+  'basket-fruit': { sheet: 'tiles.house', origin: [18, 13], layout: ['#'] },
+  fence: { sheet: 'tiles.house', origin: [10, 5], layout: ['####'] },
+  rock: { sheet: 'tiles.nature', origin: [13, 8], layout: ['##', '##'] },
+
+  // Indoors. Tall furniture stands against the back wall, its top over the wall.
+  bed: { sheet: 'tiles.bed', origin: [5, 0], layout: ['#', '#'] },
+  'bed-green': { sheet: 'tiles.bed', origin: [12, 0], layout: ['#', '#'] },
+  rug: { sheet: 'tiles.bed', origin: [2, 6], layout: ['...', '...'] },
+  table: { sheet: 'tiles.element', origin: [2, 10], layout: ['###'] },
+  chair: { sheet: 'tiles.element', origin: [0, 9], layout: ['#'] },
+  bookshelf: { sheet: 'tiles.element', origin: [3, 7], layout: ['#', '#'] },
+  shelf: { sheet: 'tiles.element', origin: [4, 7], layout: ['#', '#'] },
+  dresser: { sheet: 'tiles.element', origin: [6, 7], layout: ['##', '##'] },
+  plant: { sheet: 'tiles.element', origin: [0, 7], layout: ['#', '#'] },
+  pot: { sheet: 'tiles.element', origin: [2, 9], layout: ['#'] },
+  oven: { sheet: 'tiles.house', origin: [29, 11], layout: ['##', '##'] },
+  // The Tide Beacon's flame, at the top of the lighthouse.
+  beacon: { sheet: 'tiles.dungeon', origin: [2, 2], layout: ['#'] },
 });
 
 export const MAP_CONTENT: MapContent = { terrains: TERRAINS, prefabs: PREFABS };
