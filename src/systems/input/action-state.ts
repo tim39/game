@@ -15,13 +15,17 @@ export class ActionState {
   private repeatedNow = new Set<Action>();
   private readonly nextRepeatAt = new Map<Action, number>();
 
-  update(held: ReadonlySet<Action>, nowMs: number): void {
+  /**
+   * `held` is everything down this frame. `fresh` is what went down since the last frame, which is
+   * a press even if it was down then too: tapped twice, quicker than the frames came.
+   */
+  update(held: ReadonlySet<Action>, nowMs: number, fresh: ReadonlySet<Action> = new Set()): void {
     this.pressedNow = new Set();
     this.repeatedNow = new Set();
     for (const action of ACTIONS) {
       const isDown = held.has(action);
       const wasDown = this.current.has(action);
-      if (isDown && !wasDown) {
+      if (isDown && (!wasDown || fresh.has(action))) {
         this.pressedNow.add(action);
         this.repeatedNow.add(action);
         this.nextRepeatAt.set(action, nowMs + REPEAT_DELAY_MS);

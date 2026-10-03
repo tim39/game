@@ -5,7 +5,7 @@ import { FIELD_SPEEDS } from '../../src/data/balance';
 import { UI_TEXT } from '../../src/data/ui-text';
 import { ASSETS } from '../../src/systems/asset-manifest';
 import { TOUCH_ART, layoutTouchControls } from '../../src/systems/input/touch-layout';
-import { DIALOGUE_BOX_ON_SCREEN } from '../../src/ui/dialogue-layout';
+import { DIALOGUE_BOX_ON_SCREEN, choiceBoxOnScreen } from '../../src/ui/dialogue-layout';
 
 // A phone held sideways (an iPhone 14's screen) with a touchscreen.
 test.use({ hasTouch: true, isMobile: true, viewport: { width: 844, height: 390 } });
@@ -131,7 +131,8 @@ test('the controls show beside the game, clear of the dialogue box, and the titl
   const fingers = await Fingers.on(page);
   await fingers.tap(await spot(page, 'a'));
   await page.waitForFunction(() => window.__game?.activeScenes().includes('dialogue') ?? false);
-  await nextFrames(page);
+  await fingers.tap(await spot(page, 'a'));
+  await page.waitForFunction(() => window.__game?.inspect('dialogue')?.prompt === true);
   await page.screenshot({ path: 'test-results/screenshots/touch-dialogue.png' });
 
   const canvas = await page.locator('#game canvas').boundingBox();
@@ -225,9 +226,64 @@ test('A talks and closes the box; touching the game itself does nothing', async 
 
   await fingers.tap(await spot(page, 'a'));
   await page.waitForFunction(() => window.__game?.inspect('dialogue')?.name === 'Tamsin');
+  // A finishes typing the line, and A again closes it.
+  await fingers.tap(await spot(page, 'a'));
+  await page.waitForFunction(() => window.__game?.inspect('dialogue')?.prompt === true);
   await fingers.tap(await spot(page, 'a'));
   await page.waitForFunction(() => window.__game?.inspect('field')?.running === false);
   expect(await activeScenes(page)).toEqual(['field']);
+  expect(errors).toEqual([]);
+});
+
+test('A and the d-pad answer a choice, and no control covers the choices', async ({ page }) => {
+  const errors = watchErrors(page);
+  // The fisher stands at (16, 9), just to the right.
+  await warp(page, 'test-shore', 15, 9, 'right');
+  const fingers = await Fingers.on(page);
+  const dialogue = () => page.evaluate(() => window.__game?.inspect('dialogue'));
+
+  // A talks, finishes the line, and goes on to the choices.
+  await fingers.tap(await spot(page, 'a'));
+  await page.waitForFunction(() => window.__game?.inspect('dialogue')?.typing === true);
+  await fingers.tap(await spot(page, 'a'));
+  await page.waitForFunction(() => window.__game?.inspect('dialogue')?.prompt === true);
+  await fingers.tap(await spot(page, 'a'));
+  await page.waitForFunction(
+    () => (window.__game?.inspect('dialogue')?.choices as string[] | undefined)?.length === 3,
+  );
+  await page.screenshot({ path: 'test-results/screenshots/touch-choices.png' });
+
+  const canvas = await page.locator('#game canvas').boundingBox();
+  if (!canvas) throw new Error('the game canvas is not on screen');
+  const zoom = canvas.width / 640;
+  const widths = (await dialogue())?.choiceWidths as number[];
+  const choices = choiceBoxOnScreen(Math.max(...widths), widths.length);
+  const box = {
+    x: canvas.x + choices.x * zoom,
+    y: canvas.y + choices.y * zoom,
+    width: choices.width * zoom,
+    height: choices.height * zoom,
+  };
+  for (const control of ['dpad', 'a', 'b', 'menu']) {
+    const art = await page.locator(`[data-control="${control}"] .touch-art`).boundingBox();
+    if (!art) throw new Error(`The ${control} control isn't on screen`);
+    const overlaps =
+      art.x < box.x + box.width &&
+      art.x + art.width > box.x &&
+      art.y < box.y + box.height &&
+      art.y + art.height > box.y;
+    expect(overlaps, control).toBe(false);
+  }
+
+  // A tap down on the d-pad moves the cursor, and A picks.
+  await fingers.tap(await spot(page, 'dpad', 'down'));
+  await page.waitForFunction(() => window.__game?.inspect('dialogue')?.cursor === 1);
+  await fingers.tap(await spot(page, 'a'));
+  await page.waitForFunction(
+    () =>
+      window.__game?.inspect('dialogue')?.text ===
+      "I've tried them all. This one's the least rude.",
+  );
   expect(errors).toEqual([]);
 });
 

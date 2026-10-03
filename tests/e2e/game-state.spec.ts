@@ -61,13 +61,17 @@ test('New Game starts afresh: Rowan alone at Tamsin’s door, with nothing yet',
   });
 
   await page.keyboard.press('Enter');
-  await page.waitForFunction(
-    () => window.__game?.activeScenes().includes('dialogue-sample') ?? false,
-  );
-  // Through the dialogue preview's three pages.
-  for (let i = 0; i < 3; i++) {
+  // Through the dialogue preview's three pages: Confirm finishes each line, and Confirm goes on.
+  for (let previewPage = 0; previewPage < 3; previewPage++) {
+    await page.waitForFunction(
+      (at) =>
+        window.__game?.inspect('dialogue-sample')?.page === at &&
+        window.__game.inspect('dialogue')?.typing === true,
+      previewPage,
+    );
     await page.keyboard.press('KeyZ');
-    await nextFrames(page);
+    await page.waitForFunction(() => window.__game?.inspect('dialogue')?.prompt === true);
+    await page.keyboard.press('KeyZ');
   }
   await arrivedOn(page, NEW_GAME.location.map);
 

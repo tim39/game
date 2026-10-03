@@ -36,7 +36,7 @@ Keep the names stable. Scripts whose tooling hasn't landed yet run `tools/not-ye
 | `npm run lint` | ESLint + Prettier check |
 | `npm run format` | Prettier rewrite + ESLint autofix |
 | `npm test` | Vitest unit tests |
-| `npm run validate` | Checks game data: so far, that every asset manifest key points at a real, credited file; from M3, schemas and cross-references |
+| `npm run validate` | Checks game data: so far, that every asset manifest key points at a real, credited file, that every map compiles, and that every event script runs and every line of dialogue fits its box; from M3, schemas and cross-references |
 | `npm run sim` | Headless battle simulator; prints a balance report |
 | `npm run test:e2e` | Playwright smoke tests + screenshots |
 | `npm run fetch-assets` | Downloads the raw asset packs into `assets-src/` (see Assets in TECH.md) |

@@ -214,7 +214,7 @@ Fixed characters with their own kits; no job system. Full skill lists live in `s
 
 - **Title:** New Game, Continue, Options.
 - **Field:** no permanent HUD; the area name shows in a banner on entry.
-- **Dialogue:** a box at the bottom with the speaker's name and portrait (signs and narration have neither), typewriter text (Confirm shows it all at once), a ▼ prompt and up to 4 choices.
+- **Dialogue:** a box at the bottom with the speaker's name and portrait (signs and narration have neither). Text types out at about 50 characters a second; Confirm shows the rest at once, and once it's all out a ▼ shows and Confirm goes on. **Choices**, up to 4, come up in a box above it, with the line they answer still showing: Up and Down move the cursor (round from the last to the first), and Confirm picks. Cancel does nothing in a conversation, so nobody skips one by accident.
 - **Menu:** Items, Skills, Equip, Status, Options, Save, with a party summary (HP, MP, level, EXP to next level), gold, play time and location.
 - **Equip:** stat comparison with up and down arrows.
 - **Shop:** Buy and Sell with quantities, showing who can equip each item and how it changes their stats.

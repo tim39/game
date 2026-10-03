@@ -39,15 +39,27 @@ async function warp(
   return errors;
 }
 
-/** Presses Confirm and waits for the dialogue box to show `text`. */
-async function confirmUntilSaid(page: Page, text: string): Promise<void> {
-  await page.keyboard.press('KeyZ');
+/** Waits for the dialogue box to show `text`. */
+async function untilSaid(page: Page, text: string): Promise<void> {
   await page.waitForFunction((said) => window.__game?.inspect('dialogue')?.text === said, text);
 }
 
-/** Presses Confirm on the last line, and waits for the box to close and the field to carry on. */
-async function confirmToClose(page: Page): Promise<void> {
+/** Presses Confirm to talk, and waits for the dialogue box to show `text`. */
+async function talkUntilSaid(page: Page, text: string): Promise<void> {
   await page.keyboard.press('KeyZ');
+  await untilSaid(page, text);
+}
+
+/** Confirm finishes typing the line, and Confirm again goes on. */
+async function readOn(page: Page): Promise<void> {
+  await page.keyboard.press('KeyZ');
+  await page.waitForFunction(() => window.__game?.inspect('dialogue')?.prompt === true);
+  await page.keyboard.press('KeyZ');
+}
+
+/** Reads the last line, and waits for the box to close and the field to carry on. */
+async function readToClose(page: Page): Promise<void> {
+  await readOn(page);
   await page.waitForFunction(() => window.__game?.inspect('field')?.running === false);
   // A few frames more, to see the Confirm that closed the box doesn't open it again.
   await nextFrames(page);
@@ -71,7 +83,7 @@ test('Confirm in front of someone turns them to face you, and the field waits wh
   const errors = await warp(page, 'test-shore', 10, 7, 'down');
   expect(await npcFacing(page, 'tamsin')).toBe('down');
 
-  await confirmUntilSaid(
+  await talkUntilSaid(
     page,
     "Kindling's tonight, Rowan, and the lamps won't light themselves. Off you go!",
   );
@@ -89,7 +101,7 @@ test('Confirm in front of someone turns them to face you, and the field waits wh
   await page.keyboard.up('ArrowLeft');
   expect(await field(page)).toMatchObject({ x: 10, y: 7, facing: 'down', moving: false });
 
-  await confirmToClose(page);
+  await readToClose(page);
   expect(await npcFacing(page, 'tamsin')).toBe('up');
   // And once it's over, they can.
   await page.keyboard.press('ArrowLeft');
@@ -100,29 +112,30 @@ test('Confirm in front of someone turns them to face you, and the field waits wh
 test('Confirm in front of a sign reads it', async ({ page }) => {
   // The sign is at (8, 3), by the path.
   const errors = await warp(page, 'test-shore', 8, 4, 'up');
-  await confirmUntilSaid(page, 'TEST SHORE. A house to the east, a meadow down the long path.');
+  await talkUntilSaid(page, 'TEST SHORE. A house to the east, a meadow down the long path.');
   const said = await dialogue(page);
   expect(said).toMatchObject({ name: '', portrait: null });
   expectFits(said);
   await page.screenshot({ path: 'test-results/screenshots/interaction-sign.png' });
 
-  await confirmToClose(page);
+  await readToClose(page);
   expect(errors).toEqual([]);
 });
 
-test('Someone with more to say shows one line per Confirm', async ({ page }) => {
+test('Someone with more to say shows one line at a time', async ({ page }) => {
   // The host stands at (2, 2) in the test house, facing right; the player comes up from below.
   const errors = await warp(page, 'test-house', 2, 3, 'up');
-  await confirmUntilSaid(page, 'Come in, come in. Mind the cellar stairs.');
+  await talkUntilSaid(page, 'Come in, come in. Mind the cellar stairs.');
   expect(await dialogue(page)).toMatchObject({ name: 'Villager', portrait: null });
   expect(await npcFacing(page, 'host')).toBe('down');
   await page.screenshot({ path: 'test-results/screenshots/interaction-host.png' });
 
-  await confirmUntilSaid(page, "There's nothing down there but cobwebs and a draught.");
+  await readOn(page);
+  await untilSaid(page, "There's nothing down there but cobwebs and a draught.");
   expectFits(await dialogue(page));
   expect(await field(page)).toMatchObject({ running: true });
 
-  await confirmToClose(page);
+  await readToClose(page);
   expect(errors).toEqual([]);
 });
 

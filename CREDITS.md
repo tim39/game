@@ -13,6 +13,7 @@ By **Pixel-boy** and **AAA**: https://pixel-boy.itch.io/ninja-adventure-asset-pa
 | `public/assets/ui/dialog-box-portrait.png` | Dialogue box with a portrait | `Ui/Dialog/DialogBoxFaceset.png` | None |
 | `public/assets/ui/dialog-box.png` | Dialogue box | `Ui/Dialog/DialogBox.png` | None |
 | `public/assets/ui/dialog-box-plain.png` | Dialogue box with no name tab, for signs and narration | `Ui/Dialog/DialogueBoxSimple.png` | None |
+| `public/assets/ui/choice-box.png` | Choice box, stretched to fit the choices | `Ui/Dialog/ChoiceBox.png` | None |
 | `public/assets/ui/touch-dpad.png` | Touch d-pad | `Ui/Input/Gamepad/DPad.png`, `DPadUp.png`, `DPadDown.png`, `DPadLeft.png`, `DPadRight.png` | Put side by side in one strip of 17×17 frames, each padded so the pad sits in the same place |
 | `public/assets/ui/touch-buttons.png` | Touch A and B buttons | `Ui/Input/Gamepad/ButtonA/Idle.png`, `ButtonA/Pressed.png`, `ButtonB/Idle.png`, `ButtonB/Pressed.png` | Put side by side in one strip |
 | `public/assets/ui/touch-menu.png` | Touch Menu button | `Ui/Input/Gamepad/Start.png` | None |

@@ -15,18 +15,24 @@ async function tapKey(page: Page, key: string): Promise<void> {
   await nextFrames(page);
 }
 
+/** New Game, then waits for the preview's first line to be in the dialogue box. */
 async function openSample(page: Page): Promise<void> {
   await page.goto('/');
   await page.waitForFunction(() => window.__game?.activeScenes().includes('title') ?? false);
   await tapKey(page, 'Enter'); // New Game
-  await page.waitForFunction(
-    () => window.__game?.activeScenes().includes('dialogue-sample') ?? false,
-  );
-  await nextFrames(page);
+  await page.waitForFunction(() => window.__game?.inspect('dialogue')?.name === 'Tamsin');
 }
 
+const said = (page: Page) => page.evaluate(() => window.__game?.inspect('dialogue'));
 const sample = (page: Page) => page.evaluate(() => window.__game?.inspect('dialogue-sample'));
 const activeScenes = (page: Page) => page.evaluate(() => window.__game?.activeScenes());
+
+/** Confirm finishes the line's typing, and Confirm again goes on. */
+async function readOn(page: Page): Promise<void> {
+  await page.keyboard.press('KeyZ');
+  await page.waitForFunction(() => window.__game?.inspect('dialogue')?.prompt === true);
+  await page.keyboard.press('KeyZ');
+}
 
 /** Every line of the current page fits the panel, measured in real font pixels, in at most 3 lines. */
 function expectFits(info: Record<string, unknown> | undefined): void {
@@ -36,23 +42,23 @@ function expectFits(info: Record<string, unknown> | undefined): void {
   for (const width of widths) expect(width).toBeLessThanOrEqual(info?.maxWidth as number);
 }
 
-test('New Game shows the dialogue preview, one page per Confirm, then the field', async ({
+test('New Game shows the dialogue preview in the dialogue box, then the field', async ({
   page,
 }) => {
   await openSample(page);
-
-  const first = await sample(page);
-  expect(first?.speaker).toBe('Tamsin');
+  const first = await said(page);
+  expect(first).toMatchObject({ portrait: 'portrait.tamsin', typing: true });
   expectFits(first);
+  expect((await sample(page))?.page).toBe(0);
 
-  await tapKey(page, 'KeyZ');
-  expect((await sample(page))?.page).toBe(1);
-  await tapKey(page, 'KeyZ');
-  const last = await sample(page);
-  expect(last?.speaker).toBe('Preview');
-  expectFits(last);
+  await readOn(page);
+  await page.waitForFunction(() => window.__game?.inspect('dialogue-sample')?.page === 1);
+  await readOn(page);
+  await page.waitForFunction(() => window.__game?.inspect('dialogue')?.name === 'Preview');
+  expectFits(await said(page));
 
-  await tapKey(page, 'KeyZ');
+  await readOn(page);
+  await page.waitForFunction(() => window.__game?.inspect('field')?.fading === false);
   expect(await activeScenes(page)).toEqual(['field']);
   expect(await page.evaluate(() => window.__game?.inspect('field'))).toMatchObject({
     ...NEW_GAME.location,
@@ -62,6 +68,7 @@ test('New Game shows the dialogue preview, one page per Confirm, then the field'
 test('Cancel leaves the preview straight away', async ({ page }) => {
   await openSample(page);
   await tapKey(page, 'Escape');
+  await nextFrames(page);
   expect(await activeScenes(page)).toEqual(['title']);
 });
 
@@ -74,6 +81,9 @@ for (const [name, width, height] of [
   test(`dialogue preview screenshot (${name})`, async ({ page }) => {
     await page.setViewportSize({ width, height });
     await openSample(page);
+    // The whole line, as it is once it's typed out.
+    await page.keyboard.press('KeyZ');
+    await page.waitForFunction(() => window.__game?.inspect('dialogue')?.prompt === true);
     await page.screenshot({ path: `test-results/screenshots/dialogue-${name}.png` });
   });
 }

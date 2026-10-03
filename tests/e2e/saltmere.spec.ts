@@ -55,8 +55,16 @@ async function talk(page: Page): Promise<Record<string, unknown> | undefined> {
   return page.evaluate(() => window.__game?.inspect('dialogue'));
 }
 
-async function closeDialogue(page: Page): Promise<void> {
+/** Confirm finishes typing the line, and Confirm again goes on. */
+async function readOn(page: Page): Promise<void> {
   await page.keyboard.press('KeyZ');
+  await page.waitForFunction(() => window.__game?.inspect('dialogue')?.prompt === true);
+  await page.keyboard.press('KeyZ');
+}
+
+/** Reads the last line, and waits for the field to carry on. */
+async function closeDialogue(page: Page): Promise<void> {
+  await readOn(page);
   await page.waitForFunction(() => window.__game?.inspect('field')?.running === false);
 }
 
@@ -79,7 +87,16 @@ test('into Tamsin’s house to talk to her, and back out', async ({ page }) => {
   await step(page, 'ArrowUp', 2);
   expect(await field(page)).toMatchObject({ x: 8, y: 4, facing: 'up' });
   expect(await talk(page)).toMatchObject({ name: 'Tamsin' });
+  // She asks for an answer, which she answers in turn.
+  await readOn(page);
+  await page.waitForFunction(
+    () => (window.__game?.inspect('dialogue')?.choices as string[] | undefined)?.length === 2,
+  );
   await page.screenshot({ path: 'test-results/screenshots/saltmere-tamsin.png' });
+  await page.keyboard.press('KeyZ');
+  await page.waitForFunction(() =>
+    String(window.__game?.inspect('dialogue')?.text).startsWith("That's my lamplighter."),
+  );
   await closeDialogue(page);
 
   await step(page, 'ArrowDown', 2);

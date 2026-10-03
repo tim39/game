@@ -11,6 +11,10 @@ export const tamsin = defineEvent(async (ev) => {
 
 export const fisher = defineEvent(async (ev) => {
   await ev.say('villager', 'Not a bite all morning. I think the fish are having the day off.');
+  const pick = await ev.choice(['Try more bait?', 'Try another spot?', 'Give up for today?']);
+  if (pick === 0) await ev.say('villager', 'More bait just means fatter fish ignoring me.');
+  if (pick === 1) await ev.say('villager', "I've tried them all. This one's the least rude.");
+  if (pick === 2) await ev.say('villager', 'Give up? And go home to my own cooking? Never.');
 });
 
 export const host = defineEvent(async (ev) => {

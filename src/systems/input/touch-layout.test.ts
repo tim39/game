@@ -1,7 +1,9 @@
 import { describe, expect, test } from 'vitest';
+import { CHOICE_BOX, MAX_CHOICES, choiceBoxOnScreen } from '../../ui/dialogue-layout';
 import {
   dialogueBoxInView,
   dpadDirection,
+  gameBoxInView,
   layoutTouchControls,
   type Box,
   type Insets,
@@ -66,6 +68,24 @@ describe('layoutTouchControls', () => {
     for (const view of views) {
       expectSensible(view, NO_INSETS);
       expectSensible(view, NOTCH);
+    }
+  });
+
+  test('stay clear of the biggest choice box on phones held sideways', () => {
+    // 16:9 phones fill the screen with the game; phones with a notch have room beside it.
+    const phones: [Size, Insets][] = [
+      [{ width: 667, height: 375 }, NO_INSETS],
+      [{ width: 568, height: 320 }, NO_INSETS],
+      [{ width: 812, height: 375 }, NOTCH],
+      [{ width: 844, height: 390 }, NOTCH],
+      [{ width: 932, height: 430 }, NOTCH],
+    ];
+    const choices = choiceBoxOnScreen(CHOICE_BOX.maxTextWidth, MAX_CHOICES);
+    for (const [view, insets] of phones) {
+      const layout = layoutTouchControls(view, insets);
+      for (const control of [layout.dpad, layout.a, layout.b, layout.menu]) {
+        expect(overlaps(control, gameBoxInView(view, choices))).toBe(false);
+      }
     }
   });
 

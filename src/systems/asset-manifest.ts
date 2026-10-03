@@ -46,6 +46,7 @@ export const ASSETS = {
   'ui.dialogue-box': image('ui/dialog-box.png'),
   'ui.dialogue-box-portrait': image('ui/dialog-box-portrait.png'),
   'ui.dialogue-box-plain': image('ui/dialog-box-plain.png'),
+  'ui.choice-box': image('ui/choice-box.png'),
 
   // Touch controls, which the page draws over the game on phones and tablets.
   'touch.dpad': frames('ui/touch-dpad.png', 17, 17), // idle, then pressed up, down, left, right

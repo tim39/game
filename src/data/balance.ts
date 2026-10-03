@@ -14,3 +14,9 @@ export const MAP_FADE_MS = 250;
  * long they keep looking at the player after being bumped into.
  */
 export const NPC_TUNING: NpcTuning = { stepMs: 360, pauseMs: [1500, 4000], lookMs: 3000 };
+
+/**
+ * How fast dialogue types out, in characters a second: a full box of about 140 characters in under
+ * three seconds. Confirm shows the rest at once. The Options screen (M5) will offer other speeds.
+ */
+export const TEXT_SPEED = 50;

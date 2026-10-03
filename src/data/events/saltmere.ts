@@ -8,6 +8,15 @@ export const tamsin = defineEvent(async (ev) => {
     'tamsin',
     "Kindling's tonight, Rowan, and the lamps won't light themselves. Off you go!",
   );
+  const pick = await ev.choice(['On my way!', 'Five more minutes?']);
+  if (pick === 0) {
+    await ev.say('tamsin', "That's my lamplighter. Back by dusk, mind: the Kindling won't wait.");
+  } else {
+    await ev.say(
+      'tamsin',
+      'Five more minutes and the whole village is lighting candles in the dark. Go!',
+    );
+  }
 });
 
 export const fishwife = defineEvent(async (ev) => {

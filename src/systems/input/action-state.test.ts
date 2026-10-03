@@ -3,8 +3,14 @@ import { ActionState, REPEAT_DELAY_MS, REPEAT_INTERVAL_MS } from './action-state
 import type { Action } from './actions';
 
 /** Runs one frame and reports what the state says about `action`. */
-function frame(state: ActionState, held: readonly Action[], nowMs: number, action: Action) {
-  state.update(new Set(held), nowMs);
+function frame(
+  state: ActionState,
+  held: readonly Action[],
+  nowMs: number,
+  action: Action,
+  fresh: readonly Action[] = [],
+) {
+  state.update(new Set(held), nowMs, new Set(fresh));
   return {
     held: state.held(action),
     pressed: state.pressed(action),
@@ -30,6 +36,15 @@ describe('ActionState', () => {
       pressed: false,
       repeated: false,
     });
+  });
+
+  it('counts a second press in the very next frame, quicker than a release could show', () => {
+    const state = new ActionState();
+    expect(frame(state, ['confirm'], 0, 'confirm', ['confirm']).pressed).toBe(true);
+    // Released and pressed again between frames: held in both, but pressed again.
+    expect(frame(state, ['confirm'], 16, 'confirm', ['confirm']).pressed).toBe(true);
+    // Simply still held: not a press.
+    expect(frame(state, ['confirm'], 32, 'confirm').pressed).toBe(false);
   });
 
   it('repeats a held action after the delay, then at the interval', () => {

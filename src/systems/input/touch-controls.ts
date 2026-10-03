@@ -167,13 +167,19 @@ export class TouchControls {
     });
   }
 
-  /** Adds what's held to `held`: the d-pad's direction, the buttons, and any taps since last time. */
-  collect(held: Set<Action>): void {
+  /**
+   * Adds what's held to `held`: the d-pad's direction, the buttons, and any taps since last time,
+   * which also go in `fresh`, as presses.
+   */
+  collect(held: Set<Action>, fresh: Set<Action>): void {
     if (this.direction) held.add(this.direction);
     for (const [name, pointers] of this.pressedBy) {
       if (pointers.size > 0) for (const action of BUTTONS[name].actions) held.add(action);
     }
-    for (const action of this.tapped) held.add(action);
+    for (const action of this.tapped) {
+      held.add(action);
+      fresh.add(action);
+    }
     this.tapped.clear();
   }
 

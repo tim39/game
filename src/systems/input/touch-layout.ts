@@ -52,18 +52,21 @@ const HYSTERESIS = 1.25;
 const clamp = (value: number, min: number, max: number): number =>
   Math.min(max, Math.max(min, value));
 
-/** Where the game's dialogue box is on a view of this size: the game is centred, at `pickZoom`. */
-export function dialogueBoxInView(view: Size): Box {
+/** Where a rectangle of the game's screen is on a view of this size: the game is centred, at `pickZoom`. */
+export function gameBoxInView(view: Size, box: Box): Box {
   const zoom = pickZoom(view.width, view.height);
   const left = (view.width - GAME_WIDTH * zoom) / 2;
   const top = (view.height - GAME_HEIGHT * zoom) / 2;
   return {
-    x: left + DIALOGUE_BOX_ON_SCREEN.x * zoom,
-    y: top + DIALOGUE_BOX_ON_SCREEN.y * zoom,
-    width: DIALOGUE_BOX_ON_SCREEN.width * zoom,
-    height: DIALOGUE_BOX_ON_SCREEN.height * zoom,
+    x: left + box.x * zoom,
+    y: top + box.y * zoom,
+    width: box.width * zoom,
+    height: box.height * zoom,
   };
 }
+
+/** Where the game's dialogue box is on a view of this size. */
+export const dialogueBoxInView = (view: Size): Box => gameBoxInView(view, DIALOGUE_BOX_ON_SCREEN);
 
 /**
  * Where the touch controls go on a view of this size. The d-pad sits in the bottom left corner,

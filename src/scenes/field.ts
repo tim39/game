@@ -36,6 +36,8 @@ import { input } from '../systems/input/game-input';
 import { session } from '../systems/session';
 import { settings } from '../systems/settings';
 import { DEPTH, TILE, createTilemap } from '../systems/tilemap';
+import type { DialogueLine } from '../ui/dialogue-box';
+import { MAX_CHOICES } from '../ui/dialogue-layout';
 import type { DialogueRequest } from './dialogue';
 
 /** Where to put the player, `scene.start('field', start)`: a cell, or one of the map's spawns. */
@@ -282,21 +284,37 @@ export class FieldScene extends Phaser.Scene {
       return;
     }
     this.running = true;
-    const ev: EventContext = { say: (speaker, text) => this.say(speaker, text) };
+    // Choices come up under the last line said, which stays on screen while the player picks.
+    let lastLine: DialogueLine | undefined;
+    const ev: EventContext = {
+      say: async (speakerId, text) => {
+        const speaker = SPEAKERS[speakerId];
+        if (!speaker) throw new Error(`There's no speaker called ${speakerId}`);
+        lastLine = { ...speaker, text };
+        await this.dialogue({ line: lastLine });
+      },
+      choice: async (options) => {
+        if (options.length < 1 || options.length > MAX_CHOICES) {
+          throw new RangeError(
+            `A choice offers 1 to ${MAX_CHOICES} options, not ${options.length}`,
+          );
+        }
+        const pick = await this.dialogue({ line: lastLine, typed: false, choices: options });
+        return pick ?? 0;
+      },
+    };
     void script(ev)
       .catch((error: unknown) => console.error(`Event script ${id} failed:`, error))
       .finally(() => (this.running = false));
   }
 
-  /** Opens the dialogue box over the field, and resolves once the player closes it. */
-  private say(speakerId: string, text: string): Promise<void> {
-    const speaker = SPEAKERS[speakerId];
-    if (!speaker) return Promise.reject(new Error(`There's no speaker called ${speakerId}`));
-    return new Promise((resolve) => {
-      this.scene.launch('dialogue', {
-        line: { ...speaker, text },
-        onClose: resolve,
-      } satisfies DialogueRequest);
+  /**
+   * Opens the dialogue box over the field, and resolves once the player is done with it: with the
+   * index of the choice they picked, or null for a line they read.
+   */
+  private dialogue(request: Omit<DialogueRequest, 'onDone'>): Promise<number | null> {
+    return new Promise((onDone) => {
+      this.scene.launch('dialogue', { ...request, onDone } satisfies DialogueRequest);
     });
   }
 

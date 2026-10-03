@@ -10,6 +10,7 @@ import { MAP_CONTENT } from '../src/data/terrain';
 import { ASSETS } from '../src/systems/asset-manifest';
 import { checkAssets, pngSize } from './asset-checks';
 import { checkEvents } from './event-checks';
+import { measureBodyFont } from './font-metrics';
 import { checkMaps } from './map-checks';
 
 const ROOT = join(import.meta.dirname, '..');
@@ -33,7 +34,13 @@ const problems = [
       }
     },
   }),
-  ...(await checkEvents({ events: EVENTS, speakers: SPEAKERS, maps: MAPS, manifest: ASSETS })),
+  ...(await checkEvents({
+    events: EVENTS,
+    speakers: SPEAKERS,
+    maps: MAPS,
+    manifest: ASSETS,
+    font: measureBodyFont(readFileSync(join(PUBLIC, ASSETS['font.body'].url))),
+  })),
 ];
 
 if (problems.length > 0) {
@@ -48,6 +55,7 @@ console.log(
     'their terrains and prefabs use exists; every way out leads somewhere.',
 );
 console.log(
-  `Events: all ${Object.keys(EVENTS).length} event scripts run, and every script, speaker and ` +
-    'portrait they or the maps name exists.',
+  `Events: all ${Object.keys(EVENTS).length} event scripts run down every path through their ` +
+    'choices; every script, speaker and portrait they or the maps name exists; and every line ' +
+    'and choice fits its box, in characters the font has.',
 );
