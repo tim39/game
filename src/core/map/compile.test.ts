@@ -2,6 +2,7 @@ import { describe, expect, test } from 'vitest';
 import { createGameState, setFlag } from '../state';
 import {
   autoTrigger,
+  chestAt,
   compileMap,
   enterTrigger,
   exitAt,
@@ -440,4 +441,84 @@ test('an npc keeps its script', () => {
     { type: 'npc', id: 'a', sprite: 'villager', at: [0, 0], facing: 'down', script: 'hello' },
   ]);
   expect(compiled.npcs[0]?.script).toBe('hello');
+});
+
+describe('chests', () => {
+  const chest = (x: number, y: number, flag = 'chest.test-01'): MapObject => ({
+    type: 'chest',
+    at: [x, y],
+    flag,
+    item: 'potion',
+  });
+
+  test('stand in their cells like walls, holding an item or gold', () => {
+    const compiled = compile('...', [
+      chest(0, 0),
+      { type: 'chest', at: [2, 0], flag: 'chest.test-02', gold: 30 },
+    ]);
+    expect(compiled.chests).toEqual([
+      { x: 0, y: 0, flag: 'chest.test-01', item: 'potion' },
+      { x: 2, y: 0, flag: 'chest.test-02', gold: 30 },
+    ]);
+    expect(solidRows(compiled)).toEqual(['#.#']);
+    expect(chestAt(compiled, 2, 0)).toEqual({ x: 2, y: 0, flag: 'chest.test-02', gold: 30 });
+    expect(chestAt(compiled, 1, 0)).toBeNull();
+    expect(chestAt(compiled, 3, 0)).toBeNull();
+  });
+
+  test('each has a flag of its own, in the chest namespace', () => {
+    expect(() => compile('..', [chest(0, 0, 'potion-chest')])).toThrow(
+      'the chest at (0, 0) has the flag "potion-chest"; chest flags look like chest.test-01',
+    );
+    expect(() => compile('..', [chest(0, 0, 'story.chest')])).toThrow('has the flag "story.chest"');
+    expect(() => compile('..', [chest(0, 0), chest(1, 0)])).toThrow(
+      'two chests have the flag chest.test-01',
+    );
+  });
+
+  test('hold an item or some gold, not both', () => {
+    const at = [0, 0] as const;
+    const flag = 'chest.test-01';
+    expect(() => compile('..', [{ type: 'chest', at, flag, item: 'potion', gold: 5 }])).toThrow(
+      'the chest at (0, 0) holds an item and gold; it can hold one or the other',
+    );
+    expect(() => compile('..', [{ type: 'chest', at, flag, gold: 0 }])).toThrow(
+      "the chest at (0, 0) can't hold 0 gold",
+    );
+    expect(() => compile('..', [{ type: 'chest', at, flag, gold: 2.5 }])).toThrow(
+      "can't hold 2.5 gold",
+    );
+    expect(() => compile('..', [{ type: 'chest', at, flag, item: 'Potion' }])).toThrow(
+      'the chest at (0, 0) holds "Potion", which isn\'t an item ID',
+    );
+  });
+
+  test('stand on open ground, out of everyone’s way', () => {
+    const HOME = { map: 'home', spawn: 'door' };
+    const npc: MapObject = { type: 'npc', id: 'ada', sprite: 'villager', at: [0, 0], facing: 'up' };
+    expect(() => compile('..', [chest(2, 0)])).toThrow('the chest at (2, 0) is off the map');
+    expect(() => compile('.r', [chest(1, 0)])).toThrow('the chest at (1, 0) is on a solid cell');
+    expect(() => compile('..', [{ type: 'warp', at: [0, 0], to: HOME }, chest(0, 0)])).toThrow(
+      'the chest at (0, 0) is in a way out',
+    );
+    expect(() =>
+      compile('..', [{ type: 'spawn', id: 'door', at: [0, 0], facing: 'up' }, chest(0, 0)]),
+    ).toThrow('the chest at (0, 0) is on spawn door');
+    expect(() => compile('..', [chest(0, 0), npc])).toThrow(
+      'the chest at (0, 0) is where npc ada starts',
+    );
+    expect(() => compile('..', [{ type: 'touch', at: [0, 0], script: 's' }, chest(0, 0)])).toThrow(
+      'the chest at (0, 0) is on a touch',
+    );
+    // Facing the hut's walkable cell runs the hut's script, as its wall's does.
+    expect(() =>
+      compile('..\n..\n..', [
+        { type: 'prefab', prefab: 'hut', at: [0, 0], script: 'hut' },
+        chest(1, 1),
+      ]),
+    ).toThrow('the chest at (1, 1) is on something that runs hut');
+    expect(() => compile('..', [chest(0, 0), chest(0, 0, 'chest.test-02')])).toThrow(
+      'the chest at (0, 0) shares its cell',
+    );
+  });
 });

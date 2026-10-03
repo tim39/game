@@ -93,6 +93,9 @@ export default defineMap({
     { type: 'spawn', id: 'lighthouse', at: [40, 21], facing: 'down' },
     { type: 'prefab', prefab: 'sign', at: [37, 14], script: 'saltmere/lighthouse-sign' },
 
+    // A signpost where the road north leaves the village.
+    { type: 'prefab', prefab: 'sign', at: [22, 2], script: 'saltmere/road-sign' },
+
     // Villagers, busy with the Kindling.
     {
       type: 'npc',

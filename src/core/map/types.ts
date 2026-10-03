@@ -1,3 +1,4 @@
+import type { Chest } from '../chest';
 import type { Condition } from '../conditions';
 import type { Direction } from '../direction';
 import type { BlobLayout } from './autotile';
@@ -143,8 +144,22 @@ export interface AutoObject {
   readonly when: Condition;
 }
 
+/**
+ * A treasure chest, holding an `item` or some `gold`. Facing it and pressing Confirm opens it, once:
+ * the party gets what's inside, and `flag` is set, which keeps it open (see src/core/chest.ts). It
+ * blocks the way, like a wall.
+ */
+export type ChestObject = { readonly type: 'chest'; readonly at: GridPoint } & Chest;
+
 export type MapObject =
-  PrefabObject | WarpObject | SpawnObject | NpcObject | TouchObject | EnterObject | AutoObject;
+  | PrefabObject
+  | WarpObject
+  | SpawnObject
+  | NpcObject
+  | TouchObject
+  | EnterObject
+  | AutoObject
+  | ChestObject;
 
 export const SIDES = ['north', 'south', 'east', 'west'] as const;
 export type Side = (typeof SIDES)[number];

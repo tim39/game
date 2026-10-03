@@ -153,6 +153,22 @@ test('up the lighthouse to the Beacon, past the shut way down to the caves', asy
   expect(errors).toEqual([]);
 });
 
+test('a signpost by the road north says where it goes', async ({ page }) => {
+  const errors = watchErrors(page);
+  // The sign stands at (22, 2), beside the road's way out between the trees.
+  await warp(page, 'saltmere', 22, 3, 'up');
+  expect(await field(page)).toMatchObject({ blocked: { up: true } });
+  expect(await talk(page)).toMatchObject({
+    name: '',
+    text: 'THE NORTH ROAD. To Wardenhold, and the rest of Aurel.',
+  });
+  await page.waitForFunction(() => window.__game?.inspect('dialogue')?.prompt === true);
+  await page.screenshot({ path: 'test-results/screenshots/saltmere-road-sign.png' });
+  await page.keyboard.press('KeyZ');
+  await page.waitForFunction(() => window.__game?.inspect('field')?.running === false);
+  expect(errors).toEqual([]);
+});
+
 test('Saltmere’s villagers can be talked to', async ({ page }) => {
   const errors = watchErrors(page);
   // The fisher stands at the end of the dock, at (16, 24); the vendor behind the baskets.

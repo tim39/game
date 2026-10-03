@@ -1,6 +1,8 @@
+import type { Chest } from '../chest';
 import { badConditionTerms, conditionHolds, type Condition } from '../conditions';
 import { isDirection, type Direction } from '../direction';
 import { PLAYER } from '../events';
+import { isId, isNamespacedId } from '../ids';
 import type { NpcPlacement } from '../npc';
 import type { GameState } from '../state';
 import { blobLookup, blobMask, type BlobLayout } from './autotile';
@@ -40,6 +42,9 @@ export interface TouchTrigger extends Trigger {
   readonly y: number;
 }
 
+/** A chest on the map, by its cell. */
+export type ChestPlacement = Chest & { readonly x: number; readonly y: number };
+
 /** A map ready to draw and walk on. Cell (x, y) is at index y × width + x in the per-cell arrays. */
 export interface CompiledMap {
   readonly id: string;
@@ -63,6 +68,8 @@ export interface CompiledMap {
   readonly enters: readonly Trigger[];
   /** Scripts that run as soon as their condition holds. */
   readonly autos: readonly Trigger[];
+  /** Treasure chests, in the order the map lists them. Their cells are solid. */
+  readonly chests: readonly ChestPlacement[];
 }
 
 /** The edge a cell just off the map is past, or null for a cell on the map. */
@@ -86,6 +93,10 @@ export function scriptAt(map: CompiledMap, x: number, y: number): string | null 
   if (sideOf(map, x, y)) return null;
   return map.scripts[y * map.width + x] ?? null;
 }
+
+/** The chest standing in (x, y), if any. */
+export const chestAt = (map: CompiledMap, x: number, y: number): ChestPlacement | null =>
+  map.chests.find((chest) => chest.x === x && chest.y === y) ?? null;
 
 /** What stepping onto (x, y) sets off: the first touch trigger there whose condition holds. */
 export function touchAt(
@@ -190,6 +201,7 @@ export function compileMap(def: MapDef, content: MapContent): CompiledMap {
   const touches: TouchTrigger[] = [];
   const enters: Trigger[] = [];
   const autos: Trigger[] = [];
+  const chests: ChestPlacement[] = [];
 
   /** A trigger, checking its condition names flags. */
   function trigger(kind: string, script: string, when: Condition | undefined): Trigger {
@@ -363,6 +375,28 @@ export function compileMap(def: MapDef, content: MapContent): CompiledMap {
         });
         break;
       }
+      case 'chest': {
+        const at = `the chest at (${x}, ${y})`;
+        const { flag } = object;
+        if (!onMap(x, y)) fail(`${at} is off the map`);
+        if (!isNamespacedId(flag) || !flag.startsWith('chest.')) {
+          fail(`${at} has the flag "${flag}"; chest flags look like chest.${def.id}-01`);
+        }
+        if (chests.some((chest) => chest.flag === flag)) fail(`two chests have the flag ${flag}`);
+        if ('item' in object && 'gold' in object) {
+          fail(`${at} holds an item and gold; it can hold one or the other`);
+        }
+        if ('gold' in object) {
+          if (!Number.isSafeInteger(object.gold) || object.gold < 1) {
+            fail(`${at} can't hold ${object.gold} gold`);
+          }
+          chests.push({ x, y, flag, gold: object.gold });
+        } else {
+          if (!isId(object.item)) fail(`${at} holds "${object.item}", which isn't an item ID`);
+          chests.push({ x, y, flag, item: object.item });
+        }
+        break;
+      }
     }
   }
 
@@ -392,6 +426,24 @@ export function compileMap(def: MapDef, content: MapContent): CompiledMap {
     if (solid[index]) fail(`the touch at (${x}, ${y}) running ${script} is on a solid cell`);
     if (warps[index]) fail(`the touch at (${x}, ${y}) running ${script} is in a way out`);
   }
+  // A chest stands on open ground, in nobody's way and on nothing else that does something. Then
+  // it's as solid as a wall.
+  for (const chest of chests) {
+    const at = `the chest at (${chest.x}, ${chest.y})`;
+    const here = ({ x, y }: { x: number; y: number }): boolean => x === chest.x && y === chest.y;
+    const index = chest.y * width + chest.x;
+    const spawn = Object.entries(spawns).find(([, s]) => here(s));
+    const npc = npcs.find(here);
+    const script = scripts[index];
+    if (solid[index]) fail(`${at} is on a solid cell`);
+    if (warps[index]) fail(`${at} is in a way out`);
+    if (spawn) fail(`${at} is on spawn ${spawn[0]}`);
+    if (npc) fail(`${at} is where npc ${npc.id} starts`);
+    if (touches.some(here)) fail(`${at} is on a touch`);
+    if (script) fail(`${at} is on something that runs ${script}`);
+    if (chests.some((other) => other !== chest && here(other))) fail(`${at} shares its cell`);
+  }
+  for (const { x, y } of chests) solid[y * width + x] = true;
 
   const edges = def.edges ?? {};
   return {
@@ -408,5 +460,6 @@ export function compileMap(def: MapDef, content: MapContent): CompiledMap {
     touches,
     enters,
     autos,
+    chests,
   };
 }

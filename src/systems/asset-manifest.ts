@@ -87,6 +87,9 @@ export const ASSETS = {
   'sprite.child': sheet('sprites/child.png'),
   'sprite.shadow': image('sprites/shadow.png'), // drawn under characters
 
+  // Things on the map that change, drawn as sprites rather than tiles.
+  'object.chest': frames('sprites/treasure-chest.png', 16, 14), // shut, then open
+
   // Dialogue portraits, 38×38
   'portrait.rowan': image('portraits/hunter.png'),
   'portrait.bram': image('portraits/knight.png'),

@@ -55,6 +55,10 @@ export const lighthouseSign = defineEvent(async (ev) => {
   await ev.say('sign', 'THE LIGHTHOUSE. The Tide Beacon burns here. Keep the flame.');
 });
 
+export const roadSign = defineEvent(async (ev) => {
+  await ev.say('sign', 'THE NORTH ROAD. To Wardenhold, and the rest of Aurel.');
+});
+
 export const caveStairs = defineEvent(async (ev) => {
   await ev.say(
     'sign',

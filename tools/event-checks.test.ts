@@ -1,11 +1,13 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { expect, test } from 'vitest';
+import type { ChestText } from '../src/core/chest';
 import { defineEvent } from '../src/core/events';
 import type { MapDef } from '../src/core/map/types';
 import { EVENTS } from '../src/data/events';
 import { MAPS } from '../src/data/maps';
 import { SPEAKERS } from '../src/data/speakers';
+import { CHEST_TEXT } from '../src/data/ui-text';
 import { ASSETS, type AssetEntry } from '../src/systems/asset-manifest';
 import { checkEvents, type EventSources } from './event-checks';
 import { measureBodyFont, type MeasuredFont } from './font-metrics';
@@ -28,6 +30,17 @@ const hello = defineEvent(async (ev) => {
   await ev.say('ada', 'Hello.');
 });
 
+/** Chests that say what's inside, beside a portrait: there's no sign speaker in these tests. */
+const CHEST_TEXT_ADA: ChestText = {
+  speaker: 'ada',
+  found: (contents) => {
+    if ('gold' in contents) return `Found ${contents.gold} gold!`;
+    if (contents.item === 'nothing') throw new Error("There's no item called nothing");
+    return `Found ${contents.item}!`;
+  },
+  empty: 'Empty.',
+};
+
 const map: MapDef = {
   id: 'a',
   name: 'A',
@@ -47,6 +60,7 @@ const check = (overrides: Partial<EventSources>): Promise<string[]> =>
     maps: {},
     manifest: MANIFEST,
     font: FONT,
+    chestText: CHEST_TEXT_ADA,
     ...overrides,
   });
 
@@ -308,6 +322,30 @@ test('reports scripts that triggers run but do not exist', async () => {
   ]);
 });
 
+test('runs every chest, which must say what it holds in a line that fits', async () => {
+  const chests: MapDef = {
+    ...map,
+    objects: [
+      { type: 'chest', at: [0, 0], flag: 'chest.a-01', item: 'potion' },
+      { type: 'chest', at: [1, 0], flag: 'chest.a-02', gold: 5 },
+      { type: 'chest', at: [2, 0], flag: 'chest.a-03', item: 'nothing' },
+    ],
+  };
+  expect(await check({ maps: { a: chests } })).toEqual([
+    "Map a: the chest at (2, 0): There's no item called nothing",
+  ]);
+
+  // Its words are measured like any line: here, beside a portrait.
+  const wordy: ChestText = { ...CHEST_TEXT_ADA, empty: words(13) };
+  const tooLong = '"abcdefghi abcdefghi abcdefghi…" needs 4 lines, but the box holds 3';
+  expect(await check({ maps: { a: chests }, chestText: wordy })).toEqual([
+    `Map a: the chest at (0, 0): ${tooLong}`,
+    `Map a: the chest at (1, 0): ${tooLong}`,
+    "Map a: the chest at (2, 0): There's no item called nothing",
+    `Map a: the chest at (2, 0): ${tooLong}`,
+  ]);
+});
+
 // The same check as `npm run validate`, so it also runs with the unit tests.
 test('the real event scripts, speakers and maps check out', async () => {
   const problems = await checkEvents({
@@ -318,6 +356,7 @@ test('the real event scripts, speakers and maps check out', async () => {
     font: measureBodyFont(
       readFileSync(join(import.meta.dirname, '../public', ASSETS['font.body'].url)),
     ),
+    chestText: CHEST_TEXT,
   });
   expect(problems).toEqual([]);
 });

@@ -109,6 +109,29 @@ test('reports trees on missing ground or prefabs, and maps that do not compile',
   ]);
 });
 
+test('reports chests that share a flag with a chest on another map', () => {
+  const room = (id: string, objects: MapDef['objects']): MapDef => ({
+    id,
+    name: id,
+    terrain: '..',
+    legend: { '.': 'grass' },
+    objects,
+  });
+  const problems = check(content({}), {
+    a: room('a', [
+      { type: 'chest', at: [0, 0], flag: 'chest.a-01', item: 'potion' },
+      { type: 'chest', at: [1, 0], flag: 'chest.a-02', gold: 10 },
+    ]),
+    b: room('b', [
+      { type: 'chest', at: [0, 0], flag: 'chest.b-01', item: 'potion' },
+      { type: 'chest', at: [1, 0], flag: 'chest.a-02', item: 'potion' },
+    ]),
+  });
+  expect(problems).toEqual([
+    'Map b: the chest at (1, 0) has the flag chest.a-02, as the chest at (1, 0) on a does',
+  ]);
+});
+
 // The same check as `npm run validate`, so it also runs with the unit tests.
 test('the real maps, terrains and prefabs check out', () => {
   const publicDir = fileURLToPath(new URL('../public', import.meta.url));

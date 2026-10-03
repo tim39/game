@@ -1,3 +1,4 @@
+import { chestScript, type ChestText } from '../src/core/chest';
 import { isDirection } from '../src/core/direction';
 import { PLAYER, type EventContext, type EventScript } from '../src/core/events';
 import type { MapDef, MapObject } from '../src/core/map/types';
@@ -29,6 +30,8 @@ export interface EventSources {
   readonly manifest: Readonly<Record<string, AssetEntry>>;
   /** The body font, which dialogue is drawn in. */
   readonly font: MeasuredFont;
+  /** What opening a chest says, as in src/data/ui-text.ts. */
+  readonly chestText: ChestText;
 }
 
 /** More questions than this in one run of a script stops the run: it's probably asking in a loop. */
@@ -54,7 +57,9 @@ class LongPath extends Error {}
  *   fade for real lengths of time;
  * - every line it says fits in the dialogue box (three lines, narrower beside a portrait), every
  *   choice it offers fits the choice box, it offers one to four at a time, and the font has every
- *   character they use.
+ *   character they use;
+ * - every chest's script passes the same checks, run on its map: what it says when it opens and
+ *   when it's empty fits the box, and it holds an item that exists.
  */
 export async function checkEvents({
   events,
@@ -62,6 +67,7 @@ export async function checkEvents({
   maps,
   manifest,
   font,
+  chestText,
 }: EventSources): Promise<string[]> {
   const problems: string[] = [];
   // Which maps run each script.
@@ -85,12 +91,35 @@ export async function checkEvents({
     }
   }
 
-  for (const [id, script] of Object.entries(events)) {
+  // Every script to run, named as its problems are: the event scripts, each on every map that runs
+  // it, and the script each chest runs, which says what's inside, on its map.
+  const runs = [
+    ...Object.entries(events).map(([id, script]) => ({
+      name: `Event ${id}`,
+      script,
+      startMaps: runBy.get(id) ?? [null],
+    })),
+    ...Object.values(maps).flatMap((map) =>
+      (map.objects ?? []).flatMap((object) =>
+        object.type === 'chest'
+          ? [
+              {
+                name: `Map ${map.id}: ${describe(object)}`,
+                script: chestScript(object, chestText),
+                startMaps: [map.id],
+              },
+            ]
+          : [],
+      ),
+    ),
+  ];
+
+  for (const { name, script, startMaps } of runs) {
     // A problem found on many paths is reported once. Problems with a line are told apart by the
     // whole line, as the report only quotes the start of it.
     const found = new Map<string, string>();
     const report = (problem: string, key = problem): void => {
-      if (!found.has(key)) found.set(key, `Event ${id}: ${problem}`);
+      if (!found.has(key)) found.set(key, `${name}: ${problem}`);
     };
     const unknownCharacters = (text: string): string[] => [
       ...new Set([...text].filter((char) => char !== '\n' && !font.has(char))),
@@ -143,7 +172,7 @@ export async function checkEvents({
 
     // Each run follows a path: the answer to each question, 0 past its end. Reaching a question
     // past the end for the first time queues the paths that answer it the other ways.
-    for (const startMap of runBy.get(id) ?? [null]) {
+    for (const startMap of startMaps) {
       const paths: number[][] = [[]];
       for (let runs = 0; paths.length > 0; runs++) {
         if (runs === MAX_PATHS) {
@@ -290,6 +319,7 @@ function scriptOf(object: MapObject): string | undefined {
       return object.script;
     case 'warp':
     case 'spawn':
+    case 'chest':
       return undefined;
   }
 }
@@ -307,6 +337,8 @@ function describe(object: MapObject): string {
       return 'its enter trigger';
     case 'auto':
       return 'its auto trigger';
+    case 'chest':
+      return `the chest at (${object.at[0]}, ${object.at[1]})`;
     case 'warp':
     case 'spawn':
       return `its ${object.type}`;

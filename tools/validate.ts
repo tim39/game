@@ -7,6 +7,7 @@ import { EVENTS } from '../src/data/events';
 import { MAPS } from '../src/data/maps';
 import { SPEAKERS } from '../src/data/speakers';
 import { MAP_CONTENT } from '../src/data/terrain';
+import { CHEST_TEXT } from '../src/data/ui-text';
 import { ASSETS } from '../src/systems/asset-manifest';
 import { checkAssets, pngSize } from './asset-checks';
 import { checkEvents } from './event-checks';
@@ -40,6 +41,7 @@ const problems = [
     maps: MAPS,
     manifest: ASSETS,
     font: measureBodyFont(readFileSync(join(PUBLIC, ASSETS['font.body'].url))),
+    chestText: CHEST_TEXT,
   })),
 ];
 
@@ -49,13 +51,18 @@ if (problems.length > 0) {
 }
 const keys = Object.keys(ASSETS).length;
 const maps = Object.keys(MAPS).length;
+const chests = Object.values(MAPS).flatMap((map) =>
+  (map.objects ?? []).filter((object) => object.type === 'chest'),
+).length;
 console.log(`Assets: all ${keys} manifest keys point at real files, and every file is credited.`);
 console.log(
   `Maps: ${maps === 1 ? 'the 1 map compiles' : `all ${maps} maps compile`}, and every tile ` +
-    'their terrains and prefabs use exists; every way out leads somewhere.',
+    'their terrains and prefabs use exists; every way out leads somewhere; no two chests share ' +
+    'a flag.',
 );
 console.log(
-  `Events: all ${Object.keys(EVENTS).length} event scripts run down every path through their ` +
-    'choices and flags; every script, speaker, portrait, person and spawn they or the maps name ' +
-    'exists; and every line and choice fits its box, in characters the font has.',
+  `Events: all ${Object.keys(EVENTS).length} event scripts and ${chests} chests run down every ` +
+    'path through their choices and flags; every script, speaker, portrait, person and spawn ' +
+    'they or the maps name exists, as does every item in a chest; and every line and choice ' +
+    'fits its box, in characters the font has.',
 );

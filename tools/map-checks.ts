@@ -18,7 +18,8 @@ export interface MapSources {
  * - every tile a terrain or prefab uses is inside a 16×16 sprite sheet from the manifest;
  * - the terrains and prefabs that terrains refer to exist;
  * - every map compiles, and every warp, doorway and edge leads to a spawn that exists;
- * - every NPC's sprite is a 16×16 character sheet in the asset manifest.
+ * - every NPC's sprite is a 16×16 character sheet in the asset manifest;
+ * - no two chests share a flag, on any map, so each opens by itself.
  */
 export function checkMaps({ maps, content, manifest, imageSize }: MapSources): string[] {
   const problems: string[] = [];
@@ -110,6 +111,17 @@ export function checkMaps({ maps, content, manifest, imageSize }: MapSources): s
           `Map ${map.id}: npc ${npc.id}'s sprite, sprite.${npc.sprite}, isn't a character sheet`,
         );
       }
+    }
+  }
+
+  // The compiler keeps a map's chest flags apart; these are kept apart across maps.
+  const chestFlags = new Map<string, string>();
+  for (const map of compiled.values()) {
+    for (const { x, y, flag } of map.chests) {
+      const chest = `the chest at (${x}, ${y})`;
+      const first = chestFlags.get(flag);
+      if (first) problems.push(`Map ${map.id}: ${chest} has the flag ${flag}, as ${first} does`);
+      else chestFlags.set(flag, `${chest} on ${map.id}`);
     }
   }
 

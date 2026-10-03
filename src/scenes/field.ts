@@ -1,8 +1,10 @@
 import Phaser from 'phaser';
+import { chestScript } from '../core/chest';
 import { DIRECTIONS, STEP, directionTowards, isDirection, type Direction } from '../core/direction';
-import { PLAYER, type EventContext } from '../core/events';
+import { PLAYER, type EventContext, type EventScript } from '../core/events';
 import {
   autoTrigger,
+  chestAt,
   compileMap,
   enterTrigger,
   exitAt,
@@ -11,6 +13,7 @@ import {
   scriptAt,
   sideOf,
   touchAt,
+  type ChestPlacement,
   type CompiledMap,
   type Spawn,
   type Trigger,
@@ -20,7 +23,7 @@ import { createNpc, lookAt, updateNpc, type Npc } from '../core/npc';
 import { Rng } from '../core/rng';
 import { walkRoute, type RouteWalk } from '../core/route';
 import { createScriptContext, type Stage } from '../core/script-context';
-import { addPlayTime, setLocation } from '../core/state';
+import { addPlayTime, hasFlag, setLocation } from '../core/state';
 import {
   facingCell,
   occupies,
@@ -35,6 +38,7 @@ import { EVENTS } from '../data/events';
 import { MAPS } from '../data/maps';
 import { SPEAKERS } from '../data/speakers';
 import { MAP_CONTENT } from '../data/terrain';
+import { CHEST_TEXT } from '../data/ui-text';
 import { cameraBounds } from '../systems/camera';
 import { characterFrame, sheetRows } from '../systems/character-frames';
 import { CollisionView } from '../systems/collision-view';
@@ -64,6 +68,10 @@ const MAX_FRAME_MS = 100;
 
 const PLAYER_SPRITE = 'sprite.rowan';
 
+/** A chest's sprite sheet: shut, then open. Its frames are shorter than a tile. */
+const CHEST_SPRITE = 'object.chest';
+const CHEST_FRAME = { shut: 0, open: 1 } as const;
+
 /** A character on screen: their sprite, and how many rows their sheet has. */
 interface Figure {
   readonly sprite: Phaser.GameObjects.Sprite;
@@ -72,6 +80,12 @@ interface Figure {
 
 interface NpcOnMap extends Figure {
   npc: Npc;
+}
+
+/** A chest on screen, shut or open as its flag says. */
+interface ChestOnMap {
+  readonly chest: ChestPlacement;
+  readonly sprite: Phaser.GameObjects.Sprite;
 }
 
 /** Someone a script is walking along a route, and the promise to keep once they're there. */
@@ -98,6 +112,7 @@ export class FieldScene extends Phaser.Scene {
   private overhead?: Phaser.Tilemaps.TilemapLayer;
   private walker: Walker = standingWalker(0, 0);
   private npcs: NpcOnMap[] = [];
+  private chests: ChestOnMap[] = [];
   /** Where the NPCs' wandering comes from. */
   private rng = Rng.fromSeed(0);
   /** The direction pressed most recently, which wins while several are held. */
@@ -142,6 +157,14 @@ export class FieldScene extends Phaser.Scene {
     this.npcs = map.npcs.map((placement) => ({
       npc: createNpc(placement, this.rng, NPC_TUNING),
       ...this.figure(`sprite.${placement.sprite}`),
+    }));
+    // A chest stands on the bottom of its cell, sorted with the characters as they are by height.
+    this.chests = map.chests.map((chest) => ({
+      chest,
+      sprite: this.add
+        .sprite(chest.x * TILE + TILE / 2, (chest.y + 1) * TILE, CHEST_SPRITE)
+        .setOrigin(0.5, 1)
+        .setDepth(DEPTH.characters + (chest.y * TILE) / 100_000),
     }));
     this.world = {
       // Noclip, a debug switch, walks through walls and people, but not off the map.
@@ -313,6 +336,13 @@ export class FieldScene extends Phaser.Scene {
         home: { x: npc.placement.x, y: npc.placement.y },
         wander: npc.placement.wander,
       })),
+      chests: this.chests.map(({ chest, sprite }) => ({
+        x: chest.x,
+        y: chest.y,
+        flag: chest.flag,
+        // As drawn.
+        open: Number(sprite.frame.name) === CHEST_FRAME.open,
+      })),
     };
   }
 
@@ -333,8 +363,9 @@ export class FieldScene extends Phaser.Scene {
   }
 
   /**
-   * Talks to the NPC in front of the player, who turns to face them, or else runs the script of
-   * whatever is there. Someone partway through a step can't be talked to until they've finished it.
+   * Talks to the NPC in front of the player, who turns to face them, opens the chest there, or else
+   * runs the script of whatever is there. Someone partway through a step can't be talked to until
+   * they've finished it.
    */
   private interact(map: CompiledMap): void {
     const [x, y] = facingCell(this.walker);
@@ -345,6 +376,12 @@ export class FieldScene extends Phaser.Scene {
       if (someone.npc.placement.script) this.run(someone.npc.placement.script);
       return;
     }
+    // A chest's script is named after its flag, in the debug info.
+    const chest = chestAt(map, x, y);
+    if (chest) {
+      this.start(chest.flag, chestScript(chest, CHEST_TEXT));
+      return;
+    }
     const script = scriptAt(map, x, y);
     if (script) this.run(script);
   }
@@ -353,13 +390,18 @@ export class FieldScene extends Phaser.Scene {
     if (trigger) this.run(trigger.script);
   }
 
-  /** Runs an event script; until it ends the field stands still. */
+  /** Runs an event script, by its ID. */
   private run(id: string): void {
     const script = EVENTS[id];
     if (!script) {
       console.error(`There's no event script called ${id}`);
       return;
     }
+    this.start(id, script);
+  }
+
+  /** Starts a script, which `id` names; until it ends the field stands still. */
+  private start(id: string, script: EventScript): void {
     const running = { id };
     this.script = running;
     void script(this.scriptContext())
@@ -569,9 +611,13 @@ export class FieldScene extends Phaser.Scene {
     return this.lastDirection;
   }
 
+  /** Draws the characters where they are, and the chests shut or open as their flags say. */
   private drawFigures(): void {
     if (this.player) draw(this.player, this.walker);
     for (const { npc, sprite, rows } of this.npcs) draw({ sprite, rows }, npc.walker);
+    for (const { chest, sprite } of this.chests) {
+      sprite.setFrame(hasFlag(session.state, chest.flag) ? CHEST_FRAME.open : CHEST_FRAME.shut);
+    }
   }
 
   /** Shows or hides the collision view as its debug switch says, and keeps up with the people. */

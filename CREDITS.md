@@ -33,6 +33,7 @@ By **Pixel-boy** and **AAA**: https://pixel-boy.itch.io/ninja-adventure-asset-pa
 | `public/assets/sprites/old-man-3.png` | Villagers | `Actor/Character/OldMan3/SpriteSheet.png` | None |
 | `public/assets/sprites/child.png` | Villagers | `Actor/Character/Child/SpriteSheet.png` | None |
 | `public/assets/sprites/shadow.png` | Shadow under characters | `Actor/Character/Shadow.png` | None |
+| `public/assets/sprites/treasure-chest.png` | Treasure chests, shut and open | `Items/Treasure/BigTreasureChest.png` | None |
 | `public/assets/tiles/floor.png` | Ground: grass, sand, dirt paths | `Backgrounds/Tilesets/TilesetFloor.png` | Cropped a blank 1 px row off the bottom (417 to 416 px tall), so it divides into 16 px tiles |
 | `public/assets/tiles/water.png` | Sea, shorelines, docks | `Backgrounds/Tilesets/TilesetWater.png` | None |
 | `public/assets/tiles/nature.png` | Trees, bushes, rocks, flowers | `Backgrounds/Tilesets/TilesetNature.png` | None |
