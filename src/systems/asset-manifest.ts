@@ -22,7 +22,18 @@ export interface SpriteSheetAsset {
   readonly frameHeight: number;
 }
 
-export type AssetEntry = ImageAsset | SpriteSheetAsset;
+/**
+ * A sound, as an Ogg Vorbis file and an AAC (.m4a) one for browsers without Ogg, such as older
+ * Safari. Phaser loads the first the browser can play. Keys say what it's for: `bgm.*` is music,
+ * which loops, and `sfx.*` a sound effect.
+ */
+export interface AudioAsset {
+  readonly type: 'audio';
+  /** Relative to public/: the .ogg, then the .m4a. */
+  readonly urls: readonly [ogg: string, m4a: string];
+}
+
+export type AssetEntry = ImageAsset | SpriteSheetAsset | AudioAsset;
 
 const TILE = 16;
 
@@ -37,6 +48,12 @@ const frames = (path: string, frameWidth: number, frameHeight: number): SpriteSh
 
 /** Tilesets and character sheets both use 16×16 frames. */
 const sheet = (path: string): SpriteSheetAsset => frames(path, TILE, TILE);
+
+/** `path` without its extension: both the .ogg and the .m4a are there. */
+const sound = (path: string): AudioAsset => ({
+  type: 'audio',
+  urls: [`assets/${path}.ogg`, `assets/${path}.m4a`],
+});
 
 export const ASSETS = {
   // Fonts. src/ui/fonts.ts turns each image into a bitmap font with the same key.
@@ -94,6 +111,11 @@ export const ASSETS = {
   'portrait.rowan': image('portraits/hunter.png'),
   'portrait.bram': image('portraits/knight.png'),
   'portrait.tamsin': image('portraits/old-woman.png'),
+
+  // Music, which loops (see Draft soundtrack in DESIGN.md), and sound effects.
+  'bgm.title': sound('bgm/intro'),
+  'bgm.saltmere': sound('bgm/calm-village'),
+  'sfx.chest': sound('sfx/secret-2'),
 } as const satisfies Record<string, AssetEntry>;
 
 export type AssetKey = keyof typeof ASSETS;

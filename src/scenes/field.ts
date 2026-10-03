@@ -39,6 +39,7 @@ import { MAPS } from '../data/maps';
 import { SPEAKERS } from '../data/speakers';
 import { MAP_CONTENT } from '../data/terrain';
 import { CHEST_TEXT } from '../data/ui-text';
+import { audio } from '../systems/audio';
 import { cameraBounds } from '../systems/camera';
 import { characterFrame, sheetRows } from '../systems/character-frames';
 import { CollisionView } from '../systems/collision-view';
@@ -71,6 +72,8 @@ const PLAYER_SPRITE = 'sprite.rowan';
 /** A chest's sprite sheet: shut, then open. Its frames are shorter than a tile. */
 const CHEST_SPRITE = 'object.chest';
 const CHEST_FRAME = { shut: 0, open: 1 } as const;
+/** Plays as a chest opens. */
+const CHEST_SOUND = 'sfx.chest';
 
 /** A character on screen: their sprite, and how many rows their sheet has. */
 interface Figure {
@@ -152,6 +155,8 @@ export class FieldScene extends Phaser.Scene {
     this.stopWalks();
     const map = compileMap(def, MAP_CONTENT);
     this.map = map;
+    // The same music as the last map's plays on.
+    audio.playMusic(def.music ?? null);
     this.overhead = createTilemap(this, map).overhead;
     this.rng = Rng.fromSeed(`field:${map.id}`);
     this.npcs = map.npcs.map((placement) => ({
@@ -162,7 +167,7 @@ export class FieldScene extends Phaser.Scene {
     this.chests = map.chests.map((chest) => ({
       chest,
       sprite: this.add
-        .sprite(chest.x * TILE + TILE / 2, (chest.y + 1) * TILE, CHEST_SPRITE)
+        .sprite(chest.x * TILE + TILE / 2, (chest.y + 1) * TILE, CHEST_SPRITE, chestFrame(chest))
         .setOrigin(0.5, 1)
         .setDepth(DEPTH.characters + (chest.y * TILE) / 100_000),
     }));
@@ -455,6 +460,8 @@ export class FieldScene extends Phaser.Scene {
       fadeOut: (ms = MAP_FADE_MS) => this.fade('out', checkedMs(ms)),
       fadeIn: (ms = MAP_FADE_MS) => this.fade('in', checkedMs(ms)),
       teleport: (map, spawn) => this.teleport(map, spawn),
+      bgm: (track) => audio.playMusic(track),
+      sfx: (sound) => audio.playSound(sound),
     };
     return createScriptContext(stage, {
       get: () => session.state,
@@ -611,12 +618,18 @@ export class FieldScene extends Phaser.Scene {
     return this.lastDirection;
   }
 
-  /** Draws the characters where they are, and the chests shut or open as their flags say. */
+  /**
+   * Draws the characters where they are, and the chests shut or open as their flags say, with a
+   * sound as one opens.
+   */
   private drawFigures(): void {
     if (this.player) draw(this.player, this.walker);
     for (const { npc, sprite, rows } of this.npcs) draw({ sprite, rows }, npc.walker);
     for (const { chest, sprite } of this.chests) {
-      sprite.setFrame(hasFlag(session.state, chest.flag) ? CHEST_FRAME.open : CHEST_FRAME.shut);
+      const frame = chestFrame(chest);
+      if (Number(sprite.frame.name) === frame) continue;
+      sprite.setFrame(frame);
+      if (frame === CHEST_FRAME.open) audio.playSound(CHEST_SOUND);
     }
   }
 
@@ -631,6 +644,10 @@ export class FieldScene extends Phaser.Scene {
     this.collisionView?.update(this.npcs.map(({ npc }) => npc.walker));
   }
 }
+
+/** A chest's frame: open once its flag is set. */
+const chestFrame = (chest: ChestPlacement): number =>
+  hasFlag(session.state, chest.flag) ? CHEST_FRAME.open : CHEST_FRAME.shut;
 
 /** A time a script asks for, which has to be a real one. */
 function checkedMs(ms: number): number {

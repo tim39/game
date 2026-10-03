@@ -170,6 +170,11 @@ export interface MapDef {
   /** The place name, as the area banner shows it. */
   readonly name: string;
   /**
+   * The music that plays on arriving, `bgm.*` in the asset manifest; without it, silence. A map
+   * with the same music as the last carries on playing it, so a town's houses share its tune.
+   */
+  readonly music?: string;
+  /**
    * One line per row of cells and one character per cell, each looked up in `legend`.
    * Blank lines at either end and the indentation shared by every line are ignored.
    */

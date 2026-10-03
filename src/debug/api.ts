@@ -1,5 +1,6 @@
 import type { Direction } from '../core/direction';
 import type { GameState } from '../core/state';
+import type { AudioInfo } from '../systems/audio';
 
 /**
  * What dev and e2e builds expose as `window.__game`, for tests and for poking at the game by hand.
@@ -28,6 +29,8 @@ export interface DebugApi {
   give(item: string, count?: number): void;
   /** Runs an event script on the field, as if something had set it off. Throws if one is running. */
   run(script: string): void;
+  /** The music playing and fading, and the latest sound effects. */
+  audio(): AudioInfo;
 }
 
 declare global {

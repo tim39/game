@@ -20,6 +20,9 @@ const POTION: Chest = { flag: 'chest.test-01', item: 'potion' };
 /** A stage that writes down what's said. A chest does nothing else. */
 function talkingStage(said: string[]): Stage {
   const offStage = (): Promise<never> => Promise.reject(new Error('A chest only says things'));
+  const silent = (): never => {
+    throw new Error('A chest only says things');
+  };
   return {
     say: (speaker, line) => {
       said.push(`${speaker}: ${line}`);
@@ -32,6 +35,8 @@ function talkingStage(said: string[]): Stage {
     fadeOut: offStage,
     fadeIn: offStage,
     teleport: offStage,
+    bgm: silent,
+    sfx: silent,
   };
 }
 

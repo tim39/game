@@ -57,12 +57,12 @@ const chests = Object.values(MAPS).flatMap((map) =>
 console.log(`Assets: all ${keys} manifest keys point at real files, and every file is credited.`);
 console.log(
   `Maps: ${maps === 1 ? 'the 1 map compiles' : `all ${maps} maps compile`}, and every tile ` +
-    'their terrains and prefabs use exists; every way out leads somewhere; no two chests share ' +
-    'a flag.',
+    'their terrains and prefabs use exists; every way out leads somewhere; their music exists; ' +
+    'no two chests share a flag.',
 );
 console.log(
   `Events: all ${Object.keys(EVENTS).length} event scripts and ${chests} chests run down every ` +
-    'path through their choices and flags; every script, speaker, portrait, person and spawn ' +
-    'they or the maps name exists, as does every item in a chest; and every line and choice ' +
-    'fits its box, in characters the font has.',
+    'path through their choices and flags; every script, speaker, portrait, person, spawn, ' +
+    'music and sound they or the maps name exists, as does every item in a chest; and every ' +
+    'line and choice fits its box, in characters the font has.',
 );

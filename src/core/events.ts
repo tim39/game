@@ -3,8 +3,8 @@ import type { Direction } from './direction';
 /**
  * Event scripts: cutscenes and interactions, written as async functions run against an
  * EventContext (see Event scripts in docs/TECH.md). Verbs that happen on screen return promises
- * that resolve once they're done; verbs that read or change the game state are immediate.
- * The context grows a verb at a time as content needs it.
+ * that resolve once they're done; music and sound, and the verbs that read or change the game
+ * state, are immediate. The context grows a verb at a time as content needs it.
  */
 export interface EventContext {
   /**
@@ -39,6 +39,13 @@ export interface EventContext {
    * Like a door, it fades through black; if the screen is black already, it stays black.
    */
   teleport(map: string, spawn: string): Promise<void>;
+  /**
+   * Changes the music to a track from the asset manifest, like `bgm.saltmere`, or with null fades
+   * it out. It crossfades while the script carries on. Arriving on a map plays that map's music.
+   */
+  bgm(track: string | null): void;
+  /** Plays a sound effect from the asset manifest, like `sfx.chest`, while the script carries on. */
+  sfx(sound: string): void;
 
   /** Whether a flag is set, like `story.beacon-out`. */
   flag(name: string): boolean;

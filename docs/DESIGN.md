@@ -242,8 +242,8 @@ The on-screen controls appear only on touch devices: phones and tablets from the
 - **Battles** reuse the field sprites at 2× scale, animated with tweens (step forward, lunge, flash, shake, KO fade), so no separate battle art is needed. Spells use particles and the pack's effects, colored by element. Bosses are drawn larger.
 - **Portraits** (the pack's facesets) appear in dialogue and battle status.
 - **Mood:** warm gold for Beacon light and towns; desaturated violet-grey for the Gloam. Act 3 reuses existing maps with a Gloam tint and a fog overlay.
-- **Music:** title, town, overworld, two dungeon themes, battle, boss, final boss, victory fanfare, a sorrow theme and the ending. Field music crossfades between maps; battle music interrupts it, and the field track resumes where it left off.
-- **Sound effects:** cursor, confirm, cancel, buzzer, hits for each element, critical hit, heal, status, KO, level up, chest, door.
+- **Music:** title, town, overworld, two dungeon themes, battle, boss, final boss, victory fanfare, a sorrow theme and the ending. Each map has its own music, and field music crossfades between maps (about a second); a town's houses share its music, which plays on as you go in and out. Cutscenes can change the music until you next arrive somewhere. Battle music interrupts it, and the field track resumes where it left off. Browsers stay silent until the first key press or touch, so the title music starts then.
+- **Sound effects:** cursor, confirm, cancel, buzzer, hits for each element, critical hit, heal, status, KO, level up, chest, door. They play over the music; the same sound asked for twice at once plays once.
 
 ### Draft soundtrack
 
@@ -270,6 +270,7 @@ Picked from the pack's 41 tracks by title only. Listen and swap freely.
 | Ending | 8 - End Theme |
 | Credits | 15 - Credit Theme |
 | Victory, level up | Jingles: Success1, LevelUp1 |
+| Opening a chest | Jingles: Secret2 (picked from its spectrogram, unheard) |
 
 ## Accessibility
 

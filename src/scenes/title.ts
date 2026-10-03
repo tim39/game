@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { UI_TEXT } from '../data/ui-text';
+import { audio } from '../systems/audio';
 import { input } from '../systems/input/game-input';
 import { touchMode } from '../systems/input/touch-controls';
 import { startNewGame } from '../systems/session';
@@ -22,6 +23,7 @@ const DIM = 0x5a5270;
 const MENU_X = 264;
 const MENU_TOP = 192;
 const MENU_SPACING = 24;
+const MUSIC = 'bgm.title';
 
 /** Placeholder title screen until the real one arrives with the vertical slice (M6). */
 export class TitleScene extends Phaser.Scene {
@@ -38,6 +40,8 @@ export class TitleScene extends Phaser.Scene {
     const centerX = this.scale.width / 2;
     this.selected = 0;
     this.cursorMoves = 0;
+    // It starts with the player's first key press or touch, which browsers wait for.
+    audio.playMusic(MUSIC);
 
     const ember = this.add.circle(centerX, 56, 8, 0xffa040);
     this.tweens.add({

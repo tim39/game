@@ -10,7 +10,7 @@ interface LoadedTexture {
   frames: number;
 }
 
-test('every manifest asset loads, and sprite sheets cut into whole frames', async ({ page }) => {
+test('every manifest asset loads, sprite sheets cut into whole frames', async ({ page }) => {
   const errors: string[] = [];
   page.on('console', (message) => {
     if (message.type() === 'error') errors.push(message.text());
@@ -25,8 +25,16 @@ test('every manifest asset loads, and sprite sheets cut into whole frames', asyn
   );
 
   const info = await page.evaluate(() => window.__game?.inspect('asset-gallery'));
+  const keys = Object.keys(ASSETS) as AssetKey[];
   const textures = info?.textures as LoadedTexture[];
-  expect(textures.map((texture) => texture.key)).toEqual(Object.keys(ASSETS));
+  const sounds = info?.sounds as { key: AssetKey; loaded: boolean }[];
+  expect(textures.map((texture) => texture.key)).toEqual(
+    keys.filter((key) => ASSETS[key].type !== 'audio'),
+  );
+  // Sounds are decoded and ready to play.
+  expect(sounds).toEqual(
+    keys.filter((key) => ASSETS[key].type === 'audio').map((key) => ({ key, loaded: true })),
+  );
   for (const { key, loaded, width, height, frames } of textures) {
     const entry = ASSETS[key];
     expect(loaded, key).toBe(true);

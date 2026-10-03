@@ -9,6 +9,7 @@ import { defineMap } from '../../core/map/types';
 export default defineMap({
   id: 'saltmere',
   name: 'Saltmere',
+  music: 'bgm.saltmere',
   terrain: `
     TTTTTTTTTTTTTTTTTTTT..TTTTTTTTTTTTTTTTTTTTTT
     TTTTTTTTTTTTTTTTTTTT..TTTTTTTTTTTTTTTTTTTTTT

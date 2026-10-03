@@ -19,6 +19,7 @@ export interface MapSources {
  * - the terrains and prefabs that terrains refer to exist;
  * - every map compiles, and every warp, doorway and edge leads to a spawn that exists;
  * - every NPC's sprite is a 16×16 character sheet in the asset manifest;
+ * - every map's music is music in the asset manifest;
  * - no two chests share a flag, on any map, so each opens by itself.
  */
 export function checkMaps({ maps, content, manifest, imageSize }: MapSources): string[] {
@@ -78,6 +79,10 @@ export function checkMaps({ maps, content, manifest, imageSize }: MapSources): s
 
   const compiled = new Map<string, CompiledMap>();
   for (const map of Object.values(maps)) {
+    const { music } = map;
+    if (music !== undefined && (!music.startsWith('bgm.') || manifest[music]?.type !== 'audio')) {
+      problems.push(`Map ${map.id}: its music, ${music}, isn't music in the asset manifest`);
+    }
     try {
       compiled.set(map.id, compileMap(map, content));
     } catch (error) {

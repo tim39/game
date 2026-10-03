@@ -26,7 +26,8 @@ export class PreloadScene extends Phaser.Scene {
       fill.fillRect(x, y, Math.round(BAR_WIDTH * progress), BAR_HEIGHT);
     });
 
-    // Everything in the manifest is small, so it all loads up front for now.
+    // Everything in the manifest is small, so it all loads up front for now. Once the soundtrack
+    // grows, music will load per area instead (see Performance budget in docs/TECH.md).
     for (const [key, entry] of Object.entries(ASSETS)) {
       switch (entry.type) {
         case 'image':
@@ -37,6 +38,9 @@ export class PreloadScene extends Phaser.Scene {
             frameWidth: entry.frameWidth,
             frameHeight: entry.frameHeight,
           });
+          break;
+        case 'audio':
+          this.load.audio(key, [...entry.urls]);
           break;
       }
     }

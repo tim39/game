@@ -99,6 +99,32 @@ describe('checkAssets', () => {
     ]);
   });
 
+  test('checks a sound has both its files, an Ogg and an M4A', () => {
+    const OGG = 'OggS\0\x02 and then some Vorbis';
+    const M4A = '\0\0\0\x20ftypM4A and then some AAC';
+    const song = (name: string): AssetEntry => ({
+      type: 'audio',
+      urls: [`assets/bgm/${name}.ogg`, `assets/bgm/${name}.m4a`],
+    });
+    addFile('assets/bgm/song.ogg', OGG);
+    addFile('assets/bgm/song.m4a', M4A);
+    const credits = creditsFor('assets/bgm/song.ogg', 'assets/bgm/song.m4a');
+    expect(check({ 'bgm.song': song('song') }, credits)).toEqual([]);
+
+    addFile('assets/bgm/swapped.ogg', M4A);
+    addFile('assets/bgm/swapped.m4a', OGG);
+    addFile('assets/bgm/half.ogg', OGG);
+    const problems = check(
+      { 'bgm.song': song('song'), 'bgm.swapped': song('swapped'), 'bgm.half': song('half') },
+      `${credits}\n${creditsFor('assets/bgm/swapped.ogg', 'assets/bgm/swapped.m4a', 'assets/bgm/half.ogg')}`,
+    );
+    expect(problems).toEqual([
+      "bgm.swapped: public/assets/bgm/swapped.ogg isn't an Ogg file",
+      "bgm.swapped: public/assets/bgm/swapped.m4a isn't an M4A file",
+      "bgm.half: public/assets/bgm/half.m4a doesn't exist",
+    ]);
+  });
+
   test('reports names that are not kebab-case, and ignores dotfiles', () => {
     addFile('assets/sprites/OldWoman.png', pngHeader(64, 32));
     addFile('assets/sprites/.DS_Store', 'Finder litter');

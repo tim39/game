@@ -53,7 +53,7 @@ Start a session and say **"next task"**, or name one. Claude takes the first unc
 - [x] Dialogue: text box with name and portrait, typewriter text, skip, choices. Measure the line width and record it in STORY.md.
 - [x] Event runner: async scripts, `EventContext` v1 and triggers (see TECH.md), tested against a fake context.
 - [x] Chests (one-time, flag-backed) and signs.
-- [ ] Audio manager: music per map with crossfades, sound effects, audio unlock on first input.
+- [x] Audio manager: music per map with crossfades, sound effects, audio unlock on first input.
 - [ ] Save and load: three slots plus autosave on every map change, save versioning and migrations, Continue on the title screen, save export and import in the debug menu.
 
 ★ **Checkpoint:** the opening plays (festival, lamps, the Beacon going dark), villagers react to it, a chest gives a Potion exactly once, and after saving and reloading the page you're right back where you were.

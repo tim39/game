@@ -34,9 +34,12 @@ const DPAD_FRAMES: Readonly<Record<Direction | 'idle', number>> = {
 
 type ButtonName = 'a' | 'b' | 'menu';
 
+/** The touch controls' images. */
+type TouchArt = Extract<AssetKey, `touch.${string}`>;
+
 interface ButtonSpec {
   readonly actions: readonly Action[];
-  readonly image: AssetKey;
+  readonly image: TouchArt;
   readonly art: Size;
   /** Its frames, when up and pressed, in its image. */
   readonly frames: readonly [up: number, pressed: number];
@@ -50,7 +53,7 @@ const BUTTONS: Readonly<Record<ButtonName, ButtonSpec>> = {
 };
 
 /** How many frames wide each image is. */
-const FRAMES_ACROSS: Readonly<Partial<Record<AssetKey, number>>> = {
+const FRAMES_ACROSS: Readonly<Partial<Record<TouchArt, number>>> = {
   'touch.dpad': 5,
   'touch.buttons': 4,
   'touch.menu': 1,
@@ -71,7 +74,7 @@ interface Control {
 }
 
 /** A control: a touch area a little bigger than its art, which shows one frame of an image. */
-function createControl(name: string, image: AssetKey, art: Size): Control {
+function createControl(name: string, image: TouchArt, art: Size): Control {
   const element = document.createElement('div');
   element.className = 'touch-control';
   element.dataset.control = name;

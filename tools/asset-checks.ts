@@ -17,7 +17,8 @@ const KEBAB_PATH = /^([a-z0-9]+(-[a-z0-9]+)*\/)*[a-z0-9]+(-[a-z0-9]+)*\.[a-z0-9]
 /**
  * Checks the asset manifest against the files in public/. Returns one line per problem, so an
  * empty list means everything is in order:
- * - every key points at a PNG that exists, and no two keys load the same file;
+ * - every image key points at a PNG that exists, and every audio key at an Ogg file and an M4A
+ *   file that exist; no two keys load the same file;
  * - sprite sheets divide evenly into their frames;
  * - every file in public/assets/ is in the manifest, credited in CREDITS.md, and kebab-case.
  */
@@ -26,16 +27,27 @@ export function checkAssets({ manifest, publicDir, credits }: AssetSources): str
   const keyByUrl = new Map<string, string>();
 
   for (const [key, entry] of Object.entries(manifest)) {
-    const sameFile = keyByUrl.get(entry.url);
-    if (sameFile) problems.push(`${key}: ${entry.url} is already loaded as ${sameFile}`);
-    keyByUrl.set(entry.url, key);
+    const urls = entry.type === 'audio' ? entry.urls : [entry.url];
+    for (const url of urls) {
+      const sameFile = keyByUrl.get(url);
+      if (sameFile) problems.push(`${key}: ${url} is already loaded as ${sameFile}`);
+      keyByUrl.set(url, key);
+    }
+    const missing = urls.filter((url) => !existsSync(join(publicDir, url)));
+    for (const url of missing) problems.push(`${key}: public/${url} doesn't exist`);
+    if (missing.length > 0) continue;
 
-    const path = join(publicDir, entry.url);
-    if (!existsSync(path)) {
-      problems.push(`${key}: public/${entry.url} doesn't exist`);
+    if (entry.type === 'audio') {
+      const [ogg, m4a] = entry.urls;
+      if (!isOgg(readFileSync(join(publicDir, ogg)))) {
+        problems.push(`${key}: public/${ogg} isn't an Ogg file`);
+      }
+      if (!isMp4(readFileSync(join(publicDir, m4a)))) {
+        problems.push(`${key}: public/${m4a} isn't an M4A file`);
+      }
       continue;
     }
-    const size = pngSize(readFileSync(path));
+    const size = pngSize(readFileSync(join(publicDir, entry.url)));
     if (!size) {
       problems.push(`${key}: public/${entry.url} isn't a PNG`);
     } else if (
@@ -73,6 +85,14 @@ export function pngSize(bytes: Uint8Array): { width: number; height: number } | 
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   return { width: view.getUint32(16), height: view.getUint32(20) };
 }
+
+/** An Ogg file starts "OggS". */
+const isOgg = (bytes: Uint8Array): boolean =>
+  new TextDecoder().decode(bytes.subarray(0, 4)) === 'OggS';
+
+/** An MP4 file, such as an .m4a, starts with an "ftyp" box. */
+const isMp4 = (bytes: Uint8Array): boolean =>
+  new TextDecoder().decode(bytes.subarray(4, 8)) === 'ftyp';
 
 /** Every file under `dir`, as /-separated paths relative to it. Skips dotfiles such as .DS_Store. */
 function listFiles(dir: string): string[] {

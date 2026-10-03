@@ -5,6 +5,7 @@ import { DialogueSampleScene } from './scenes/dialogue-sample';
 import { FieldScene } from './scenes/field';
 import { PreloadScene } from './scenes/preload';
 import { TitleScene } from './scenes/title';
+import { audio } from './systems/audio';
 import { preventBrowserGestures } from './systems/browser-gestures';
 import { GAME_HEIGHT, GAME_WIDTH, pickZoom } from './systems/display';
 import { input } from './systems/input/game-input';
@@ -37,6 +38,7 @@ const game = new Phaser.Game({
 new ResizeObserver(() => game.scale.setZoom(zoomForContainer())).observe(container);
 preventBrowserGestures();
 input.attach(game, container);
+audio.install(game);
 // Phones and tablets have no Run button to hold, so they run unless B is held (Controls in DESIGN.md).
 if (prefersTouch()) settings.alwaysRun = true;
 

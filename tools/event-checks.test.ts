@@ -24,6 +24,8 @@ const words = (count: number): string => Array.from({ length: count }, () => 'ab
 const MANIFEST: Record<string, AssetEntry> = {
   'portrait.ada': { type: 'image', url: 'ada.png' },
   'tiles.grass': { type: 'spritesheet', url: 'grass.png', frameWidth: 16, frameHeight: 16 },
+  'bgm.town': { type: 'audio', urls: ['town.ogg', 'town.m4a'] },
+  'sfx.ding': { type: 'audio', urls: ['ding.ogg', 'ding.m4a'] },
 };
 
 const hello = defineEvent(async (ev) => {
@@ -299,6 +301,32 @@ test('checks waits and fades take a real length of time', async () => {
   expect(problems).toEqual([
     "Event timing: it would wait for -1 ms, which isn't a length of time",
     "Event timing: it would fade in for NaN ms, which isn't a length of time",
+  ]);
+});
+
+test('reports music and sound effects that are not in the manifest', async () => {
+  const problems = await check({
+    events: {
+      fine: defineEvent((ev) => {
+        ev.bgm('bgm.town');
+        ev.sfx('sfx.ding');
+        ev.bgm(null);
+        return Promise.resolve();
+      }),
+      off: defineEvent((ev) => {
+        ev.bgm('bgm.nowhere');
+        ev.bgm('sfx.ding');
+        ev.sfx('sfx.thud');
+        ev.sfx('tiles.grass');
+        return Promise.resolve();
+      }),
+    },
+  });
+  expect(problems).toEqual([
+    "Event off: it plays bgm.nowhere, which isn't music in the asset manifest",
+    "Event off: it plays sfx.ding, which isn't music in the asset manifest",
+    "Event off: it plays sfx.thud, which isn't a sound effect in the asset manifest",
+    "Event off: it plays tiles.grass, which isn't a sound effect in the asset manifest",
   ]);
 });
 

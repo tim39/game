@@ -2,6 +2,7 @@ import type Phaser from 'phaser';
 import { addItem, setFlag } from '../core/state';
 import { MAPS } from '../data/maps';
 import type { FieldScene, FieldStart } from '../scenes/field';
+import { audio } from '../systems/audio';
 import { debugSwitches } from '../systems/debug-switches';
 import { input } from '../systems/input/game-input';
 import { session } from '../systems/session';
@@ -62,6 +63,7 @@ export function installDebugHooks(game: Phaser.Game): void {
       if (!game.scene.isActive('field')) throw new Error(`Can't run ${script}: the field isn't up`);
       (game.scene.getScene('field') as FieldScene).runScript(script);
     },
+    audio: () => audio.debugInfo(),
   };
   window.__game = api;
 }

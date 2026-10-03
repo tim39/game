@@ -53,8 +53,8 @@ class LongPath extends Error {}
  *   down every path it can take. A path is an answer to each question the script asks: which
  *   choice the player picks, whether a flag it hasn't set itself is set, whether the party has an
  *   item, or gold. It starts on each map that runs it, and must only name speakers that exist,
- *   move and turn people who are on the map it's on, teleport to spawns that exist, and wait and
- *   fade for real lengths of time;
+ *   move and turn people who are on the map it's on, teleport to spawns that exist, wait and fade
+ *   for real lengths of time, and play music and sound effects that are in the asset manifest;
  * - every line it says fits in the dialogue box (three lines, narrower beside a portrait), every
  *   choice it offers fits the choice box, it offers one to four at a time, and the font has every
  *   character they use;
@@ -164,6 +164,13 @@ export async function checkEvents({
       return true;
     };
 
+    const checkSound = (key: string, kind: 'bgm.' | 'sfx.'): void => {
+      if (!key.startsWith(kind) || manifest[key]?.type !== 'audio') {
+        const what = kind === 'bgm.' ? 'music' : 'a sound effect';
+        report(`it plays ${key}, which isn't ${what} in the asset manifest`);
+      }
+    };
+
     const checkTime = (verb: string, ms: number | undefined): void => {
       if (ms !== undefined && !(ms >= 0 && Number.isFinite(ms))) {
         report(`it would ${verb} for ${ms} ms, which isn't a length of time`);
@@ -243,6 +250,10 @@ export async function checkEvents({
             else report(`it teleports to spawn ${spawn} on ${map}, which isn't there`);
             return Promise.resolve();
           },
+          bgm: (track) => {
+            if (track !== null) checkSound(track, 'bgm.');
+          },
+          sfx: (sound) => checkSound(sound, 'sfx.'),
           flag: (name) => {
             if (!settled.flags.has(name)) {
               settled.flags.add(name);

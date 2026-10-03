@@ -9,6 +9,15 @@ export const FIELD_SPEEDS: WalkSpeeds = { walkMs: 240, runMs: 120 };
 /** Going between maps fades to black and back, this long each way. */
 export const MAP_FADE_MS = 250;
 
+/** Music crossfades this long: the new track fades in as the old one fades out. */
+export const MUSIC_FADE_MS = 1000;
+
+/**
+ * A sound effect asked for again within this long of the last time plays only once, so a cursor
+ * moving fast through a menu doesn't stack its clicks.
+ */
+export const SOUND_REPEAT_MS = 50;
+
 /**
  * How NPCs move: a slower step than the player's, a pause of 1.5–4 s before each wander, and how
  * long they keep looking at the player after being bumped into.

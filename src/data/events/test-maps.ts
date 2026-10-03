@@ -26,6 +26,13 @@ export const sign = defineEvent(async (ev) => {
   await ev.say('sign', 'TEST SHORE. A house to the east, a meadow down the long path.');
 });
 
+/** The test meadow's music box: a script's sound effect, and its music, which plays till you leave. */
+export const musicBox = defineEvent(async (ev) => {
+  ev.sfx('sfx.chest');
+  ev.bgm('bgm.title');
+  await ev.say('sign', 'A music box. It plays the title tune until you leave the meadow.');
+});
+
 // The test square, for trying out event scripts and what sets them off.
 
 export const square = defineEvent(async (ev) => {

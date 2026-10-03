@@ -12,6 +12,8 @@ import { checkMaps } from './map-checks';
 const MANIFEST: Record<string, AssetEntry> = {
   'tiles.grass': { type: 'spritesheet', url: 'grass.png', frameWidth: 16, frameHeight: 16 },
   'ui.box': { type: 'image', url: 'box.png' },
+  'bgm.town': { type: 'audio', urls: ['town.ogg', 'town.m4a'] },
+  'sfx.ding': { type: 'audio', urls: ['ding.ogg', 'ding.m4a'] },
 };
 // tiles.grass is 4×2 tiles.
 const imageSize = (url: string) => (url === 'grass.png' ? { width: 64, height: 32 } : undefined);
@@ -106,6 +108,26 @@ test('reports trees on missing ground or prefabs, and maps that do not compile',
     "Terrain trees: there's no prefab oak",
     "Terrain trees: there's no prefab bush",
     'Map broken: "x" at (1, 0) isn\'t in its legend',
+  ]);
+});
+
+test('reports maps whose music is not music in the manifest', () => {
+  const room = (id: string, music?: string): MapDef => ({
+    id,
+    name: id,
+    ...(music ? { music } : {}),
+    terrain: '..',
+    legend: { '.': 'grass' },
+  });
+  const problems = check(content({}), {
+    a: room('a', 'bgm.town'),
+    b: room('b'),
+    c: room('c', 'bgm.nowhere'),
+    d: room('d', 'sfx.ding'),
+  });
+  expect(problems).toEqual([
+    "Map c: its music, bgm.nowhere, isn't music in the asset manifest",
+    "Map d: its music, sfx.ding, isn't music in the asset manifest",
   ]);
 });
 

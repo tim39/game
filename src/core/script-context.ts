@@ -19,7 +19,7 @@ import {
  */
 export type Stage = Pick<
   EventContext,
-  'say' | 'choice' | 'wait' | 'face' | 'move' | 'fadeOut' | 'fadeIn' | 'teleport'
+  'say' | 'choice' | 'wait' | 'face' | 'move' | 'fadeOut' | 'fadeIn' | 'teleport' | 'bgm' | 'sfx'
 >;
 
 /** Where the game state lives while a script reads and changes it. */
@@ -45,6 +45,8 @@ export function createScriptContext(stage: Stage, store: StateStore): EventConte
     fadeOut: (ms) => stage.fadeOut(ms),
     fadeIn: (ms) => stage.fadeIn(ms),
     teleport: (map, spawn) => stage.teleport(map, spawn),
+    bgm: (track) => stage.bgm(track),
+    sfx: (sound) => stage.sfx(sound),
     flag: (name) => hasFlag(store.get(), name),
     setFlag: (name, on = true) => change((state) => setFlag(state, name, on)),
     var: (name) => getVar(store.get(), name),

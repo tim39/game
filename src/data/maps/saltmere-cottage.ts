@@ -4,6 +4,7 @@ import { defineMap } from '../../core/map/types';
 export default defineMap({
   id: 'saltmere-cottage',
   name: "Fisher's Cottage",
+  music: 'bgm.saltmere',
   terrain: `
     ##########
     #........#

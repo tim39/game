@@ -4,6 +4,9 @@ import { input } from '../systems/input/game-input';
 import { FONT } from '../ui/fonts';
 
 const KEYS = Object.keys(ASSETS) as AssetKey[];
+/** Everything drawn: images and sprite sheets. */
+const PICTURES = KEYS.filter((key) => ASSETS[key].type !== 'audio');
+const SOUNDS = KEYS.filter((key) => ASSETS[key].type === 'audio');
 const CHARACTERS = KEYS.filter(
   (key) => key.startsWith('sprite.') && ASSETS[key].type === 'spritesheet',
 );
@@ -60,7 +63,7 @@ export class AssetGalleryScene extends Phaser.Scene {
 
   /** Read by `window.__game.inspect('asset-gallery')`: how every manifest key loaded. */
   debugInfo(): Record<string, unknown> {
-    const textures = KEYS.map((key) => {
+    const textures = PICTURES.map((key) => {
       const texture = this.textures.get(key);
       const { width, height } = texture.getSourceImage();
       return {
@@ -71,6 +74,7 @@ export class AssetGalleryScene extends Phaser.Scene {
         frames: texture.getFrameNames().length,
       };
     });
-    return { characters: CHARACTERS, portraits: PORTRAITS, textures };
+    const sounds = SOUNDS.map((key) => ({ key, loaded: this.cache.audio.exists(key) }));
+    return { characters: CHARACTERS, portraits: PORTRAITS, textures, sounds };
   }
 }
