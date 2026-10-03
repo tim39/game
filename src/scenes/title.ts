@@ -3,18 +3,23 @@ import { UI_TEXT } from '../data/ui-text';
 import { audio } from '../systems/audio';
 import { input } from '../systems/input/game-input';
 import { touchMode } from '../systems/input/touch-controls';
-import { startNewGame } from '../systems/session';
+import { saveSlots } from '../systems/saves';
+import { loadGame, startNewGame } from '../systems/session';
 import { FONT } from '../ui/fonts';
+import type { FieldStart } from './field';
+import { SAVE_MENU_SCENE, type SaveMenuStart } from './save-menu';
 
 interface MenuItem {
+  readonly id: 'new-game' | 'continue' | 'options';
   readonly label: string;
   readonly enabled: boolean;
 }
 
-const MENU: readonly MenuItem[] = [
-  { label: 'New Game', enabled: true },
-  { label: 'Continue', enabled: false },
-  { label: 'Options', enabled: false },
+/** Continue is there once there's a save to carry on from. Options arrive with M5. */
+const menuItems = (canContinue: boolean): readonly MenuItem[] => [
+  { id: 'new-game', label: 'New Game', enabled: true },
+  { id: 'continue', label: 'Continue', enabled: canContinue },
+  { id: 'options', label: 'Options', enabled: false },
 ];
 
 const GOLD = 0xf5c46b;
@@ -27,6 +32,7 @@ const MUSIC = 'bgm.title';
 
 /** Placeholder title screen until the real one arrives with the vertical slice (M6). */
 export class TitleScene extends Phaser.Scene {
+  private menu: readonly MenuItem[] = menuItems(false);
   private selected = 0;
   private cursorMoves = 0;
   private cursor?: Phaser.GameObjects.Graphics;
@@ -38,7 +44,10 @@ export class TitleScene extends Phaser.Scene {
 
   create(): void {
     const centerX = this.scale.width / 2;
-    this.selected = 0;
+    // With a save to continue from, the cursor starts on Continue.
+    const canContinue = saveSlots.hasAny();
+    this.menu = menuItems(canContinue);
+    this.selected = canContinue ? 1 : 0;
     this.cursorMoves = 0;
     // It starts with the player's first key press or touch, which browsers wait for.
     audio.playMusic(MUSIC);
@@ -60,7 +69,7 @@ export class TitleScene extends Phaser.Scene {
       .setOrigin(0.5)
       .setTint(GOLD);
 
-    MENU.forEach((item, index) => {
+    this.menu.forEach((item, index) => {
       this.add
         .bitmapText(MENU_X, MENU_TOP + index * MENU_SPACING, FONT.body, item.label)
         .setScale(2)
@@ -91,23 +100,42 @@ export class TitleScene extends Phaser.Scene {
   /** Read by `window.__game.inspect('title')` in dev and test builds. */
   debugInfo(): Record<string, unknown> {
     return {
-      selected: MENU[this.selected]?.label,
+      selected: this.menu[this.selected]?.label,
+      items: this.menu.map(({ label, enabled }) => ({ label, enabled })),
       cursorMoves: this.cursorMoves,
       hint: this.hint?.text,
     };
   }
 
   private moveCursor(step: number): void {
-    this.selected = (this.selected + step + MENU.length) % MENU.length;
+    this.selected = (this.selected + step + this.menu.length) % this.menu.length;
     this.cursorMoves += 1;
     this.drawCursor();
   }
 
   private choose(): void {
-    if (!MENU[this.selected]?.enabled) return;
+    const item = this.menu[this.selected];
+    if (!item?.enabled) return;
+    if (item.id === 'continue') {
+      this.continueGame();
+      return;
+    }
     // No real opening yet: New Game previews the dialogue box, then puts the player in Saltmere.
     startNewGame();
     this.scene.start('dialogue-sample');
+  }
+
+  /** Opens the save menu to pick a save, and carries on from it where it was saved. */
+  private continueGame(): void {
+    this.scene.pause();
+    this.scene.launch(SAVE_MENU_SCENE, {
+      mode: 'load',
+      onClose: () => this.scene.resume(),
+      onLoad: (state) => {
+        loadGame(state);
+        this.scene.start('field', state.location satisfies FieldStart);
+      },
+    } satisfies SaveMenuStart);
   }
 
   /** How to choose: with keys, or with the touch controls' A button. */

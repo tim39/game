@@ -54,6 +54,8 @@ export class DebugMenuScene extends Phaser.Scene {
   private rows: Row[] = [];
   private marks?: Phaser.GameObjects.Graphics;
   private hint?: Phaser.GameObjects.BitmapText;
+  /** The notice drawn last, to tell when one comes in later, like an import's. */
+  private drawnNotice: string | null = null;
 
   constructor() {
     super(DEBUG_MENU);
@@ -86,8 +88,13 @@ export class DebugMenuScene extends Phaser.Scene {
       if (!menu.back()) this.close?.();
     } else if (input.pressedOrRepeated('down')) menu.move(1);
     else if (input.pressedOrRepeated('up')) menu.move(-1);
-    else return;
+    else if (menu.notice === this.drawnNotice) return;
     this.draw();
+  }
+
+  /** Says something at the bottom of the menu, if it's still open: how an import went, say. */
+  notify(notice: string): void {
+    this.menu?.notify(notice);
   }
 
   /** Read by `window.__game.inspect('debug-menu')` in dev and test builds: empty once it's closed. */
@@ -98,6 +105,7 @@ export class DebugMenuScene extends Phaser.Scene {
       title,
       cursor,
       top,
+      notice: this.menu.notice,
       selected: items[cursor]?.label,
       items: items.map(({ label, detail, on, choose }) => ({
         label,
@@ -163,8 +171,14 @@ export class DebugMenuScene extends Phaser.Scene {
       marks.fillTriangle(x - 5, rowsBottom - 4, x + 5, rowsBottom - 4, x, rowsBottom + 2);
     }
 
+    // What just happened, or else what the buttons do.
     hint.setPosition(LEFT + PAD, panelTop + height - 26);
-    hint.setText(touchMode() ? 'A: choose   B: back' : 'Z: choose   X: back   `: close');
+    this.drawnNotice = view.notice;
+    if (view.notice !== null) hint.setText(view.notice).setTint(GOLD);
+    else {
+      hint.setText(touchMode() ? 'A: choose   B: back' : 'Z: choose   X: back   `: close');
+      hint.setTint(DIM);
+    }
   }
 }
 
@@ -174,7 +188,10 @@ export class DebugMenuScene extends Phaser.Scene {
  * either again closes it. Closing and warping wait for the next frame, so the scenes that carry on
  * don't see the press that did it.
  */
-export function installDebugMenu(game: Phaser.Game, context: DebugMenuContext): void {
+export function installDebugMenu(
+  game: Phaser.Game,
+  context: Omit<DebugMenuContext, 'notify'>,
+): void {
   game.scene.add(DEBUG_MENU, DebugMenuScene);
   let paused: string[] = [];
 
@@ -195,8 +212,10 @@ export function installDebugMenu(game: Phaser.Game, context: DebugMenuContext): 
     if (isOpen() || !game.cache.bitmapFont.exists(FONT.body)) return;
     paused = game.scene.getScenes(true).map((scene) => scene.scene.key);
     for (const key of paused) game.scene.pause(key);
+    const notify = (notice: string): void =>
+      (game.scene.getScene(DEBUG_MENU) as DebugMenuScene).notify(notice);
     game.scene.start(DEBUG_MENU, {
-      root: debugRootPage({ ...context, warp }),
+      root: debugRootPage({ ...context, warp, notify }),
       close: () => nextFrame(close),
     } satisfies DebugMenuStart);
   };

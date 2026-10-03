@@ -12,11 +12,12 @@ import { ASSETS } from '../src/systems/asset-manifest';
 import { checkAssets, pngSize } from './asset-checks';
 import { checkEvents } from './event-checks';
 import { measureBodyFont } from './font-metrics';
-import { checkMaps } from './map-checks';
+import { checkMapNames, checkMaps } from './map-checks';
 
 const ROOT = join(import.meta.dirname, '..');
 const PUBLIC = join(ROOT, 'public');
 
+const font = measureBodyFont(readFileSync(join(PUBLIC, ASSETS['font.body'].url)));
 const problems = [
   ...checkAssets({
     manifest: ASSETS,
@@ -40,9 +41,10 @@ const problems = [
     speakers: SPEAKERS,
     maps: MAPS,
     manifest: ASSETS,
-    font: measureBodyFont(readFileSync(join(PUBLIC, ASSETS['font.body'].url))),
+    font,
     chestText: CHEST_TEXT,
   })),
+  ...checkMapNames(MAPS, font),
 ];
 
 if (problems.length > 0) {
@@ -58,7 +60,7 @@ console.log(`Assets: all ${keys} manifest keys point at real files, and every fi
 console.log(
   `Maps: ${maps === 1 ? 'the 1 map compiles' : `all ${maps} maps compile`}, and every tile ` +
     'their terrains and prefabs use exists; every way out leads somewhere; their music exists; ' +
-    'no two chests share a flag.',
+    'no two chests share a flag; and their names fit the save menu.',
 );
 console.log(
   `Events: all ${Object.keys(EVENTS).length} event scripts and ${chests} chests run down every ` +

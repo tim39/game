@@ -1,6 +1,8 @@
 import { compileMap, type CompiledMap } from '../src/core/map/compile';
 import type { GridPoint, MapContent, MapDef, WarpTarget } from '../src/core/map/types';
 import type { AssetEntry } from '../src/systems/asset-manifest';
+import { SAVE_MENU } from '../src/ui/save-menu-layout';
+import type { MeasuredFont } from './font-metrics';
 
 const TILE = 16;
 
@@ -131,4 +133,26 @@ export function checkMaps({ maps, content, manifest, imageSize }: MapSources): s
   }
 
   return problems;
+}
+
+/**
+ * Checks that every map's name fits where the save menu shows where a game was saved, in
+ * characters the body font has. Returns one line per problem.
+ */
+export function checkMapNames(
+  maps: Readonly<Record<string, MapDef>>,
+  font: MeasuredFont,
+): string[] {
+  return Object.values(maps).flatMap((map) => {
+    const name = `Map ${map.id}: its name, "${map.name}",`;
+    const missing = [...new Set([...map.name].filter((char) => !font.has(char)))];
+    if (missing.length > 0) {
+      return [
+        `${name} uses ${missing.map((char) => `"${char}"`).join(', ')}, which the font lacks`,
+      ];
+    }
+    const width = font.width(map.name);
+    if (width <= SAVE_MENU.placeWidth) return [];
+    return [`${name} is ${width} pixels wide; the save menu has room for ${SAVE_MENU.placeWidth}`];
+  });
 }

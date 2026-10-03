@@ -97,3 +97,29 @@ describe('choosing', () => {
     expect(where(menu)).toEqual({ title: 'Root', cursor: 0, top: 0 });
   });
 });
+
+describe('notices', () => {
+  test('say something at the bottom until the next move, choice or step back', () => {
+    const menu = new DebugMenu(numbered('Root', 3), 10);
+    expect(menu.view().notice).toBeNull();
+    menu.notify('Exported Slot 1.');
+    expect(menu.notice).toBe('Exported Slot 1.');
+    expect(menu.view().notice).toBe('Exported Slot 1.');
+    menu.move(1);
+    expect(menu.notice).toBeNull();
+
+    menu.notify('Imported into Slot 2.');
+    menu.choose();
+    expect(menu.notice).toBeNull();
+    menu.notify('Imported into Slot 3.');
+    menu.back();
+    expect(menu.notice).toBeNull();
+  });
+
+  test('can come from what was chosen', () => {
+    const root = page('Root', [{ label: 'Export', choose: () => menu.notify('Exported.') }]);
+    const menu = new DebugMenu(root, 4);
+    menu.choose();
+    expect(menu.view().notice).toBe('Exported.');
+  });
+});

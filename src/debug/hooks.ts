@@ -5,10 +5,12 @@ import type { FieldScene, FieldStart } from '../scenes/field';
 import { audio } from '../systems/audio';
 import { debugSwitches } from '../systems/debug-switches';
 import { input } from '../systems/input/game-input';
+import { saveSlots } from '../systems/saves';
 import { session } from '../systems/session';
 import type { DebugApi } from './api';
 import { AssetGalleryScene } from './asset-gallery';
 import { installDebugMenu } from './debug-menu-scene';
+import { debugSaves } from './debug-saves';
 
 interface Inspectable {
   debugInfo(): Record<string, unknown>;
@@ -35,6 +37,7 @@ export function installDebugHooks(game: Phaser.Game): void {
     maps: MAPS,
     switches: debugSwitches,
     warp: (map, spawn) => startScene('field', { map, spawn } satisfies FieldStart),
+    saves: debugSaves(saveSlots),
   });
 
   const api: DebugApi = {

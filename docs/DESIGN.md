@@ -44,7 +44,7 @@ Town (story, shops, inn) → overworld → dungeon (explore, fight, treasure, a 
 - **Map kinds:** town, interior, dungeon floor, overworld. Doors, stairs and paths off a map's edge lead to other maps; transitions fade through black (about 250 ms each way), and you arrive at a fixed spot just inside, facing into the new place.
 - **Chests** hold an item or some gold. Face one from any side and press Confirm: it opens, and a line says what was inside ("Found Potion!"). It stays open for good (each has a flag), and after that it only says it's empty. Chests block the way, like furniture. **Signs** are read the same way, and say what they say in the plain box, with no name.
 - **HP and MP carry over between battles.** **Light Shrines** at each dungeon's entrance and before each boss fully heal the party, so a dungeon is about managing resources between shrines.
-- **Saving:** from the menu, anywhere on the field (not in battle or cutscenes). Three manual slots, plus an autosave slot updated on every map change.
+- **Saving:** from the menu, anywhere on the field (not in battle or cutscenes). Three manual slots, plus an autosave slot updated on every map change: on arriving through a door, stairs or a map's edge, or, when a cutscene moved you, once it's over. Until the main menu exists (M5), Menu opens the save menu straight away; pressed while walking, it lets the step finish and stops there. A save keeps everything about the game (where you are, the party, items, gold, what's happened, play time), so loading one puts you back exactly where you saved, as if you'd just arrived there. Saves from older versions of the game still load.
 - **Overworld:** a walkable map linking towns and dungeons, with random encounters by terrain. No vehicles in v1; ferries and shortcuts are scripted events.
 - **One gimmick per dungeon** (tides, wind currents, boulders, lava switches, darkness); see STORY.md. Each must be small enough to build in about one session.
 
@@ -212,7 +212,8 @@ Fixed characters with their own kits; no job system. Full skill lists live in `s
 
 ## Screens
 
-- **Title:** New Game, Continue, Options.
+- **Title:** New Game, Continue, Options. Continue can be chosen once there's a save, and the cursor starts on it; it opens the save menu to pick one, on the latest.
+- **Save menu:** the autosave and the three slots, each showing the party, where the game was saved, the leader's level, the play time and when it was saved. The slot under the cursor stands out; the others are dimmed. Saving in an empty slot happens at once and says so; saving over a save asks first (Yes or No, on Yes). The autosave can't be saved in by hand. A save that can't be loaded (damaged, or made by a newer version) says so, and can be saved over. Cancel or Menu goes back.
 - **Field:** no permanent HUD; the area name shows in a banner on entry.
 - **Dialogue:** a box at the bottom with the speaker's name and portrait (signs and narration have neither). Text types out at about 50 characters a second; Confirm shows the rest at once, and once it's all out a ▼ shows and Confirm goes on. **Choices**, up to 4, come up in a box above it, with the line they answer still showing: Up and Down move the cursor (round from the last to the first), and Confirm picks. Cancel does nothing in a conversation, so nobody skips one by accident.
 - **Menu:** Items, Skills, Equip, Status, Options, Save, with a party summary (HP, MP, level, EXP to next level), gold, play time and location.

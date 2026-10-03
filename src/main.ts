@@ -4,6 +4,7 @@ import { DialogueScene } from './scenes/dialogue';
 import { DialogueSampleScene } from './scenes/dialogue-sample';
 import { FieldScene } from './scenes/field';
 import { PreloadScene } from './scenes/preload';
+import { SaveMenuScene } from './scenes/save-menu';
 import { TitleScene } from './scenes/title';
 import { audio } from './systems/audio';
 import { preventBrowserGestures } from './systems/browser-gestures';
@@ -29,8 +30,17 @@ const game = new Phaser.Game({
     autoCenter: Phaser.Scale.CENTER_BOTH,
     zoom: zoomForContainer(),
   },
-  // Later scenes draw over earlier ones: the dialogue box goes over the field.
-  scene: [BootScene, PreloadScene, TitleScene, DialogueSampleScene, FieldScene, DialogueScene],
+  // Later scenes draw over earlier ones: the dialogue box goes over the field, and the save menu
+  // over the field or the title screen.
+  scene: [
+    BootScene,
+    PreloadScene,
+    TitleScene,
+    DialogueSampleScene,
+    FieldScene,
+    DialogueScene,
+    SaveMenuScene,
+  ],
 });
 
 // Refit whenever the game's space changes size: the window resizing, a phone turning, or browser

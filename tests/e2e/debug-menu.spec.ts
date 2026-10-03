@@ -107,13 +107,15 @@ test('the backtick opens the menu over the field, which waits until it closes', 
     ['Warp to a map', null],
     ['Noclip', false],
     ['Show collision', false],
+    ['Export a save', null],
+    ['Import a save', null],
   ]);
   expect(opened.hint).toContain('Z: choose');
   await page.screenshot({ path: 'test-results/screenshots/debug-menu.png' });
 
   // Up wraps round to the bottom, and the player, underneath, doesn't turn or move.
   await tapKey(page, 'ArrowUp');
-  expect((await menu(page)).selected).toBe('Show collision');
+  expect((await menu(page)).selected).toBe('Import a save');
   expect(await field(page)).toMatchObject({ x: 10, y: 7, facing: 'down', running: false });
 
   // Cancel on the first page closes the menu, and the field carries on where it was.

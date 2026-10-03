@@ -156,7 +156,7 @@ export function drawChoiceBox(scene: Phaser.Scene, choices: readonly string[]): 
 }
 
 /** A box image sliced at its `corner`-pixel frame and stretched to `width`×`height`, at 2×. */
-function nineSlice(
+export function nineSlice(
   scene: Phaser.Scene,
   key: string,
   x: number,

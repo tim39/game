@@ -1,13 +1,14 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { expect, test } from 'vitest';
+import { describe, expect, test } from 'vitest';
 import type { MapContent, MapDef } from '../src/core/map/types';
 import { MAPS } from '../src/data/maps';
 import { MAP_CONTENT } from '../src/data/terrain';
 import { ASSETS, type AssetEntry } from '../src/systems/asset-manifest';
 import { pngSize } from './asset-checks';
-import { checkMaps } from './map-checks';
+import { measureBodyFont, type MeasuredFont } from './font-metrics';
+import { checkMapNames, checkMaps } from './map-checks';
 
 const MANIFEST: Record<string, AssetEntry> = {
   'tiles.grass': { type: 'spritesheet', url: 'grass.png', frameWidth: 16, frameHeight: 16 },
@@ -164,4 +165,34 @@ test('the real maps, terrains and prefabs check out', () => {
     imageSize: (url) => pngSize(readFileSync(join(publicDir, url))),
   });
   expect(problems).toEqual([]);
+});
+
+describe('map names', () => {
+  /** Six pixels a character, and no lowercase z. */
+  const FONT: MeasuredFont = {
+    width: (text) => text.length * 6,
+    has: (char) => char !== 'z',
+  };
+  const named = (name: string): Record<string, MapDef> => ({
+    town: { id: 'town', name, terrain: '.', legend: { '.': 'grass' } },
+  });
+
+  test('fit the save menu, in characters the font has', () => {
+    expect(checkMapNames(named('Saltmere'), FONT)).toEqual([]);
+    expect(checkMapNames(named('Very Long Town Name Indeed'), FONT)).toEqual([
+      'Map town: its name, "Very Long Town Name Indeed", is 156 pixels wide; the save menu has room for 92',
+    ]);
+    expect(checkMapNames(named('Zigzag Bazaar'), FONT)).toEqual([
+      'Map town: its name, "Zigzag Bazaar", uses "z", which the font lacks',
+    ]);
+  });
+
+  test('of the real maps fit, measured with the real font', () => {
+    const font = measureBodyFont(
+      readFileSync(
+        join(fileURLToPath(new URL('../public', import.meta.url)), ASSETS['font.body'].url),
+      ),
+    );
+    expect(checkMapNames(MAPS, font)).toEqual([]);
+  });
 });

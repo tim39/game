@@ -45,18 +45,25 @@ import { characterFrame, sheetRows } from '../systems/character-frames';
 import { CollisionView } from '../systems/collision-view';
 import { debugSwitches } from '../systems/debug-switches';
 import { input } from '../systems/input/game-input';
+import { saveSlots } from '../systems/saves';
 import { session } from '../systems/session';
 import { settings } from '../systems/settings';
 import { DEPTH, TILE, createTilemap } from '../systems/tilemap';
 import type { DialogueLine } from '../ui/dialogue-box';
 import { MAX_CHOICES } from '../ui/dialogue-layout';
 import type { DialogueRequest } from './dialogue';
+import { SAVE_MENU_SCENE, type SaveMenuStart } from './save-menu';
 
 /**
  * Where to put the player, `scene.start('field', start)`: a cell, or one of the map's spawns. With
- * `dark`, the map starts black, for a script that will fade it in (see `teleport`).
+ * `dark`, the map starts black, for a script that will fade it in (see `teleport`). With
+ * `autosave`, it's a map change, which saves the game in the autosave slot on arrival.
  */
-export type FieldStart = { readonly map: string; readonly dark?: boolean } & (
+export type FieldStart = {
+  readonly map: string;
+  readonly dark?: boolean;
+  readonly autosave?: boolean;
+} & (
   | { readonly x: number; readonly y: number; readonly facing?: Direction }
   | { readonly spawn: string }
 );
@@ -134,6 +141,10 @@ export class FieldScene extends Phaser.Scene {
   private arrival?: () => void;
   /** A script brought the player to this map: its enter script runs once that one ends. */
   private enterPending = false;
+  /** A script brought the player to this map: the autosave waits for it to end. */
+  private autosavePending = false;
+  /** Menu was pressed: the save menu opens once the player stands still. */
+  private menuPending = false;
   /** Auto scripts that have run since the player arrived. */
   private autosRun = new Set<Trigger>();
   /** The player's step count when they last came to a stop, to tell when they stop somewhere new. */
@@ -209,6 +220,11 @@ export class FieldScene extends Phaser.Scene {
     if (this.dark) camera.fade(0, 0, 0, 0, true);
     else camera.fadeIn(MAP_FADE_MS, 0, 0, 0);
 
+    // A map change saves the game, as it is on arrival, before anything the map sets off; if a
+    // script brought the player, once it ends, as cutscenes can't be saved halfway through.
+    this.autosavePending = start.autosave === true && arrival !== undefined;
+    if (start.autosave && !arrival) this.autosave();
+    this.menuPending = false;
     // The map's enter script runs on arrival; if a script brought the player, once that ends.
     this.enterPending = arrival !== undefined;
     if (!arrival) this.runTrigger(enterTrigger(map, session.state));
@@ -237,10 +253,14 @@ export class FieldScene extends Phaser.Scene {
       return;
     }
 
+    // Menu opens the save menu once the player stands still. Pressed mid-step, it lets the step
+    // finish and then stops there, as if the direction had been let go.
+    if (!this.leaving && input.pressed('menu')) this.menuPending = true;
     // While leaving, the step into the way out finishes, and nothing else happens.
-    const pressed = this.leaving ? undefined : DIRECTIONS.find((d) => input.pressed(d));
+    const still = this.leaving || this.menuPending;
+    const pressed = still ? undefined : DIRECTIONS.find((d) => input.pressed(d));
     if (pressed) this.buffered = pressed;
-    const direction = this.leaving ? null : (this.heldDirection(pressed) ?? this.buffered);
+    const direction = still ? null : (this.heldDirection(pressed) ?? this.buffered);
     const before = this.walker;
     this.walker = updateWalker(
       before,
@@ -290,6 +310,11 @@ export class FieldScene extends Phaser.Scene {
         this.autosRun.add(auto);
         this.run(auto.script);
       }
+    }
+    // The save menu waits for the fade in too. A script or a way out it stopped on goes first.
+    if (this.menuPending && !this.walker.step && !this.cameras.main.fadeEffect.isRunning) {
+      this.menuPending = false;
+      if (!this.script && !this.leaving) this.openSaveMenu();
     }
     this.drawFigures();
     this.updateCollisionView(map);
@@ -356,6 +381,21 @@ export class FieldScene extends Phaser.Scene {
     return { sprite, rows: sheetRows(this.textures.get(key).getFrameNames().length) };
   }
 
+  /** Saves the game as it is in the autosave slot, which every map change does. */
+  private autosave(): void {
+    saveSlots.autosave(session.state, new Date());
+  }
+
+  /** Opens the save menu over the field, which waits until it closes. */
+  private openSaveMenu(): void {
+    this.buffered = null;
+    this.scene.pause();
+    this.scene.launch(SAVE_MENU_SCENE, {
+      mode: 'save',
+      onClose: () => this.scene.resume(),
+    } satisfies SaveMenuStart);
+  }
+
   /** Keeps the game state's location up to date with the player's, for saves to keep. */
   private trackLocation(map: CompiledMap): void {
     const { x, y, facing } = this.walker;
@@ -409,6 +449,7 @@ export class FieldScene extends Phaser.Scene {
   private start(id: string, script: EventScript): void {
     const running = { id };
     this.script = running;
+    this.menuPending = false;
     void script(this.scriptContext())
       .catch((error: unknown) => console.error(`Event script ${id} failed:`, error))
       .finally(() => {
@@ -419,12 +460,16 @@ export class FieldScene extends Phaser.Scene {
 
   /**
    * Once a script ends, anyone it set walking without waiting stops, the screen comes back if it
-   * left it black, and a map it brought the player to runs its enter script.
+   * left it black, and a map it brought the player to autosaves and runs its enter script.
    */
   private scriptEnded(): void {
     this.script = null;
     this.stopWalks();
     if (this.dark) void this.fade('in', MAP_FADE_MS);
+    if (this.autosavePending) {
+      this.autosavePending = false;
+      this.autosave();
+    }
     if (this.enterPending && this.map) {
       this.enterPending = false;
       this.runTrigger(enterTrigger(this.map, session.state));
@@ -576,7 +621,7 @@ export class FieldScene extends Phaser.Scene {
     if (!there) return Promise.reject(new Error(`There's no spawn called ${spawn} on ${mapId}`));
     return new Promise((resolve) => {
       this.arrival = resolve;
-      const start: FieldStart = { map: mapId, spawn, dark: this.dark };
+      const start: FieldStart = { map: mapId, spawn, dark: this.dark, autosave: true };
       if (this.dark) {
         this.scene.restart(start);
         return;
@@ -604,7 +649,7 @@ export class FieldScene extends Phaser.Scene {
     this.leaving = true;
     const camera = this.cameras.main;
     camera.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
-      this.scene.restart({ map: to.map, spawn: to.spawn } satisfies FieldStart);
+      this.scene.restart({ map: to.map, spawn: to.spawn, autosave: true } satisfies FieldStart);
     });
     // Forced, in case the fade in from arriving is still running.
     camera.fade(MAP_FADE_MS, 0, 0, 0, true);

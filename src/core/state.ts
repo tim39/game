@@ -1,4 +1,4 @@
-import { DIRECTIONS, type Direction } from './direction';
+import { DIRECTIONS, isDirection, type Direction } from './direction';
 import { isId, isNamespacedId } from './ids';
 
 /** IDs from the content in src/data: `rowan`, `potion`, `saltmere`. */
@@ -168,6 +168,52 @@ export function addPlayTime(state: GameState, ms: number): GameState {
   return { ...state, playTimeMs: state.playTimeMs + ms };
 }
 
+/**
+ * A game state read back from JSON, as a save keeps it: checked against the rules the operations
+ * keep, and copied with nothing else that came along with it. Throws an error saying what's wrong,
+ * so a damaged save can't break the game.
+ */
+export function checkedGameState(json: unknown): GameState {
+  const state = fieldsOf(json, 'The game state');
+  const party = listOf(state.party, 'The party').map((id) =>
+    checkedId('Character', textOf(id, 'A party member')),
+  );
+  if (party.length > MAX_PARTY_SIZE) {
+    throw new RangeError(`The party has ${party.length} members, but holds ${MAX_PARTY_SIZE}`);
+  }
+  if (new Set(party).size < party.length) {
+    throw new RangeError(`Someone is in the party twice: ${party.join(', ')}`);
+  }
+  const members = recordOf(state.members, 'The members', (id, member) => [
+    checkedId('Character', id),
+    checkedMember(id, member),
+  ]);
+  const missing = party.find((id) => !Object.hasOwn(members, id));
+  if (missing) throw new RangeError(`${missing} is in the party, but isn't a member`);
+  return {
+    party,
+    members,
+    inventory: recordOf(state.inventory, 'The inventory', (item, count) => [
+      checkedId('Item', item),
+      checkedCount(numberOf(count, `The count of ${item}`)),
+    ]),
+    gold: checkedGold(numberOf(state.gold, 'Gold')),
+    flags: recordOf(state.flags, 'The flags', (flag, on) => {
+      if (on !== true) throw new RangeError(`Flag ${flag} is ${String(on)}: set flags are true`);
+      return [checkedName('Flag', flag), true];
+    }),
+    vars: recordOf(state.vars, 'The vars', (name, json) => {
+      const value = numberOf(json, `Var ${name}`);
+      if (!Number.isSafeInteger(value) || value === 0) {
+        throw new RangeError(`Var ${name} is ${value}: kept vars are whole numbers, and not 0`);
+      }
+      return [checkedName('Var', name), value];
+    }),
+    location: checkedLocation(locationOf(state.location)),
+    playTimeMs: checkedPlayTime(numberOf(state.playTimeMs, 'Play time')),
+  };
+}
+
 /** A record's own value for a key: never one inherited from Object, like `constructor`. */
 const own = <T>(record: Readonly<Record<string, T>>, key: string): T | undefined =>
   Object.hasOwn(record, key) ? record[key] : undefined;
@@ -213,4 +259,73 @@ function checkedLocation({ map, x, y, facing }: PlayerLocation): PlayerLocation 
   }
   if (!DIRECTIONS.includes(facing)) throw new RangeError(`"${facing}" isn't a direction`);
   return { map, x, y, facing };
+}
+
+function checkedPlayTime(ms: number): number {
+  if (!(ms >= 0 && Number.isFinite(ms))) throw new RangeError(`Play time can't be ${ms} ms`);
+  return ms;
+}
+
+function checkedMember(id: string, json: unknown): MemberState {
+  const member = fieldsOf(json, `${id}'s member state`);
+  const level = numberOf(member.level, `${id}'s level`);
+  const exp = numberOf(member.exp, `${id}'s EXP`);
+  if (!Number.isSafeInteger(level) || level < 1) {
+    throw new RangeError(`${id}'s level is ${level}: levels are whole numbers from 1 up`);
+  }
+  if (!Number.isSafeInteger(exp) || exp < 0) {
+    throw new RangeError(`${id}'s EXP is ${exp}: EXP is a whole number from 0 up`);
+  }
+  return { level, exp };
+}
+
+/** A location's fields, of the right types: `checkedLocation` checks the rest. */
+function locationOf(json: unknown): PlayerLocation {
+  const at = fieldsOf(json, 'The location');
+  const facing = textOf(at.facing, 'The facing');
+  if (!isDirection(facing)) throw new RangeError(`"${facing}" isn't a direction`);
+  return {
+    map: textOf(at.map, 'The map'),
+    x: numberOf(at.x, 'The x'),
+    y: numberOf(at.y, 'The y'),
+    facing,
+  };
+}
+
+// Reading JSON, which could hold anything: each of these checks it holds what it should.
+
+/** A JSON object's own fields. */
+type Fields = Readonly<Record<string, unknown>>;
+
+function fieldsOf(json: unknown, what: string): Fields {
+  if (typeof json !== 'object' || json === null || Array.isArray(json)) {
+    throw new TypeError(`${what} isn't an object`);
+  }
+  return json as Fields;
+}
+
+function listOf(json: unknown, what: string): readonly unknown[] {
+  if (!Array.isArray(json)) throw new TypeError(`${what} isn't a list`);
+  return json;
+}
+
+function textOf(json: unknown, what: string): string {
+  if (typeof json !== 'string') throw new TypeError(`${what} isn't text`);
+  return json;
+}
+
+function numberOf(json: unknown, what: string): number {
+  if (typeof json !== 'number') throw new TypeError(`${what} isn't a number`);
+  return json;
+}
+
+/** A new record of a JSON object's fields, each checked by `entry`, which returns it as kept. */
+function recordOf<T>(
+  json: unknown,
+  what: string,
+  entry: (key: string, value: unknown) => [string, T],
+): Record<string, T> {
+  return Object.fromEntries(
+    Object.entries(fieldsOf(json, what)).map(([key, value]) => entry(key, value)),
+  );
 }

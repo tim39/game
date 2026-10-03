@@ -8,3 +8,5 @@ public/
 package-lock.json
 # Docs are hand-formatted; Prettier would re-pad every table on each edit.
 *.md
+# Saves exactly as the game exported them, so old versions stay as they were.
+src/core/save-fixtures/

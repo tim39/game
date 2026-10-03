@@ -4,6 +4,7 @@ import {
   addGold,
   addItem,
   addPlayTime,
+  checkedGameState,
   createGameState,
   getVar,
   hasFlag,
@@ -281,5 +282,123 @@ describe('play time', () => {
     for (const ms of [-1, Number.NaN, Number.POSITIVE_INFINITY]) {
       expect(() => addPlayTime(start(), ms)).toThrow(RangeError);
     }
+  });
+});
+
+describe('checkedGameState', () => {
+  /** A state with something in every field, as JSON would give it back. */
+  const full = (): GameState => {
+    let state = start({ party: ['rowan', 'bram'], gold: 75, inventory: { potion: 2 } });
+    state = setFlag(state, 'chest.saltmere-tamsin-01');
+    state = setVar(state, 'saltmere.lamps-lit', -3);
+    state = addPlayTime(state, 1234.5);
+    return JSON.parse(JSON.stringify(state)) as GameState;
+  };
+
+  /** `full()` with one field changed, the way a damaged save might have it. */
+  const broken = (change: (state: Record<string, unknown>) => void): unknown => {
+    const state = full() as unknown as Record<string, unknown>;
+    change(state);
+    return state;
+  };
+
+  test('reads back any state the operations make, as a copy', () => {
+    for (const state of [start(), full()]) {
+      const checked = checkedGameState(state);
+      expect(checked).toEqual(state);
+      expect(checked).not.toBe(state);
+      expect(checked.location).not.toBe(state.location);
+    }
+  });
+
+  test('keeps a state’s own fields, and nothing else that came along with them', () => {
+    const extra = broken((state) => {
+      state.cheats = true;
+      state.location = { ...full().location, spawn: 'door' };
+      state.members = { rowan: { level: 1, exp: 0, mood: 'sunny' }, bram: { level: 1, exp: 0 } };
+    });
+    expect(checkedGameState(extra)).toEqual(full());
+  });
+
+  test('turns down anything that isn’t a game state', () => {
+    for (const json of [null, 'state', 42, [], [full()]]) {
+      expect(() => checkedGameState(json)).toThrow("The game state isn't an object");
+    }
+  });
+
+  test.each<[string, (state: Record<string, unknown>) => void, string]>([
+    ['no party', (s) => delete s.party, "The party isn't a list"],
+    ['a party member who isn’t text', (s) => (s.party = ['rowan', 7]), "isn't text"],
+    ['a party member with a bad ID', (s) => (s.party = ['Rowan']), "isn't kebab-case"],
+    ['someone in the party twice', (s) => (s.party = ['rowan', 'rowan']), 'in the party twice'],
+    ['five in the party', (s) => (s.party = ['a', 'b', 'c', 'd', 'e']), 'holds 4'],
+    [
+      'a member with no level',
+      (s) => (s.members = { ...full().members, rowan: {} }),
+      "rowan's level",
+    ],
+    ['no members', (s) => (s.members = null), "The members isn't an object"],
+    [
+      'a member with no EXP',
+      (s) => (s.members = { ...full().members, bram: { level: 1 } }),
+      "bram's EXP isn't",
+    ],
+    [
+      'level 0',
+      (s) => (s.members = { ...full().members, bram: { level: 0, exp: 0 } }),
+      'from 1 up',
+    ],
+    [
+      'negative EXP',
+      (s) => (s.members = { ...full().members, bram: { level: 2, exp: -1 } }),
+      'from 0 up',
+    ],
+    [
+      'bram missing from members',
+      (s) => (s.members = { rowan: { level: 1, exp: 0 } }),
+      "bram is in the party, but isn't a member",
+    ],
+    ['a list of items', (s) => (s.inventory = ['potion']), "The inventory isn't an object"],
+    ['none of an item', (s) => (s.inventory = { potion: 0 }), 'from 1 up, not 0'],
+    [
+      'a count as text',
+      (s) => (s.inventory = { potion: '2' }),
+      "The count of potion isn't a number",
+    ],
+    ['an item with a bad ID', (s) => (s.inventory = { 'Hi Potion': 1 }), "isn't kebab-case"],
+    ['gold as text', (s) => (s.gold = '75'), "Gold isn't a number"],
+    ['negative gold', (s) => (s.gold = -5), 'from 0 up, not -5'],
+    ['fractional gold', (s) => (s.gold = 2.5), 'from 0 up, not 2.5'],
+    [
+      'a flag that isn’t set',
+      (s) => (s.flags = { 'story.beacon-out': false }),
+      'set flags are true',
+    ],
+    ['a flag that isn’t namespaced', (s) => (s.flags = { 'beacon-out': true }), 'namespaced'],
+    ['a var of 0', (s) => (s.vars = { 'saltmere.lamps-lit': 0 }), 'and not 0'],
+    ['a fractional var', (s) => (s.vars = { 'saltmere.lamps-lit': 0.5 }), 'whole numbers'],
+    ['a var as text', (s) => (s.vars = { 'saltmere.lamps-lit': '3' }), "isn't a number"],
+    ['no location', (s) => delete s.location, "The location isn't an object"],
+    [
+      'a map with a bad ID',
+      (s) => (s.location = { ...full().location, map: 'Test Shore' }),
+      "isn't kebab-case",
+    ],
+    ['a cell off the map', (s) => (s.location = { ...full().location, x: -1 }), "isn't a cell"],
+    [
+      'a cell as text',
+      (s) => (s.location = { ...full().location, y: '5' }),
+      "The y isn't a number",
+    ],
+    [
+      'facing sideways',
+      (s) => (s.location = { ...full().location, facing: 'sideways' }),
+      "isn't a direction",
+    ],
+    ['play time as text', (s) => (s.playTimeMs = '1000'), "Play time isn't a number"],
+    ['negative play time', (s) => (s.playTimeMs = -1), "Play time can't be -1 ms"],
+    ['endless play time', (s) => (s.playTimeMs = Number.POSITIVE_INFINITY), "can't be Infinity"],
+  ])('turns down %s', (_name, change, message) => {
+    expect(() => checkedGameState(broken(change))).toThrow(message);
   });
 });

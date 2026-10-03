@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "savedAt": "2026-10-03T20:33:59.363Z",
+  "state": {
+    "party": [
+      "rowan"
+    ],
+    "members": {
+      "rowan": {
+        "level": 1,
+        "exp": 0
+      }
+    },
+    "inventory": {
+      "potion": 1
+    },
+    "gold": 0,
+    "flags": {
+      "chest.saltmere-tamsin-01": true
+    },
+    "vars": {},
+    "location": {
+      "map": "saltmere-tamsin",
+      "x": 2,
+      "y": 3,
+      "facing": "left"
+    },
+    "playTimeMs": 2866.6000000000004
+  }
+}
