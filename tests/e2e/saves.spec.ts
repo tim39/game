@@ -434,9 +434,10 @@ test('saves that can’t be loaded say so, and can be saved over', async ({ page
 });
 
 test.describe('on a phone', () => {
+  // The names go in screenshot file names, which CI's artifact upload won't take with a colon.
   for (const [name, viewport] of [
     ['wide', { width: 844, height: 390 }],
-    ['16:9', { width: 667, height: 375 }],
+    ['16x9', { width: 667, height: 375 }],
   ] as const) {
     test.describe(`held sideways (${name})`, () => {
       test.use({ hasTouch: true, isMobile: true, viewport });
