@@ -33,6 +33,7 @@ Versions were checked in October 2026. M0 installs the latest compatible ones.
 │   │   ├── map/          map format, autotiler, compiler, collision
 │   │   ├── walker.ts     grid movement
 │   │   ├── npc.ts        how NPCs stand, wander and look at the player
+│   │   ├── ids.ts        what IDs and flag names look like
 │   │   ├── state.ts      GameState and the operations on it
 │   │   ├── save.ts       serialization, versions, migrations
 │   │   ├── events.ts     EventContext types for scripts
@@ -40,8 +41,9 @@ Versions were checked in October 2026. M0 installs the latest compatible ones.
 │   │   └── rng.ts        seeded RNG
 │   ├── data/             content: characters, skills, items, enemies, encounters,
 │   │                     shops, balance.ts, terrain.ts, maps/, events/, speakers.ts
-│   ├── systems/          Phaser-side services: input (keys, gamepads, touch controls),
-│   │                     settings, debug switches, audio, storage, assets, event runner
+│   ├── systems/          Phaser-side services: the game being played (session), input (keys,
+│   │                     gamepads, touch controls), settings, debug switches, audio, storage,
+│   │                     assets, event runner
 │   ├── scenes/           boot, preload, title, field, battle, menu, dialogue, shop, game-over
 │   ├── ui/               the UI kit
 │   └── debug/            debug menu and window.__game (dev and test builds only)
@@ -81,7 +83,7 @@ Boot → Preload → Title ──▶ Field ◀──▶ Battle ──▶ GameOve
                               └── Shop      (overlay)
 ```
 
-- **Field** owns the current map, the actors and the event runner. Until the real opening exists, New Game shows the M0 dialogue preview and then puts the player in Saltmere, at Tamsin's door (`NEW_GAME_START` in `src/data/new-game.ts`). It starts at a cell or at one of a map's spawns (`FieldStart`).
+- **Field** owns the current map, the actors and the event runner. Until the real opening exists, New Game starts a fresh game state, shows the M0 dialogue preview and then puts the player where the state says: in Saltmere, at Tamsin's door (`NEW_GAME` in `src/data/new-game.ts`). It starts at a cell or at one of a map's spawns (`FieldStart`).
 - **Going between maps:** when a step heads into a way out (a doorway, a warp or an edge exit), the controls stop and the camera fades to black while the step finishes; then the field scene restarts on the target map at its spawn, and fades back in. Both fades take `MAP_FADE_MS` (250 ms, in `balance.ts`). The fade out is forced, so a way out taken while the fade in is still running can't get stuck. The walker always stops on an exit cell, so it can't walk through one in a long frame.
 - **Grid movement** is `updateWalker` in `src/core/walker.ts`, pure and unit-tested. A step claims its cell as it starts, so nothing else can move in, then slides there; it always finishes. Holding a direction chains steps with the leftover time carried over, so walking never stutters, and a tap during a step is buffered for when it ends. A direction towards a blocked cell turns the player without moving them. Speeds are `FIELD_SPEEDS` in `src/data/balance.ts`. The scene caps a frame at 100 ms so the player can't jump after the tab was hidden.
 - **NPCs** come from a map's `npc` objects and move by the rules in `src/core/npc.ts`, on the same walker as the player, with `NPC_TUNING` from `balance.ts`. Without `wander` they stand still; with it, they wait a random 1.5–4 s, then step a random way if the cell is free and within `wander` cells of home, or else just turn to look. Their randomness comes from an `Rng` seeded with `field:<map id>` each time the map loads. A walker takes up its cell, and mid-step the cell it's leaving too, so nobody overlaps: the player can't walk into an NPC, and NPCs keep out of walls, ways out, the player and each other. Walking into an NPC makes them turn and look at the player for `lookMs` (3 s); one that stands still then turns back the way it was placed. Characters are sorted by height on screen, so a lower one is drawn in front, still under the overhead layer.
@@ -96,19 +98,20 @@ Boot → Preload → Title ──▶ Field ◀──▶ Battle ──▶ GameOve
 
 ```ts
 interface GameState {
-  party: CharacterId[];                        // in battle order
-  members: Record<CharacterId, MemberState>;   // level, exp, hp, mp, equipment
-  inventory: Record<ItemId, number>;
+  party: CharacterId[];                        // in battle order, 4 at most
+  members: Record<CharacterId, MemberState>;   // level and EXP; M3 adds HP, MP and equipment
+  inventory: Record<ItemId, number>;           // only items the party has
   gold: number;
-  flags: Record<string, boolean>;
-  vars: Record<string, number>;
+  flags: Record<string, true>;                 // only flags that are set
+  vars: Record<string, number>;                // only vars that aren't 0
   location: { map: MapId; x: number; y: number; facing: Direction };
-  knownWeaknesses: Record<EnemyId, Element[]>;
   playTimeMs: number;
 }
 ```
 
-- `GameState` is plain JSON, owned by `core/state.ts`. Scenes read it, and change it only through core functions (`addItem`, `equip`, `gainExp`, `setFlag` and so on).
+- `GameState` is plain JSON, owned by `src/core/state.ts`, and never changes in place: its fields are read-only and every operation returns a new state, so scenes read it and change it only through core functions: `createGameState`, `hasFlag`/`setFlag`, `getVar`/`setVar`, `itemCount`/`hasItem`/`addItem`/`removeItem`, `addGold`/`removeGold`, `inParty`/`joinParty`, `setLocation` and `addPlayTime`. M3 adds `equip`, `gainExp` and the stats behind HP and MP; battles add `knownWeaknesses: Record<EnemyId, Element[]>`.
+- The operations check what they're given and throw a `RangeError` rather than break the state: IDs must be kebab-case, and flag and var names namespaced (`isId` and `isNamespacedId` in `src/core/ids.ts`); counts and gold are whole numbers; nothing can take items or gold the party doesn't have; and the party can't grow past 4. Unit tests (`state.test.ts`) cover each operation, and check that none changes the state it was given.
+- **The game being played** is `session.state` (`src/systems/session.ts`). Scenes swap in what an operation returns: `session.state = setFlag(session.state, 'story.beacon-out')`. New Game replaces it with `createGameState(NEW_GAME)`. The field keeps `location` in step with the player on every step, turn and arrival (except for the step into a way out, which can be off the map: until they arrive, the player is still where they last stood), and adds each frame's real time to `playTimeMs` (Phaser's `delta` is smoothed, and held to 1/60 s while the window isn't focused, so it uses `game.loop.rawDelta`, capped like every frame). Battles will count play time too; the title screen doesn't.
 - Saves go in `localStorage` under `fifth-flame:save:{autosave,1,2,3}` as `{ version, savedAt, summary, state }`. Settings are stored separately under `fifth-flame:settings`.
 - `SAVE_VERSION` comes with an ordered list of migrations. Tests load a fixture save from every past version.
 - The debug menu can export a save to a file and import one, which helps when testing across devices.
@@ -279,7 +282,7 @@ __game.battle('tide-caves-boss');
 __game.state(); // the current GameState
 ```
 
-So far it has `activeScenes()`, `startScene(key, data?)` (which first stops every scene that's running, paused or asleep), `inspect(sceneKey)`, `warp(map, x, y, facing?)`, `held()` (the actions the game read as held this frame), and `noclip(on)` and `showCollision(on)`, the debug menu's switches; the rest arrive with the features they test. `installDebugHooks` also registers the debug-only scenes: `asset-gallery`, which shows every character sheet in all four directions and the portraits, at the world's scale (`__game.startScene('asset-gallery')`), and the debug menu. `src/main.ts` installs all of it only when `import.meta.env.DEV` is true or the build mode is `e2e`, so production builds drop it entirely, and `npm run build` runs `tools/check-bundle.mjs` afterwards, failing the build if `__game` or a debug scene ever leaks in. Tests get its types with `import type {} from '../../src/debug/api'`.
+So far it has `activeScenes()`, `startScene(key, data?)` (which first stops every scene that's running, paused or asleep), `inspect(sceneKey)`, `warp(map, x, y, facing?)`, `held()` (the actions the game read as held this frame), `noclip(on)` and `showCollision(on)`, the debug menu's switches, and for the game state `state()`, `setFlag(flag, on?)` and `give(item, count?)`; the rest arrive with the features they test. `installDebugHooks` also registers the debug-only scenes: `asset-gallery`, which shows every character sheet in all four directions and the portraits, at the world's scale (`__game.startScene('asset-gallery')`), and the debug menu. `src/main.ts` installs all of it only when `import.meta.env.DEV` is true or the build mode is `e2e`, so production builds drop it entirely, and `npm run build` runs `tools/check-bundle.mjs` afterwards, failing the build if `__game` or a debug scene ever leaks in. Tests get its types with `import type {} from '../../src/debug/api'`.
 
 The **debug menu** opens with the backtick key, or three fingers on the game on a touchscreen (fingers on the touch controls don't count), and the same again closes it. It's an overlay scene, `debug-menu` (`src/debug/debug-menu-scene.ts`), added last so it draws over everything. Whatever was running pauses under it until it closes, and closing and warping wait for the next frame, so the scenes that carry on never see the press that did it. Up and Down move, Confirm chooses, and Cancel goes back a page, or closes the menu from the first. `DebugMenu` (`src/debug/debug-menu.ts`) keeps the open page and the cursor, and `src/debug/debug-pages.ts` builds the pages; both are pure and unit-tested. Version 1 has:
 

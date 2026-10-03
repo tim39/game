@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import type {} from '../../src/debug/api';
-import { NEW_GAME_START } from '../../src/data/new-game';
+import { NEW_GAME } from '../../src/data/new-game';
 
 const nextFrames = (page: Page) =>
   page.evaluate(
@@ -54,7 +54,9 @@ test('New Game shows the dialogue preview, one page per Confirm, then the field'
 
   await tapKey(page, 'KeyZ');
   expect(await activeScenes(page)).toEqual(['field']);
-  expect(await page.evaluate(() => window.__game?.inspect('field'))).toMatchObject(NEW_GAME_START);
+  expect(await page.evaluate(() => window.__game?.inspect('field'))).toMatchObject({
+    ...NEW_GAME.location,
+  });
 });
 
 test('Cancel leaves the preview straight away', async ({ page }) => {

@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
-import { NEW_GAME_START } from '../data/new-game';
 import { input } from '../systems/input/game-input';
+import { session } from '../systems/session';
 import { drawDialogueBox, type DrawnDialogue } from '../ui/dialogue-box';
 
 interface Page {
@@ -50,7 +50,7 @@ export class DialogueSampleScene extends Phaser.Scene {
     } else if (input.pressed('confirm')) {
       this.page += 1;
       if (this.page < PAGES.length) this.showPage();
-      else this.scene.start('field', NEW_GAME_START);
+      else this.scene.start('field', session.state.location);
     }
   }
 

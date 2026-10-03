@@ -13,6 +13,7 @@ import {
 import type { WarpTarget } from '../core/map/types';
 import { createNpc, lookAt, updateNpc, type Npc } from '../core/npc';
 import { Rng } from '../core/rng';
+import { addPlayTime, setLocation } from '../core/state';
 import {
   facingCell,
   occupies,
@@ -32,6 +33,7 @@ import { characterFrame, sheetRows } from '../systems/character-frames';
 import { CollisionView } from '../systems/collision-view';
 import { debugSwitches } from '../systems/debug-switches';
 import { input } from '../systems/input/game-input';
+import { session } from '../systems/session';
 import { settings } from '../systems/settings';
 import { DEPTH, TILE, createTilemap } from '../systems/tilemap';
 import type { DialogueRequest } from './dialogue';
@@ -113,6 +115,7 @@ export class FieldScene extends Phaser.Scene {
 
     const at = 'spawn' in start ? spawnOn(map, start.spawn) : start;
     this.walker = standingWalker(at.x, at.y, at.facing);
+    this.trackLocation(map);
     this.lastDirection = null;
     this.buffered = null;
     this.leaving = false;
@@ -139,6 +142,9 @@ export class FieldScene extends Phaser.Scene {
     const { map, world } = this;
     if (!map || !world) return;
     const dt = Math.min(delta, MAX_FRAME_MS);
+    // Play time is real time. Phaser smooths `delta`, and holds it to 1/60 s while the window
+    // isn't focused, so it counts the time that really passed instead.
+    session.state = addPlayTime(session.state, Math.min(this.game.loop.rawDelta, MAX_FRAME_MS));
 
     // Confirm while standing still talks to whoever is in front, or examines what's there.
     if (!this.leaving && !this.running && !this.walker.step && input.pressed('confirm')) {
@@ -168,6 +174,9 @@ export class FieldScene extends Phaser.Scene {
       const exit = exitAt(map, this.walker.x, this.walker.y);
       if (exit) this.leave(exit);
     }
+    // The step into a way out can be off the map, so until they arrive somewhere new, the player
+    // is still where they last stood.
+    if (!this.leaving) this.trackLocation(map);
 
     // Walking into someone makes them turn and look.
     if (direction && !this.walker.step) {
@@ -235,6 +244,12 @@ export class FieldScene extends Phaser.Scene {
   private figure(key: string): Figure {
     const sprite = this.add.sprite(0, 0, key);
     return { sprite, rows: sheetRows(this.textures.get(key).getFrameNames().length) };
+  }
+
+  /** Keeps the game state's location up to date with the player's, for saves to keep. */
+  private trackLocation(map: CompiledMap): void {
+    const { x, y, facing } = this.walker;
+    session.state = setLocation(session.state, { map: map.id, x, y, facing });
   }
 
   /** The NPC taking up (x, y), if any. */

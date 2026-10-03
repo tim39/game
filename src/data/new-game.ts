@@ -1,9 +1,7 @@
-import type { Direction } from '../core/direction';
+import type { NewGame } from '../core/state';
 
-/** Where a new game begins: Saltmere, at Tamsin's door, until the opening (M2) says otherwise. */
-export const NEW_GAME_START: { map: string; x: number; y: number; facing: Direction } = {
-  map: 'saltmere',
-  x: 7,
-  y: 6,
-  facing: 'down',
+/** How a new game begins: Rowan alone at Tamsin's door in Saltmere, until the opening exists. */
+export const NEW_GAME: NewGame = {
+  location: { map: 'saltmere', x: 7, y: 6, facing: 'down' },
+  party: ['rowan'],
 };

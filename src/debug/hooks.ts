@@ -1,8 +1,10 @@
 import type Phaser from 'phaser';
+import { addItem, setFlag } from '../core/state';
 import { MAPS } from '../data/maps';
 import type { FieldStart } from '../scenes/field';
 import { debugSwitches } from '../systems/debug-switches';
 import { input } from '../systems/input/game-input';
+import { session } from '../systems/session';
 import type { DebugApi } from './api';
 import { AssetGalleryScene } from './asset-gallery';
 import { installDebugMenu } from './debug-menu-scene';
@@ -48,6 +50,13 @@ export function installDebugHooks(game: Phaser.Game): void {
     },
     showCollision: (on) => {
       debugSwitches.showCollision = on;
+    },
+    state: () => session.state,
+    setFlag: (flag, on) => {
+      session.state = setFlag(session.state, flag, on);
+    },
+    give: (item, count) => {
+      session.state = addItem(session.state, item, count);
     },
   };
   window.__game = api;

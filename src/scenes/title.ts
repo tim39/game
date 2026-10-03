@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { UI_TEXT } from '../data/ui-text';
 import { input } from '../systems/input/game-input';
 import { touchMode } from '../systems/input/touch-controls';
+import { startNewGame } from '../systems/session';
 import { FONT } from '../ui/fonts';
 
 interface MenuItem {
@@ -100,7 +101,8 @@ export class TitleScene extends Phaser.Scene {
 
   private choose(): void {
     if (!MENU[this.selected]?.enabled) return;
-    // No real opening yet: New Game previews the dialogue box, then walks onto the test map.
+    // No real opening yet: New Game previews the dialogue box, then puts the player in Saltmere.
+    startNewGame();
     this.scene.start('dialogue-sample');
   }
 

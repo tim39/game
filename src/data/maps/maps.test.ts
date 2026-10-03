@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest';
 import { blobLookup, blobMask } from '../../core/map/autotile';
 import { compileMap, isBlocked } from '../../core/map/compile';
-import { NEW_GAME_START } from '../new-game';
+import { NEW_GAME } from '../new-game';
 import { MAP_CONTENT, TERRAINS } from '../terrain';
 import { MAPS } from './index';
 
@@ -29,8 +29,9 @@ test('the blob layout has a tile for every shape, but water has none for a lone 
 });
 
 test('a new game starts on a walkable cell', () => {
-  const map = MAPS[NEW_GAME_START.map];
+  const { map: id, x, y } = NEW_GAME.location;
+  const map = MAPS[id];
   expect(map).toBeDefined();
   if (!map) return;
-  expect(isBlocked(compileMap(map, MAP_CONTENT), NEW_GAME_START.x, NEW_GAME_START.y)).toBe(false);
+  expect(isBlocked(compileMap(map, MAP_CONTENT), x, y)).toBe(false);
 });

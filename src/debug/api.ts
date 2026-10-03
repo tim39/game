@@ -1,4 +1,5 @@
 import type { Direction } from '../core/direction';
+import type { GameState } from '../core/state';
 
 /**
  * What dev and e2e builds expose as `window.__game`, for tests and for poking at the game by hand.
@@ -19,6 +20,12 @@ export interface DebugApi {
   noclip(on: boolean): void;
   /** The debug menu's Show collision: marks solid cells, ways out, spawns and people. */
   showCollision(on: boolean): void;
+  /** The game being played: flags, items, the party, where the player is and so on. */
+  state(): GameState;
+  /** Sets a flag, like `story.beacon-out`, or with `on` false clears it. */
+  setFlag(flag: string, on?: boolean): void;
+  /** Gives the party `count` of an item (1 if left out). */
+  give(item: string, count?: number): void;
 }
 
 declare global {

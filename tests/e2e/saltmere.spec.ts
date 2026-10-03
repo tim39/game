@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import type { Direction } from '../../src/core/direction';
 import type {} from '../../src/debug/api';
-import { NEW_GAME_START } from '../../src/data/new-game';
+import { NEW_GAME } from '../../src/data/new-game';
 
 /** Lets the game run a couple of frames, so whatever input just changed has been read. */
 const nextFrames = (page: Page) =>
@@ -61,8 +61,9 @@ async function closeDialogue(page: Page): Promise<void> {
 }
 
 test('a new game starts in Saltmere, at Tamsin’s door', async ({ page }) => {
-  expect(NEW_GAME_START).toMatchObject({ map: 'saltmere' });
-  await warp(page, NEW_GAME_START.map, NEW_GAME_START.x, NEW_GAME_START.y, NEW_GAME_START.facing);
+  const { map, x, y, facing } = NEW_GAME.location;
+  expect(map).toBe('saltmere');
+  await warp(page, map, x, y, facing);
   await page.screenshot({ path: 'test-results/screenshots/saltmere-start.png' });
 });
 
