@@ -56,6 +56,6 @@ console.log(
 );
 console.log(
   `Events: all ${Object.keys(EVENTS).length} event scripts run down every path through their ` +
-    'choices; every script, speaker and portrait they or the maps name exists; and every line ' +
-    'and choice fits its box, in characters the font has.',
+    'choices and flags; every script, speaker, portrait, person and spawn they or the maps name ' +
+    'exists; and every line and choice fits its box, in characters the font has.',
 );

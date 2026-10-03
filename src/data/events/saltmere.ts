@@ -9,6 +9,7 @@ export const tamsin = defineEvent(async (ev) => {
     "Kindling's tonight, Rowan, and the lamps won't light themselves. Off you go!",
   );
   const pick = await ev.choice(['On my way!', 'Five more minutes?']);
+  ev.setFlag('story.lamp-duty');
   if (pick === 0) {
     await ev.say('tamsin', "That's my lamplighter. Back by dusk, mind: the Kindling won't wait.");
   } else {
@@ -38,6 +39,12 @@ export const vendor = defineEvent(async (ev) => {
 });
 
 export const kid = defineEvent(async (ev) => {
+  if (ev.flag('story.lamp-duty')) {
+    await ev.say(
+      'villager',
+      "Tamsin's got you on lamp duty? Do the ones round the pyre first. They're the prettiest!",
+    );
+  }
   await ev.say(
     'villager',
     "Everyone gives the Beacon a memory at the Kindling. I'm giving it the taste of honey cake!",

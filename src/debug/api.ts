@@ -26,6 +26,8 @@ export interface DebugApi {
   setFlag(flag: string, on?: boolean): void;
   /** Gives the party `count` of an item (1 if left out). */
   give(item: string, count?: number): void;
+  /** Runs an event script on the field, as if something had set it off. Throws if one is running. */
+  run(script: string): void;
 }
 
 declare global {

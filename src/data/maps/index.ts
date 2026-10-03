@@ -8,6 +8,7 @@ import testCellar from './test-cellar';
 import testHouse from './test-house';
 import testMeadow from './test-meadow';
 import testShore from './test-shore';
+import testSquare from './test-square';
 
 /** Every map, by ID. */
 export const MAPS: Readonly<Record<string, MapDef>> = Object.fromEntries(
@@ -21,5 +22,6 @@ export const MAPS: Readonly<Record<string, MapDef>> = Object.fromEntries(
     testHouse,
     testCellar,
     testMeadow,
+    testSquare,
   ].map((map) => [map.id, map]),
 );

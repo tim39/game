@@ -1,6 +1,9 @@
 export const DIRECTIONS = ['up', 'down', 'left', 'right'] as const;
 export type Direction = (typeof DIRECTIONS)[number];
 
+export const isDirection = (value: string): value is Direction =>
+  (DIRECTIONS as readonly string[]).includes(value);
+
 /** The cell offset one step in each direction. */
 export const STEP: Readonly<Record<Direction, readonly [dx: number, dy: number]>> = {
   up: [0, -1],

@@ -1,18 +1,25 @@
 import Phaser from 'phaser';
-import { DIRECTIONS, STEP, type Direction } from '../core/direction';
-import type { EventContext } from '../core/events';
+import { DIRECTIONS, STEP, directionTowards, isDirection, type Direction } from '../core/direction';
+import { PLAYER, type EventContext } from '../core/events';
 import {
+  autoTrigger,
   compileMap,
+  enterTrigger,
   exitAt,
   isBlocked,
   isOutOfBounds,
   scriptAt,
+  sideOf,
+  touchAt,
   type CompiledMap,
   type Spawn,
+  type Trigger,
 } from '../core/map/compile';
 import type { WarpTarget } from '../core/map/types';
 import { createNpc, lookAt, updateNpc, type Npc } from '../core/npc';
 import { Rng } from '../core/rng';
+import { walkRoute, type RouteWalk } from '../core/route';
+import { createScriptContext, type Stage } from '../core/script-context';
 import { addPlayTime, setLocation } from '../core/state';
 import {
   facingCell,
@@ -40,8 +47,11 @@ import type { DialogueLine } from '../ui/dialogue-box';
 import { MAX_CHOICES } from '../ui/dialogue-layout';
 import type { DialogueRequest } from './dialogue';
 
-/** Where to put the player, `scene.start('field', start)`: a cell, or one of the map's spawns. */
-export type FieldStart = { readonly map: string } & (
+/**
+ * Where to put the player, `scene.start('field', start)`: a cell, or one of the map's spawns. With
+ * `dark`, the map starts black, for a script that will fade it in (see `teleport`).
+ */
+export type FieldStart = { readonly map: string; readonly dark?: boolean } & (
   | { readonly x: number; readonly y: number; readonly facing?: Direction }
   | { readonly spawn: string }
 );
@@ -63,6 +73,16 @@ interface Figure {
 interface NpcOnMap extends Figure {
   npc: Npc;
 }
+
+/** Someone a script is walking along a route, and the promise to keep once they're there. */
+interface ScriptedWalk {
+  walk: RouteWalk;
+  readonly arrived: () => void;
+  readonly blocked: (error: Error) => void;
+}
+
+/** How fast NPCs walk when a script walks them, as when they wander. */
+const NPC_SPEEDS = { walkMs: NPC_TUNING.stepMs, runMs: NPC_TUNING.stepMs };
 
 function spawnOn(map: CompiledMap, id: string): Spawn {
   const spawn = map.spawns[id];
@@ -86,8 +106,20 @@ export class FieldScene extends Phaser.Scene {
   private buffered: Direction | null = null;
   /** Set once the player steps into a way out: the screen fades and the controls stop. */
   private leaving = false;
-  /** Set while an event script runs: the player can't move, and everyone else waits. */
-  private running = false;
+  /** The event script running, if any: until it ends, the player can't move and nobody wanders. */
+  private script: { readonly id: string } | null = null;
+  /** People the script is walking somewhere, by who they are (`player`, or an NPC's ID). */
+  private walks = new Map<string, ScriptedWalk>();
+  /** Set while a script has faded the screen to black. */
+  private dark = false;
+  /** Keeps a script's teleport promise once the player arrives. */
+  private arrival?: () => void;
+  /** A script brought the player to this map: its enter script runs once that one ends. */
+  private enterPending = false;
+  /** Auto scripts that have run since the player arrived. */
+  private autosRun = new Set<Trigger>();
+  /** The player's step count when they last came to a stop, to tell when they stop somewhere new. */
+  private stoppedAt = 0;
   /** Marks which cells block the way, while the debug switch for it is on. */
   private collisionView?: CollisionView;
 
@@ -98,6 +130,11 @@ export class FieldScene extends Phaser.Scene {
   create(start: FieldStart): void {
     const def = MAPS[start.map];
     if (!def) throw new Error(`There's no map called ${start.map}`);
+    // A script's teleport carries on here. Any other start leaves whatever was running behind.
+    const arrival = this.arrival;
+    this.arrival = undefined;
+    if (!arrival) this.script = null;
+    this.stopWalks();
     const map = compileMap(def, MAP_CONTENT);
     this.map = map;
     this.overhead = createTilemap(this, map).overhead;
@@ -112,7 +149,8 @@ export class FieldScene extends Phaser.Scene {
         debugSwitches.noclip
           ? isOutOfBounds(map, x, y)
           : isBlocked(map, x, y) || this.npcAt(x, y) !== undefined,
-      stopsAt: (x, y) => exitAt(map, x, y) !== null,
+      // A walk stops at a way out, and at a touch, which runs its script.
+      stopsAt: (x, y) => exitAt(map, x, y) !== null || touchAt(map, x, y, session.state) !== null,
     };
 
     const at = 'spawn' in start ? spawnOn(map, start.spawn) : start;
@@ -121,7 +159,9 @@ export class FieldScene extends Phaser.Scene {
     this.lastDirection = null;
     this.buffered = null;
     this.leaving = false;
-    this.running = false;
+    // Arriving doesn't count as stopping on a touch.
+    this.stoppedAt = this.walker.steps;
+    this.autosRun = new Set();
     // The last map's view went with it.
     this.collisionView = undefined;
     const player = this.figure(PLAYER_SPRITE);
@@ -137,7 +177,15 @@ export class FieldScene extends Phaser.Scene {
     );
     camera.setBounds(bounds.x, bounds.y, bounds.width, bounds.height);
     camera.startFollow(player.sprite, true);
-    camera.fadeIn(MAP_FADE_MS, 0, 0, 0);
+    this.dark = start.dark ?? false;
+    if (this.dark) camera.fade(0, 0, 0, 0, true);
+    else camera.fadeIn(MAP_FADE_MS, 0, 0, 0);
+
+    // The map's enter script runs on arrival; if a script brought the player, once that ends.
+    this.enterPending = arrival !== undefined;
+    if (!arrival) this.runTrigger(enterTrigger(map, session.state));
+    else if (this.dark) arrival();
+    else camera.once(Phaser.Cameras.Scene2D.Events.FADE_IN_COMPLETE, () => arrival());
   }
 
   override update(_time: number, delta: number): void {
@@ -149,10 +197,13 @@ export class FieldScene extends Phaser.Scene {
     session.state = addPlayTime(session.state, Math.min(this.game.loop.rawDelta, MAX_FRAME_MS));
 
     // Confirm while standing still talks to whoever is in front, or examines what's there.
-    if (!this.leaving && !this.running && !this.walker.step && input.pressed('confirm')) {
+    if (!this.leaving && !this.script && !this.walker.step && input.pressed('confirm')) {
       this.interact(map);
     }
-    if (this.running) {
+    if (this.script) {
+      this.walkScripted(map, dt);
+      // Where a script walks the player isn't somewhere they stopped by themselves.
+      this.stoppedAt = this.walker.steps;
       this.drawFigures();
       this.updateCollisionView(map);
       return;
@@ -179,6 +230,11 @@ export class FieldScene extends Phaser.Scene {
     // The step into a way out can be off the map, so until they arrive somewhere new, the player
     // is still where they last stood.
     if (!this.leaving) this.trackLocation(map);
+    // Stopping somewhere new, on a touch, runs its script.
+    if (!this.leaving && !this.walker.step && this.walker.steps !== this.stoppedAt) {
+      this.stoppedAt = this.walker.steps;
+      this.runTrigger(touchAt(map, this.walker.x, this.walker.y, session.state));
+    }
 
     // Walking into someone makes them turn and look.
     if (direction && !this.walker.step) {
@@ -198,8 +254,23 @@ export class FieldScene extends Phaser.Scene {
       };
       entry.npc = updateNpc(entry.npc, dt, npcWorld, this.rng, NPC_TUNING);
     }
+
+    // An auto script runs as soon as its condition holds, with the player standing still.
+    if (!this.script && !this.leaving && !this.walker.step) {
+      const auto = autoTrigger(map, session.state, this.autosRun);
+      if (auto) {
+        this.autosRun.add(auto);
+        this.run(auto.script);
+      }
+    }
     this.drawFigures();
     this.updateCollisionView(map);
+  }
+
+  /** Runs an event script now, as a trigger would: `window.__game.run(id)` in dev and test builds. */
+  runScript(id: string): void {
+    if (this.script || this.leaving) throw new Error(`Can't run ${id}: the field is busy`);
+    this.run(id);
   }
 
   /** Read by `window.__game.inspect('field')` in dev and test builds. */
@@ -212,7 +283,9 @@ export class FieldScene extends Phaser.Scene {
     return {
       map: map.id,
       leaving: this.leaving,
-      running: this.running,
+      running: this.script !== null,
+      script: this.script?.id ?? null,
+      dark: this.dark,
       fading: camera.fadeEffect.isRunning,
       noclip: debugSwitches.noclip,
       collision: this.collisionView?.marked ?? null,
@@ -276,6 +349,10 @@ export class FieldScene extends Phaser.Scene {
     if (script) this.run(script);
   }
 
+  private runTrigger(trigger: Trigger | null): void {
+    if (trigger) this.run(trigger.script);
+  }
+
   /** Runs an event script; until it ends the field stands still. */
   private run(id: string): void {
     const script = EVENTS[id];
@@ -283,10 +360,35 @@ export class FieldScene extends Phaser.Scene {
       console.error(`There's no event script called ${id}`);
       return;
     }
-    this.running = true;
+    const running = { id };
+    this.script = running;
+    void script(this.scriptContext())
+      .catch((error: unknown) => console.error(`Event script ${id} failed:`, error))
+      .finally(() => {
+        // A start somewhere else (a debug warp, say) may have left this script behind.
+        if (this.script === running) this.scriptEnded();
+      });
+  }
+
+  /**
+   * Once a script ends, anyone it set walking without waiting stops, the screen comes back if it
+   * left it black, and a map it brought the player to runs its enter script.
+   */
+  private scriptEnded(): void {
+    this.script = null;
+    this.stopWalks();
+    if (this.dark) void this.fade('in', MAP_FADE_MS);
+    if (this.enterPending && this.map) {
+      this.enterPending = false;
+      this.runTrigger(enterTrigger(this.map, session.state));
+    }
+  }
+
+  /** What a script runs against: the stage is this field, and the state is the game being played. */
+  private scriptContext(): EventContext {
     // Choices come up under the last line said, which stays on screen while the player picks.
     let lastLine: DialogueLine | undefined;
-    const ev: EventContext = {
+    const stage: Stage = {
       say: async (speakerId, text) => {
         const speaker = SPEAKERS[speakerId];
         if (!speaker) throw new Error(`There's no speaker called ${speakerId}`);
@@ -302,10 +404,140 @@ export class FieldScene extends Phaser.Scene {
         const pick = await this.dialogue({ line: lastLine, typed: false, choices: options });
         return pick ?? 0;
       },
+      wait: (ms) =>
+        new Promise((resolve) => {
+          this.time.delayedCall(checkedMs(ms), () => resolve());
+        }),
+      face: (actor, toward) => Promise.resolve().then(() => this.face(actor, toward)),
+      move: (actor, route) => this.walkAlong(actor, route),
+      fadeOut: (ms = MAP_FADE_MS) => this.fade('out', checkedMs(ms)),
+      fadeIn: (ms = MAP_FADE_MS) => this.fade('in', checkedMs(ms)),
+      teleport: (map, spawn) => this.teleport(map, spawn),
     };
-    void script(ev)
-      .catch((error: unknown) => console.error(`Event script ${id} failed:`, error))
-      .finally(() => (this.running = false));
+    return createScriptContext(stage, {
+      get: () => session.state,
+      set: (state) => {
+        session.state = state;
+      },
+    });
+  }
+
+  /** The NPC on this map a script calls `id`. */
+  private npcCalled(id: string): NpcOnMap {
+    const entry = this.npcs.find(({ npc }) => npc.placement.id === id);
+    if (!entry) throw new Error(`There's no one called ${id} on ${this.map?.id ?? 'this map'}`);
+    return entry;
+  }
+
+  /** The walker of someone a script names: the player, or an NPC on this map. */
+  private walkerOf(actor: string): Walker {
+    return actor === PLAYER ? this.walker : this.npcCalled(actor).npc.walker;
+  }
+
+  private setWalkerOf(actor: string, walker: Walker): void {
+    if (actor === PLAYER) {
+      this.walker = walker;
+      return;
+    }
+    const entry = this.npcCalled(actor);
+    entry.npc = { ...entry.npc, walker };
+  }
+
+  /** Turns someone to face a way, or towards someone else. */
+  private face(actor: string, toward: string): void {
+    const walker = this.walkerOf(actor);
+    let facing: Direction;
+    if (isDirection(toward)) facing = toward;
+    else {
+      const other = this.walkerOf(toward);
+      facing = directionTowards(walker.x, walker.y, other.x, other.y);
+    }
+    this.setWalkerOf(actor, { ...walker, facing });
+  }
+
+  /** Walks someone along a route; it resolves once they're there, and fails if they're blocked. */
+  private walkAlong(actor: string, route: readonly Direction[]): Promise<void> {
+    return new Promise((arrived, blocked) => {
+      this.walkerOf(actor);
+      const wrong = route.find((step) => !isDirection(step));
+      if (wrong !== undefined) throw new Error(`"${String(wrong)}" isn't a direction to step in`);
+      if (this.walks.has(actor)) throw new Error(`${actor} is already walking somewhere`);
+      this.walks.set(actor, { walk: { route, taken: 0 }, arrived, blocked });
+    });
+  }
+
+  /** Moves everyone a script is walking on by a frame, and keeps its promises as they arrive. */
+  private walkScripted(map: CompiledMap, dt: number): void {
+    for (const [actor, scripted] of this.walks) {
+      const speeds = actor === PLAYER ? FIELD_SPEEDS : NPC_SPEEDS;
+      const world = this.scriptedWorld(map, actor);
+      const progress = walkRoute(this.walkerOf(actor), scripted.walk, dt, world, speeds);
+      this.setWalkerOf(actor, progress.walker);
+      scripted.walk = progress.walk;
+      if (progress.status === 'walking') continue;
+      this.walks.delete(actor);
+      if (progress.status === 'arrived') {
+        scripted.arrived();
+      } else {
+        const { x, y, facing } = progress.walker;
+        scripted.blocked(new Error(`${actor} can't step ${facing} from (${x}, ${y})`));
+      }
+    }
+  }
+
+  /** Where a script can walk someone: anywhere on the map that's open and not taken by someone else. */
+  private scriptedWorld(map: CompiledMap, actor: string): WalkWorld {
+    return {
+      isBlocked: (x, y) =>
+        sideOf(map, x, y) !== null ||
+        isBlocked(map, x, y) ||
+        (actor !== PLAYER && occupies(this.walker, x, y)) ||
+        this.npcs.some(({ npc }) => npc.placement.id !== actor && occupies(npc.walker, x, y)),
+    };
+  }
+
+  /** Stops anyone still walking for a script, where they are; their promises resolve. */
+  private stopWalks(): void {
+    for (const scripted of this.walks.values()) scripted.arrived();
+    this.walks.clear();
+  }
+
+  /** Fades the screen out to black, or back in, and resolves once it's done. */
+  private fade(to: 'out' | 'in', ms: number): Promise<void> {
+    const camera = this.cameras.main;
+    const done =
+      to === 'out'
+        ? Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE
+        : Phaser.Cameras.Scene2D.Events.FADE_IN_COMPLETE;
+    return new Promise((resolve) => {
+      this.dark = to === 'out';
+      camera.once(done, () => resolve());
+      // Forced, in case another fade is running.
+      camera.fadeEffect.start(to === 'out', ms, 0, 0, 0, true);
+    });
+  }
+
+  /**
+   * Takes the player to a spawn on a map. Like a door, it fades out and the field starts over
+   * there; if a script has the screen black already, it stays black. Resolves once the player
+   * has arrived, and the screen has faded back in unless it's staying black.
+   */
+  private teleport(mapId: string, spawn: string): Promise<void> {
+    const there = MAPS[mapId]?.objects?.some((o) => o.type === 'spawn' && o.id === spawn);
+    if (!there) return Promise.reject(new Error(`There's no spawn called ${spawn} on ${mapId}`));
+    return new Promise((resolve) => {
+      this.arrival = resolve;
+      const start: FieldStart = { map: mapId, spawn, dark: this.dark };
+      if (this.dark) {
+        this.scene.restart(start);
+        return;
+      }
+      const camera = this.cameras.main;
+      camera.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
+        this.scene.restart(start);
+      });
+      camera.fade(MAP_FADE_MS, 0, 0, 0, true);
+    });
   }
 
   /**
@@ -352,6 +584,12 @@ export class FieldScene extends Phaser.Scene {
     }
     this.collisionView?.update(this.npcs.map(({ npc }) => npc.walker));
   }
+}
+
+/** A time a script asks for, which has to be a real one. */
+function checkedMs(ms: number): number {
+  if (!(ms >= 0 && Number.isFinite(ms))) throw new RangeError(`${ms} ms isn't a length of time`);
+  return ms;
 }
 
 /**

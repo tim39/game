@@ -1,13 +1,18 @@
 import { describe, expect, test } from 'vitest';
+import { createGameState, setFlag } from '../state';
 import {
+  autoTrigger,
   compileMap,
+  enterTrigger,
   exitAt,
   isBlocked,
   isOutOfBounds,
   scriptAt,
   terrainRows,
+  touchAt,
   type CompiledMap,
   type LayerName,
+  type Trigger,
 } from './compile';
 import type { MapContent, MapDef, MapObject } from './types';
 
@@ -344,6 +349,78 @@ describe('npcs', () => {
     );
     expect(() => compile('..', [npc('a', 0, 0), npc('a', 1, 0)])).toThrow('two npcs are called a');
     expect(() => compile('..', [npc('a', 0, 0, -1)])).toThrow("npc a can't wander -1");
+  });
+
+  test('can’t be called what scripts call the player, or a direction', () => {
+    expect(() => compile('..', [npc('player', 0, 0)])).toThrow("an npc can't be called player");
+    expect(() => compile('..', [npc('up', 0, 0)])).toThrow("an npc can't be called up");
+  });
+});
+
+describe('triggers', () => {
+  const START = createGameState({
+    location: { map: 'test', x: 0, y: 0, facing: 'down' },
+    party: ['rowan'],
+  });
+  const LIT = setFlag(START, 'story.lamps-lit');
+
+  test('a touch runs its script from its cell, while its condition holds', () => {
+    const compiled = compile('...', [
+      { type: 'touch', at: [1, 0], script: 'dark', when: '!story.lamps-lit' },
+      { type: 'touch', at: [1, 0], script: 'lit', when: 'story.lamps-lit' },
+      { type: 'touch', at: [2, 0], script: 'always' },
+    ]);
+    expect(touchAt(compiled, 1, 0, START)?.script).toBe('dark');
+    expect(touchAt(compiled, 1, 0, LIT)?.script).toBe('lit');
+    expect(touchAt(compiled, 2, 0, LIT)).toMatchObject({ x: 2, y: 0, script: 'always' });
+    expect(touchAt(compiled, 0, 0, START)).toBeNull();
+  });
+
+  test('a touch must be somewhere the player can stand, and not a way out', () => {
+    expect(() => compile('.r', [{ type: 'touch', at: [1, 0], script: 's' }])).toThrow(
+      'the touch at (1, 0) running s is on a solid cell',
+    );
+    const HOME = { map: 'home', spawn: 'door' };
+    expect(() =>
+      compile('..', [
+        { type: 'warp', at: [0, 0], to: HOME },
+        { type: 'touch', at: [0, 0], script: 's' },
+      ]),
+    ).toThrow('the touch at (0, 0) running s is in a way out');
+    expect(() => compile('..', [{ type: 'touch', at: [2, 0], script: 's' }])).toThrow(
+      'the touch at (2, 0) is off the map',
+    );
+  });
+
+  test('arriving runs the first enter trigger whose condition holds', () => {
+    const compiled = compile('..', [
+      { type: 'enter', script: 'first-visit', when: '!story.visited' },
+      { type: 'enter', script: 'every-visit' },
+    ]);
+    expect(enterTrigger(compiled, START)?.script).toBe('first-visit');
+    expect(enterTrigger(compiled, setFlag(START, 'story.visited'))?.script).toBe('every-visit');
+    expect(enterTrigger(compile('..'), START)).toBeNull();
+  });
+
+  test('an auto trigger runs once its condition holds, and not again until the next visit', () => {
+    const compiled = compile('..', [
+      { type: 'auto', script: 'festival', when: ['story.lamps-lit', '!story.festival'] },
+    ]);
+    const ran = new Set<Trigger>();
+    expect(autoTrigger(compiled, START, ran)).toBeNull();
+    const festival = autoTrigger(compiled, LIT, ran);
+    expect(festival?.script).toBe('festival');
+    if (festival) ran.add(festival);
+    expect(autoTrigger(compiled, LIT, ran)).toBeNull();
+  });
+
+  test('conditions name flags', () => {
+    expect(() => compile('..', [{ type: 'auto', script: 's', when: 'lamps-lit' }])).toThrow(
+      'the auto running s has "lamps-lit" in its condition, which isn\'t a flag',
+    );
+    expect(() =>
+      compile('..', [{ type: 'enter', script: 's', when: ['story.ok', '!Story.Bad'] }]),
+    ).toThrow('"!Story.Bad"');
   });
 });
 

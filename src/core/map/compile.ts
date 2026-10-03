@@ -1,5 +1,8 @@
-import type { Direction } from '../direction';
+import { badConditionTerms, conditionHolds, type Condition } from '../conditions';
+import { isDirection, type Direction } from '../direction';
+import { PLAYER } from '../events';
 import type { NpcPlacement } from '../npc';
+import type { GameState } from '../state';
 import { blobLookup, blobMask, type BlobLayout } from './autotile';
 import type {
   FillTerrain,
@@ -25,6 +28,18 @@ export interface Spawn {
   readonly facing: Direction;
 }
 
+/** An event script that runs by itself, while its condition holds. */
+export interface Trigger {
+  readonly script: string;
+  readonly when?: Condition;
+}
+
+/** A script that stepping onto a cell runs. */
+export interface TouchTrigger extends Trigger {
+  readonly x: number;
+  readonly y: number;
+}
+
 /** A map ready to draw and walk on. Cell (x, y) is at index y × width + x in the per-cell arrays. */
 export interface CompiledMap {
   readonly id: string;
@@ -42,6 +57,12 @@ export interface CompiledMap {
   readonly npcs: readonly NpcPlacement[];
   /** The event script that facing each cell and pressing Confirm runs, if any. */
   readonly scripts: readonly (string | null)[];
+  /** Scripts that stepping onto a cell runs, in the order the map lists them. */
+  readonly touches: readonly TouchTrigger[];
+  /** Scripts that arriving on the map runs. */
+  readonly enters: readonly Trigger[];
+  /** Scripts that run as soon as their condition holds. */
+  readonly autos: readonly Trigger[];
 }
 
 /** The edge a cell just off the map is past, or null for a cell on the map. */
@@ -65,6 +86,35 @@ export function scriptAt(map: CompiledMap, x: number, y: number): string | null 
   if (sideOf(map, x, y)) return null;
   return map.scripts[y * map.width + x] ?? null;
 }
+
+/** What stepping onto (x, y) sets off: the first touch trigger there whose condition holds. */
+export function touchAt(
+  map: CompiledMap,
+  x: number,
+  y: number,
+  state: GameState,
+): TouchTrigger | null {
+  return (
+    map.touches.find(
+      (touch) => touch.x === x && touch.y === y && conditionHolds(touch.when, state),
+    ) ?? null
+  );
+}
+
+/** What arriving on the map sets off: the first enter trigger whose condition holds. */
+export const enterTrigger = (map: CompiledMap, state: GameState): Trigger | null =>
+  map.enters.find((enter) => conditionHolds(enter.when, state)) ?? null;
+
+/**
+ * The auto trigger to run now: the first whose condition holds, of those that haven't run since
+ * the player arrived (`ran`).
+ */
+export const autoTrigger = (
+  map: CompiledMap,
+  state: GameState,
+  ran: ReadonlySet<Trigger>,
+): Trigger | null =>
+  map.autos.find((auto) => !ran.has(auto) && conditionHolds(auto.when, state)) ?? null;
 
 /** Can't step into (x, y): it's solid, or off an edge that leads nowhere. */
 export function isBlocked(map: CompiledMap, x: number, y: number): boolean {
@@ -137,6 +187,17 @@ export function compileMap(def: MapDef, content: MapContent): CompiledMap {
   const spawns: Record<string, Spawn> = {};
   const npcs: NpcPlacement[] = [];
   const scripts = cells<string | null>(null);
+  const touches: TouchTrigger[] = [];
+  const enters: Trigger[] = [];
+  const autos: Trigger[] = [];
+
+  /** A trigger, checking its condition names flags. */
+  function trigger(kind: string, script: string, when: Condition | undefined): Trigger {
+    for (const term of when === undefined ? [] : badConditionTerms(when)) {
+      fail(`the ${kind} running ${script} has "${term}" in its condition, which isn't a flag`);
+    }
+    return when === undefined ? { script } : { script, when };
+  }
 
   function fillTile(terrain: FillTerrain, x: number, y: number): TileRef {
     const total = terrain.tiles.reduce((sum, [, , weight = 1]) => sum + weight, 0);
@@ -256,6 +317,14 @@ export function compileMap(def: MapDef, content: MapContent): CompiledMap {
   }
 
   for (const object of def.objects ?? []) {
+    if (object.type === 'enter') {
+      enters.push(trigger('enter', object.script, object.when));
+      continue;
+    }
+    if (object.type === 'auto') {
+      autos.push(trigger('auto', object.script, object.when));
+      continue;
+    }
     const [x, y] = object.at;
     switch (object.type) {
       case 'prefab':
@@ -270,9 +339,16 @@ export function compileMap(def: MapDef, content: MapContent): CompiledMap {
         if (spawns[object.id]) fail(`two spawns are called ${object.id}`);
         spawns[object.id] = { x, y, facing: object.facing };
         break;
+      case 'touch':
+        if (!onMap(x, y)) fail(`the touch at (${x}, ${y}) is off the map`);
+        touches.push({ x, y, ...trigger('touch', object.script, object.when) });
+        break;
       case 'npc': {
         const wander = object.wander ?? 0;
         if (!onMap(x, y)) fail(`npc ${object.id} at (${x}, ${y}) is off the map`);
+        if (object.id === PLAYER || isDirection(object.id)) {
+          fail(`an npc can't be called ${object.id}: scripts use that word for something else`);
+        }
         if (npcs.some((npc) => npc.id === object.id)) fail(`two npcs are called ${object.id}`);
         if (!Number.isInteger(wander) || wander < 0)
           fail(`npc ${object.id} can't wander ${wander}`);
@@ -310,7 +386,27 @@ export function compileMap(def: MapDef, content: MapContent): CompiledMap {
     if (warp && solid[index])
       fail(`the warp at (${index % width}, ${Math.floor(index / width)}) is on a solid cell`);
   });
+  // A touch is somewhere the player can stand, and not a way out, which would take them away first.
+  for (const { x, y, script } of touches) {
+    const index = y * width + x;
+    if (solid[index]) fail(`the touch at (${x}, ${y}) running ${script} is on a solid cell`);
+    if (warps[index]) fail(`the touch at (${x}, ${y}) running ${script} is in a way out`);
+  }
 
   const edges = def.edges ?? {};
-  return { id: def.id, width, height, layers, solid, warps, edges, spawns, npcs, scripts };
+  return {
+    id: def.id,
+    width,
+    height,
+    layers,
+    solid,
+    warps,
+    edges,
+    spawns,
+    npcs,
+    scripts,
+    touches,
+    enters,
+    autos,
+  };
 }

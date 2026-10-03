@@ -1,3 +1,4 @@
+import type { Condition } from '../conditions';
 import type { Direction } from '../direction';
 import type { BlobLayout } from './autotile';
 
@@ -113,7 +114,37 @@ export interface NpcObject {
   readonly script?: string;
 }
 
-export type MapObject = PrefabObject | WarpObject | SpawnObject | NpcObject;
+/**
+ * Stepping onto this cell runs `script`, while `when` holds (always, without it). A walk stops
+ * there, as it does at a way out. Arriving there through a door or a teleport doesn't count.
+ */
+export interface TouchObject {
+  readonly type: 'touch';
+  readonly at: GridPoint;
+  readonly script: string;
+  readonly when?: Condition;
+}
+
+/** Arriving on the map runs `script`, if `when` holds. */
+export interface EnterObject {
+  readonly type: 'enter';
+  readonly script: string;
+  readonly when?: Condition;
+}
+
+/**
+ * Runs `script` as soon as `when` holds, while the player is on the map and nothing else is
+ * running. The script should change a flag so that `when` no longer holds: until it does, it runs
+ * again each time the player comes back to the map.
+ */
+export interface AutoObject {
+  readonly type: 'auto';
+  readonly script: string;
+  readonly when: Condition;
+}
+
+export type MapObject =
+  PrefabObject | WarpObject | SpawnObject | NpcObject | TouchObject | EnterObject | AutoObject;
 
 export const SIDES = ['north', 'south', 'east', 'west'] as const;
 export type Side = (typeof SIDES)[number];

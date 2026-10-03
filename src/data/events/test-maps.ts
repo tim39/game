@@ -25,3 +25,53 @@ export const host = defineEvent(async (ev) => {
 export const sign = defineEvent(async (ev) => {
   await ev.say('sign', 'TEST SHORE. A house to the east, a meadow down the long path.');
 });
+
+// The test square, for trying out event scripts and what sets them off.
+
+export const square = defineEvent(async (ev) => {
+  ev.setFlag('test.square-seen');
+  await ev.say(
+    'sign',
+    'TEST SQUARE. A place for trying out event scripts. Say hello to the guide.',
+  );
+});
+
+export const stone = defineEvent(async (ev) => {
+  if (ev.flag('test.stone-found')) {
+    await ev.say('sign', 'The loose stone wobbles again.');
+    return;
+  }
+  ev.setFlag('test.stone-found');
+  ev.giveItem('pebble');
+  await ev.say('sign', 'A loose stone wobbles underfoot. You pocket a pebble from under it.');
+});
+
+export const guide = defineEvent(async (ev) => {
+  if (!ev.flag('test.guide-done')) {
+    await ev.say('villager', 'Watch this: I walk wherever a script tells me to.');
+    await ev.move('guide', ['right', 'right', 'down']);
+    await ev.face('guide', 'player');
+    await ev.wait(300);
+    await ev.say('villager', 'And I can send you somewhere else. Close your eyes...');
+    await ev.fadeOut();
+    await ev.teleport('test-square', 'corner');
+    await ev.fadeIn();
+    ev.setFlag('test.guide-done');
+    return;
+  }
+  await ev.say('villager', 'Back to where you started?');
+  if ((await ev.choice(['Yes, please.', 'No, thanks.'])) === 0) {
+    await ev.teleport('test-square', 'start');
+  }
+});
+
+export const cheer = defineEvent(async (ev) => {
+  ev.setFlag('test.cheered');
+  await ev.face('guide', 'player');
+  await ev.say('villager', 'Ta-da! I said that all by myself, as soon as a flag was set.');
+});
+
+/** Walks the guide into the trees, which fails: the test that a blocked step stops the script. */
+export const bump = defineEvent(async (ev) => {
+  await ev.move('guide', ['up', 'up', 'up']);
+});

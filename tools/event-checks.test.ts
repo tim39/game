@@ -172,6 +172,142 @@ test('stops following a script that keeps asking in a loop', async () => {
   expect(problems).toEqual([]);
 });
 
+test('follows both ways a flag can be, but remembers what the script set itself', async () => {
+  const problems = await check({
+    events: {
+      either: defineEvent(async (ev) => {
+        if (ev.flag('story.beacon-out')) await ev.say('nobody', 'Only once the Beacon is out.');
+      }),
+      remembers: defineEvent(async (ev) => {
+        ev.setFlag('story.told');
+        if (!ev.flag('story.told')) await ev.say('nobody', 'Never said.');
+        // Reading it again gives the same answer.
+        if (ev.flag('story.other') !== ev.flag('story.other')) await ev.say('nobody', 'Never.');
+      }),
+    },
+  });
+  expect(problems).toEqual(["Event either: there's no speaker called nobody"]);
+});
+
+test('follows both ways the party can have an item or gold, so a checked take works', async () => {
+  const problems = await check({
+    events: {
+      careful: defineEvent(async (ev) => {
+        if (ev.hasItem('old-key')) {
+          ev.takeItem('old-key');
+          await ev.say('nobody', 'Only with the key.');
+        }
+        if (ev.gold() >= 10) ev.takeGold(10);
+      }),
+      careless: defineEvent((ev) => {
+        ev.takeItem('old-key');
+        return Promise.resolve();
+      }),
+      broke: defineEvent((ev) => {
+        ev.takeGold(5);
+        return Promise.resolve();
+      }),
+    },
+  });
+  expect(problems).toEqual([
+    "Event careful: there's no speaker called nobody",
+    "Event careless: Can't remove 1 old-key: the party has 0",
+    "Event broke: Can't remove 5 gold: the party has 0",
+  ]);
+});
+
+test('checks the people a script moves and turns are on each map that runs it', async () => {
+  const runner = (id: string, objects: MapDef['objects']): MapDef => ({ ...map, id, objects });
+  const ada = { type: 'npc', id: 'ada', sprite: 'ada', at: [0, 0], facing: 'down' } as const;
+  const problems = await check({
+    maps: {
+      a: runner('a', [{ ...ada, script: 'stroll' }]),
+      b: runner('b', [{ type: 'enter', script: 'stroll' }]),
+    },
+    events: {
+      hello,
+      stroll: defineEvent(async (ev) => {
+        await ev.move('ada', ['left', 'up']);
+        await ev.face('player', 'ada');
+        await ev.face('ada', 'down');
+        await ev.move('player', ['north' as 'up']);
+      }),
+    },
+  });
+  expect(problems).toEqual([
+    'Event stroll: it moves player "north", which isn\'t a way',
+    "Event stroll: it moves ada, but there's no one called that on b",
+    "Event stroll: it turns someone to face ada, but there's no one called that on b",
+    "Event stroll: it turns ada, but there's no one called that on b",
+  ]);
+});
+
+test('checks teleports go to spawns that exist, and who is about on the map after one', async () => {
+  const problems = await check({
+    maps: {
+      a: {
+        ...map,
+        objects: [
+          { type: 'spawn', id: 'door', at: [0, 0], facing: 'down' },
+          { type: 'npc', id: 'ada', sprite: 'ada', at: [1, 0], facing: 'down', script: 'trip' },
+        ],
+      },
+      b: { ...map, id: 'b', objects: [{ type: 'spawn', id: 'gate', at: [0, 0], facing: 'up' }] },
+    },
+    events: {
+      trip: defineEvent(async (ev) => {
+        await ev.face('ada', 'player');
+        await ev.teleport('b', 'gate');
+        await ev.face('ada', 'player');
+        await ev.teleport('b', 'nowhere');
+        await ev.teleport('c', 'gate');
+      }),
+    },
+  });
+  expect(problems).toEqual([
+    "Event trip: it turns ada, but there's no one called that on b",
+    "Event trip: it teleports to spawn nowhere on b, which isn't there",
+    "Event trip: it teleports to spawn gate on c, which isn't there",
+  ]);
+});
+
+test('checks waits and fades take a real length of time', async () => {
+  const problems = await check({
+    events: {
+      timing: defineEvent(async (ev) => {
+        await ev.wait(500);
+        await ev.fadeOut();
+        await ev.wait(-1);
+        await ev.fadeIn(Number.NaN);
+      }),
+    },
+  });
+  expect(problems).toEqual([
+    "Event timing: it would wait for -1 ms, which isn't a length of time",
+    "Event timing: it would fade in for NaN ms, which isn't a length of time",
+  ]);
+});
+
+test('reports scripts that triggers run but do not exist', async () => {
+  const problems = await check({
+    maps: {
+      a: {
+        ...map,
+        objects: [
+          { type: 'touch', at: [0, 0], script: 'gone' },
+          { type: 'enter', script: 'gone-too' },
+          { type: 'auto', script: 'gone-as-well', when: 'story.x' },
+        ],
+      },
+    },
+  });
+  expect(problems).toEqual([
+    "Map a: the touch at (0, 0) runs gone, which isn't an event script",
+    "Map a: its enter trigger runs gone-too, which isn't an event script",
+    "Map a: its auto trigger runs gone-as-well, which isn't an event script",
+  ]);
+});
+
 // The same check as `npm run validate`, so it also runs with the unit tests.
 test('the real event scripts, speakers and maps check out', async () => {
   const problems = await checkEvents({

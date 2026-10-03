@@ -51,7 +51,7 @@ Start a session and say **"next task"**, or name one. Claude takes the first unc
 
 - [x] `GameState` in core (flags, vars, inventory, gold, party, location) with its operations and tests.
 - [x] Dialogue: text box with name and portrait, typewriter text, skip, choices. Measure the line width and record it in STORY.md.
-- [ ] Event runner: async scripts, `EventContext` v1 and triggers (see TECH.md), tested against a fake context.
+- [x] Event runner: async scripts, `EventContext` v1 and triggers (see TECH.md), tested against a fake context.
 - [ ] Chests (one-time, flag-backed) and signs.
 - [ ] Audio manager: music per map with crossfades, sound effects, audio unlock on first input.
 - [ ] Save and load: three slots plus autosave on every map change, save versioning and migrations, Continue on the title screen, save export and import in the debug menu.
