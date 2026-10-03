@@ -73,6 +73,12 @@ export function isBlocked(map: CompiledMap, x: number, y: number): boolean {
   return map.solid[y * map.width + x] ?? true;
 }
 
+/** (x, y) is off an edge that leads nowhere: the one wall the debug menu's noclip doesn't open. */
+export function isOutOfBounds(map: CompiledMap, x: number, y: number): boolean {
+  const side = sideOf(map, x, y);
+  return side !== null && !map.edges[side];
+}
+
 /** The terrain rows of a map, without the blank lines and shared indentation around them. */
 export function terrainRows(terrain: string): string[] {
   const lines = terrain.split('\n').map((line) => line.trimEnd());

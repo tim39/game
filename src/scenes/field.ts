@@ -5,6 +5,7 @@ import {
   compileMap,
   exitAt,
   isBlocked,
+  isOutOfBounds,
   scriptAt,
   type CompiledMap,
   type Spawn,
@@ -28,6 +29,8 @@ import { SPEAKERS } from '../data/speakers';
 import { MAP_CONTENT } from '../data/terrain';
 import { cameraBounds } from '../systems/camera';
 import { characterFrame, sheetRows } from '../systems/character-frames';
+import { CollisionView } from '../systems/collision-view';
+import { debugSwitches } from '../systems/debug-switches';
 import { input } from '../systems/input/game-input';
 import { settings } from '../systems/settings';
 import { DEPTH, TILE, createTilemap } from '../systems/tilemap';
@@ -81,6 +84,8 @@ export class FieldScene extends Phaser.Scene {
   private leaving = false;
   /** Set while an event script runs: the player can't move, and everyone else waits. */
   private running = false;
+  /** Marks which cells block the way, while the debug switch for it is on. */
+  private collisionView?: CollisionView;
 
   constructor() {
     super('field');
@@ -98,7 +103,11 @@ export class FieldScene extends Phaser.Scene {
       ...this.figure(`sprite.${placement.sprite}`),
     }));
     this.world = {
-      isBlocked: (x, y) => isBlocked(map, x, y) || this.npcAt(x, y) !== undefined,
+      // Noclip, a debug switch, walks through walls and people, but not off the map.
+      isBlocked: (x, y) =>
+        debugSwitches.noclip
+          ? isOutOfBounds(map, x, y)
+          : isBlocked(map, x, y) || this.npcAt(x, y) !== undefined,
       stopsAt: (x, y) => exitAt(map, x, y) !== null,
     };
 
@@ -108,6 +117,8 @@ export class FieldScene extends Phaser.Scene {
     this.buffered = null;
     this.leaving = false;
     this.running = false;
+    // The last map's view went with it.
+    this.collisionView = undefined;
     const player = this.figure(PLAYER_SPRITE);
     this.player = player;
     this.drawFigures();
@@ -135,6 +146,7 @@ export class FieldScene extends Phaser.Scene {
     }
     if (this.running) {
       this.drawFigures();
+      this.updateCollisionView(map);
       return;
     }
 
@@ -176,6 +188,7 @@ export class FieldScene extends Phaser.Scene {
       entry.npc = updateNpc(entry.npc, dt, npcWorld, this.rng, NPC_TUNING);
     }
     this.drawFigures();
+    this.updateCollisionView(map);
   }
 
   /** Read by `window.__game.inspect('field')` in dev and test builds. */
@@ -190,6 +203,8 @@ export class FieldScene extends Phaser.Scene {
       leaving: this.leaving,
       running: this.running,
       fading: camera.fadeEffect.isRunning,
+      noclip: debugSwitches.noclip,
+      collision: this.collisionView?.marked ?? null,
       x: walker.x,
       y: walker.y,
       facing: walker.facing,
@@ -292,6 +307,17 @@ export class FieldScene extends Phaser.Scene {
   private drawFigures(): void {
     if (this.player) draw(this.player, this.walker);
     for (const { npc, sprite, rows } of this.npcs) draw({ sprite, rows }, npc.walker);
+  }
+
+  /** Shows or hides the collision view as its debug switch says, and keeps up with the people. */
+  private updateCollisionView(map: CompiledMap): void {
+    if (debugSwitches.showCollision && !this.collisionView) {
+      this.collisionView = new CollisionView(this, map);
+    } else if (!debugSwitches.showCollision && this.collisionView) {
+      this.collisionView.destroy();
+      this.collisionView = undefined;
+    }
+    this.collisionView?.update(this.npcs.map(({ npc }) => npc.walker));
   }
 }
 

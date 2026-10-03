@@ -15,7 +15,7 @@ npm install
 npm run dev
 ```
 
-Open the address it prints.
+Open the address it prints. In that dev build, the backtick key (`` ` ``), or three fingers on the game on a touchscreen, opens a debug menu: warp to any map, walk through walls, and show what blocks the way.
 
 ## Docs
 

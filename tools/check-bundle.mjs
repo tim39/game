@@ -2,7 +2,7 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-const FORBIDDEN = ['__game', 'installDebugHooks', 'asset-gallery'];
+const FORBIDDEN = ['__game', 'installDebugHooks', 'asset-gallery', 'debug-menu'];
 
 const files = readdirSync('dist', { recursive: true })
   .map(String)

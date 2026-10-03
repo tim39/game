@@ -248,6 +248,76 @@ test('B and Menu hold their actions while pressed', async ({ page }) => {
   await page.waitForFunction(() => window.__game?.held().length === 0);
 });
 
+test('three fingers on the game open the debug menu, and the controls work it', async ({
+  page,
+}) => {
+  const errors = watchErrors(page);
+  // Open grass, with room in every direction.
+  await warp(page, 'test-shore', 12, 12, 'down');
+  const fingers = await Fingers.on(page);
+  const debugMenu = () => page.evaluate(() => window.__game?.inspect('debug-menu'));
+  const menuOpen = (open: boolean) =>
+    page.waitForFunction(
+      (open) => window.__game?.activeScenes().includes('debug-menu') === open,
+      open,
+    );
+  const canvas = await page.locator('#game canvas').boundingBox();
+  if (!canvas) throw new Error('the game canvas is not on screen');
+  const onGame = (dx: number): Point => ({
+    x: canvas.x + canvas.width / 2 + dx,
+    y: canvas.y + canvas.height / 2,
+  });
+  const threeFingers = async (): Promise<void> => {
+    await fingers.press(1, onGame(-80));
+    await fingers.press(2, onGame(0));
+    await fingers.press(3, onGame(80));
+  };
+  const liftAll = async (): Promise<void> => {
+    for (const id of [1, 2, 3]) await fingers.lift(id);
+  };
+
+  // Thumbs on the d-pad and B and a finger on A are playing, not asking for the menu.
+  await fingers.press(1, await spot(page, 'dpad', 'right'));
+  await fingers.press(2, await spot(page, 'b'));
+  await fingers.press(3, await spot(page, 'a'));
+  await nextFrames(page);
+  await nextFrames(page);
+  expect(await activeScenes(page)).toEqual(['field']);
+  await liftAll();
+  await page.waitForFunction(() => window.__game?.inspect('field')?.moving === false);
+
+  await threeFingers();
+  await menuOpen(true);
+  await liftAll();
+  expect(await activeScenes(page)).toEqual(['debug-menu']);
+  expect((await debugMenu())?.hint).toBe('A: choose   B: back');
+
+  // The d-pad moves the cursor, and A flips the switch under it.
+  await fingers.tap(await spot(page, 'dpad', 'down'));
+  await page.waitForFunction(() => window.__game?.inspect('debug-menu')?.selected === 'Noclip');
+  await fingers.tap(await spot(page, 'a'));
+  await page.waitForFunction(() => {
+    const items = window.__game?.inspect('debug-menu')?.items as { on: boolean | null }[];
+    return items[1]?.on === true;
+  });
+  await page.screenshot({ path: 'test-results/screenshots/touch-debug-menu.png' });
+
+  // B closes it, and the field carries on, with noclip on.
+  await fingers.tap(await spot(page, 'b'));
+  await menuOpen(false);
+  expect(await activeScenes(page)).toEqual(['field']);
+  expect((await field(page))?.noclip).toBe(true);
+
+  // Three fingers open it and close it again, once they've all been lifted in between.
+  await threeFingers();
+  await menuOpen(true);
+  await liftAll();
+  await threeFingers();
+  await menuOpen(false);
+  await liftAll();
+  expect(errors).toEqual([]);
+});
+
 test('held upright, the game asks to be turned sideways', async ({ page }) => {
   await openTitle(page);
   // A thumb on the d-pad as the phone turns: the controls hide, and let go.

@@ -15,6 +15,10 @@ export interface DebugApi {
   warp(map: string, x: number, y: number, facing?: Direction): void;
   /** The actions the game read as held this frame, from any device. */
   held(): string[];
+  /** The debug menu's Noclip: the player walks through walls, water and people. */
+  noclip(on: boolean): void;
+  /** The debug menu's Show collision: marks solid cells, ways out, spawns and people. */
+  showCollision(on: boolean): void;
 }
 
 declare global {

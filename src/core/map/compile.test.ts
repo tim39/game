@@ -3,6 +3,7 @@ import {
   compileMap,
   exitAt,
   isBlocked,
+  isOutOfBounds,
   scriptAt,
   terrainRows,
   type CompiledMap,
@@ -233,6 +234,16 @@ test('isBlocked treats everything off the map as blocked', () => {
   expect(isBlocked(compiled, 0, 0)).toBe(false);
   expect(isBlocked(compiled, -1, 0)).toBe(true);
   expect(isBlocked(compiled, 0, 2)).toBe(true);
+});
+
+test('isOutOfBounds is only off edges that lead nowhere, solid cells or not', () => {
+  const compiled = compile('.r\n..', [], { east: { map: 'field', spawn: 'gate' } });
+  expect(isOutOfBounds(compiled, 0, 0)).toBe(false);
+  expect(isOutOfBounds(compiled, 1, 0)).toBe(false);
+  expect(isOutOfBounds(compiled, 2, 0)).toBe(false);
+  expect(isOutOfBounds(compiled, -1, 0)).toBe(true);
+  expect(isOutOfBounds(compiled, 0, -1)).toBe(true);
+  expect(isOutOfBounds(compiled, 1, 2)).toBe(true);
 });
 
 describe('exits and arrivals', () => {
