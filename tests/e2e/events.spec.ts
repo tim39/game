@@ -47,9 +47,12 @@ async function untilSaid(page: Page, text: string): Promise<void> {
   await page.waitForFunction((line) => window.__game?.inspect('dialogue')?.text === line, text);
 }
 
-/** Confirm finishes typing the line, and Confirm again goes on. */
+/**
+ * Waits for the line to finish typing, and Confirm goes on. Confirm skipping the typing is
+ * dialogue.spec's to test: here it would race the typing, and after a slow screenshot a short line
+ * has finished, so the Confirm meant to skip it closes the box instead.
+ */
 async function readOn(page: Page): Promise<void> {
-  await page.keyboard.press('KeyZ');
   await page.waitForFunction(() => window.__game?.inspect('dialogue')?.prompt === true);
   await page.keyboard.press('KeyZ');
 }
