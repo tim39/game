@@ -113,6 +113,27 @@ describe('migrations', () => {
     expect(parseSave(atVersion(3, { ...game(), gold: 15 }), versions)).toEqual(latest);
   });
 
+  test('to version 2 give the party equipment: Rowan, their starting gear', () => {
+    const [toEquipment] = MIGRATIONS;
+    const v1State = {
+      ...game(),
+      members: { rowan: { level: 3, exp: 70 }, bram: { level: 1, exp: 0 } },
+    };
+    expect(toEquipment?.(v1State)).toEqual({
+      ...v1State,
+      members: {
+        rowan: {
+          level: 3,
+          exp: 70,
+          equipment: { weapon: 'bronze-sword', armor: 'travel-clothes' },
+        },
+        bram: { level: 1, exp: 0, equipment: {} },
+      },
+    });
+    // What isn't a member is left for the state's own checks to turn down.
+    expect(toEquipment?.({ ...v1State, members: [1] })).toEqual({ ...v1State, members: [1] });
+  });
+
   test('that fail, or give a state that breaks the rules, mean a damaged save', () => {
     const broken: Migration = () => {
       throw new Error('The rats got to it');
@@ -134,17 +155,24 @@ const FIXTURES = import.meta.glob<string>('./save-fixtures/v*.json', {
   eager: true,
 });
 
-const FIXTURE_HOLDS: Readonly<Record<number, Partial<GameState>>> = {
-  // A new game, saved in Tamsin's house after opening the chest at the foot of Rowan's bed.
-  1: {
-    party: ['rowan'],
-    members: { rowan: { level: 1, exp: 0 } },
-    inventory: { potion: 1 },
-    gold: 0,
-    flags: { 'chest.saltmere-tamsin-01': true },
-    vars: {},
-    location: { map: 'saltmere-tamsin', x: 2, y: 3, facing: 'left' },
+/** What a new game holds after opening the chest at the foot of Rowan's bed, in Tamsin's house. */
+const AFTER_THE_CHEST: Partial<GameState> = {
+  party: ['rowan'],
+  members: {
+    rowan: { level: 1, exp: 0, equipment: { weapon: 'bronze-sword', armor: 'travel-clothes' } },
   },
+  inventory: { potion: 1 },
+  gold: 0,
+  flags: { 'chest.saltmere-tamsin-01': true },
+  vars: {},
+  location: { map: 'saltmere-tamsin', x: 2, y: 3, facing: 'left' },
+};
+
+const FIXTURE_HOLDS: Readonly<Record<number, Partial<GameState>>> = {
+  // Saved before members had equipment: Rowan is given what they now start with.
+  1: AFTER_THE_CHEST,
+  // Rowan starts with a Bronze Sword and Travel Clothes on.
+  2: AFTER_THE_CHEST,
 };
 
 describe('a save from every version', () => {

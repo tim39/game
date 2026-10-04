@@ -209,7 +209,8 @@ Their stats follow their roles at every level: Bram has the most HP and DEF and 
 
 ## Items and economy
 
-- **Equipment slots:** Weapon, Armor, Accessory. Weapon types are per character (Rowan swords, Bram axes, Liora staves, Cass daggers). Heavy armor is Bram's alone; robes are for Liora and Cass. Accessories fit anyone and are where builds come from: status immunity, element resistance, +SPD, starting battles Hasted, higher crit chance.
+- **Equipment slots:** Weapon, Armor, Accessory. Weapon types are per character (Rowan swords, Bram axes, Liora staves, Cass daggers). Light armor fits anyone; heavy armor is Bram's alone, and robes are for Liora and Cass. Accessories fit anyone and are where builds come from: status immunity, element resistance, +SPD, starting battles Hasted, higher crit chance. Equipment adds to stats, and can take away (heavy armor costs a point of SPD).
+- **Equipping** takes the piece from the inventory and puts back whatever was in its slot. Everyone joins the party already wearing a weapon and armor of their own, such as Rowan's Bronze Sword and Travel Clothes.
 - **Consumables:** Potion and Hi-Potion (HP), Ether (MP), Ember Feather (revive), Antidote, Eye Drops, Remedy (cures everything), elemental bombs (so anyone can hit a weakness early on) and Smoke Pellets (a guaranteed escape, though not from bosses).
 - **Key items:** story items and Memory Shards.
 - **Gold** comes from battles and chests. Items sell for half their price.

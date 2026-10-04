@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'vitest';
+import type { GameDb } from './db';
 import { defineEvent, type EventScript } from './events';
 import { createScriptContext, type Stage } from './script-context';
 import { createGameState, type GameState } from './state';
@@ -7,6 +8,30 @@ const START = createGameState({
   location: { map: 'test-shore', x: 4, y: 5, facing: 'down' },
   party: ['rowan'],
 });
+
+/** Bram, who joins with his axe. */
+const DB: GameDb = {
+  characters: {
+    bram: {
+      name: 'Bram',
+      stats: {
+        hp: [85, 1300],
+        mp: [6, 55],
+        atk: [11, 105],
+        def: [13, 120],
+        mag: [3, 35],
+        res: [8, 80],
+        spd: [7, 18],
+      },
+      weapon: 'axe',
+      armor: ['heavy'],
+      equipment: { weapon: 'hand-axe' },
+      skills: [],
+    },
+  },
+  skills: {},
+  items: {},
+};
 
 /** A stage that answers at once, writes down everything asked of it, and picks `answers` in turn. */
 function fakeStage(answers: number[] = []): { stage: Stage; log: string[] } {
@@ -41,7 +66,8 @@ function fakeStage(answers: number[] = []): { stage: Stage; log: string[] } {
 async function run(script: EventScript, state = START, answers: number[] = []) {
   const { stage, log } = fakeStage(answers);
   let current = state;
-  await script(createScriptContext(stage, { get: () => current, set: (next) => (current = next) }));
+  const store = { get: () => current, set: (next: GameState) => (current = next) };
+  await script(createScriptContext(stage, store, DB));
   return { log, state: current };
 }
 
@@ -89,6 +115,7 @@ describe('the game state verbs', () => {
       inventory: { ether: 1, potion: 2 },
       gold: 30,
       party: ['rowan', 'bram'],
+      members: { bram: { level: 1, exp: 0, equipment: { weapon: 'hand-axe' } } },
     });
   });
 
@@ -144,7 +171,7 @@ describe('the on-screen verbs', () => {
     const { stage } = fakeStage();
     stage.say = () => new Promise((resolve) => (finishSaying = resolve));
     let state: GameState = START;
-    const ev = createScriptContext(stage, { get: () => state, set: (next) => (state = next) });
+    const ev = createScriptContext(stage, { get: () => state, set: (next) => (state = next) }, DB);
     const running = (async () => {
       await ev.say('tamsin', 'Hold on.');
       ev.setFlag('story.held');

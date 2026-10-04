@@ -1,5 +1,8 @@
 import { describe, expect, test } from 'vitest';
+import type { GameDb } from './db';
+import type { Equipment } from './equipment';
 import type { ExpCurve } from './levels';
+import type { CharacterDef } from './schema';
 import {
   MAX_PARTY_SIZE,
   addGold,
@@ -7,6 +10,7 @@ import {
   addPlayTime,
   checkedGameState,
   createGameState,
+  equip,
   gainExp,
   getVar,
   hasFlag,
@@ -19,12 +23,90 @@ import {
   setFlag,
   setLocation,
   setVar,
+  unequip,
   type GameState,
   type NewGame,
 } from './state';
 
 /** Levels 1 to 5 take 0, 10, 40, 90 and 160 EXP in all. */
 const CURVE: ExpCurve = { maxLevel: 5, scale: 10, power: 2 };
+
+/** Someone who fights with `weapon` and wears `armor`. Their stats don't matter here. */
+const fighter = (name: string, weapon: CharacterDef['weapon'], armor: CharacterDef['armor']) =>
+  ({
+    name,
+    weapon,
+    armor,
+    equipment: {},
+    skills: [],
+    stats: {
+      hp: [50, 500],
+      mp: [10, 100],
+      atk: [10, 100],
+      def: [10, 100],
+      mag: [10, 100],
+      res: [10, 100],
+      spd: [10, 30],
+    },
+  }) satisfies CharacterDef;
+
+/** Rowan with a sword in light armor, Bram with an axe in heavy armor too, and their gear. */
+const DB: GameDb = {
+  characters: {
+    rowan: fighter('Rowan', 'sword', ['light']),
+    bram: fighter('Bram', 'axe', ['light', 'heavy']),
+  },
+  skills: {},
+  items: {
+    'bronze-sword': {
+      name: 'Bronze Sword',
+      description: 'A sword.',
+      kind: 'weapon',
+      weapon: 'sword',
+      price: 60,
+      stats: { atk: 4 },
+    },
+    'iron-sword': {
+      name: 'Iron Sword',
+      description: 'A better sword.',
+      kind: 'weapon',
+      weapon: 'sword',
+      price: 240,
+      stats: { atk: 9 },
+    },
+    'hand-axe': {
+      name: 'Hand Axe',
+      description: 'An axe.',
+      kind: 'weapon',
+      weapon: 'axe',
+      price: 70,
+      stats: { atk: 5 },
+    },
+    'chain-mail': {
+      name: 'Chain Mail',
+      description: 'Heavy armor.',
+      kind: 'armor',
+      armor: 'heavy',
+      price: 160,
+      stats: { def: 7 },
+    },
+    'swift-anklet': {
+      name: 'Swift Anklet',
+      description: 'An accessory.',
+      kind: 'accessory',
+      price: 300,
+      stats: { spd: 2 },
+    },
+    potion: {
+      name: 'Potion',
+      description: 'Restores HP.',
+      kind: 'consumable',
+      price: 25,
+      target: 'one-ally',
+      effects: [{ type: 'restore', hp: 50 }],
+    },
+  },
+};
 
 const START: NewGame = {
   location: { map: 'test-shore', x: 4, y: 5, facing: 'down' },
@@ -48,7 +130,10 @@ describe('createGameState', () => {
     const state = start({ party: ['rowan', 'bram'], gold: 50, inventory: { potion: 3 } });
     expect(state).toEqual({
       party: ['rowan', 'bram'],
-      members: { rowan: { level: 1, exp: 0 }, bram: { level: 1, exp: 0 } },
+      members: {
+        rowan: { level: 1, exp: 0, equipment: {} },
+        bram: { level: 1, exp: 0, equipment: {} },
+      },
       inventory: { potion: 3 },
       gold: 50,
       flags: {},
@@ -93,6 +178,8 @@ test('no operation changes the state it is given', () => {
     removeGold(before, 5),
     joinParty(before, 'bram'),
     gainExp(before, 'rowan', 15, CURVE),
+    equip(addItem(before, 'iron-sword'), 'rowan', 'iron-sword', DB),
+    unequip(joinParty(before, 'bram', { weapon: 'hand-axe' }), 'bram', 'weapon'),
     setLocation(before, { map: 'test-meadow', x: 1, y: 1, facing: 'up' }),
     addPlayTime(before, 100),
   ];
@@ -222,7 +309,21 @@ describe('the party', () => {
     state = joinParty(state, 'liora');
     expect(state.party).toEqual(['rowan', 'bram', 'liora']);
     expect(inParty(state, 'bram')).toBe(true);
-    expect(state.members.liora).toEqual({ level: 1, exp: 0 });
+    expect(state.members.liora).toEqual({ level: 1, exp: 0, equipment: {} });
+  });
+
+  test('can be joined wearing something, in slots there are, by item IDs', () => {
+    const state = joinParty(start(), 'bram', { weapon: 'hand-axe', armor: 'chain-mail' });
+    expect(state.members.bram).toEqual({
+      level: 1,
+      exp: 0,
+      equipment: { weapon: 'hand-axe', armor: 'chain-mail' },
+    });
+    // What someone joins wearing doesn't come out of the inventory.
+    expect(state.inventory).toEqual({});
+    const cape = { cape: 'red-cape' } as Equipment;
+    expect(() => joinParty(start(), 'bram', cape)).toThrow('"cape", which isn\'t a slot');
+    expect(() => joinParty(start(), 'bram', { weapon: 'Hand Axe' })).toThrow(RangeError);
   });
 
   test('someone who is already in it can’t join twice', () => {
@@ -246,21 +347,34 @@ describe('the party', () => {
 describe('EXP', () => {
   test('adds up, and levels a member up as far as it reaches', () => {
     let state = gainExp(start(), 'rowan', 9, CURVE);
-    expect(state.members.rowan).toEqual({ level: 1, exp: 9 });
+    expect(state.members.rowan).toMatchObject({ level: 1, exp: 9 });
     state = gainExp(state, 'rowan', 1, CURVE);
-    expect(state.members.rowan).toEqual({ level: 2, exp: 10 });
+    expect(state.members.rowan).toMatchObject({ level: 2, exp: 10 });
     // 95 in all: past level 3 at 40 and level 4 at 90, at once.
     state = gainExp(state, 'rowan', 85, CURVE);
-    expect(state.members.rowan).toEqual({ level: 4, exp: 95 });
+    expect(state.members.rowan).toMatchObject({ level: 4, exp: 95 });
   });
 
   test('stops levelling at the last level, but still counts', () => {
-    expect(gainExp(start(), 'rowan', 1000, CURVE).members.rowan).toEqual({ level: 5, exp: 1000 });
+    expect(gainExp(start(), 'rowan', 1000, CURVE).members.rowan).toMatchObject({
+      level: 5,
+      exp: 1000,
+    });
   });
 
   test('goes to one member, leaving the others as they were', () => {
     const state = gainExp(start({ party: ['rowan', 'bram'] }), 'bram', 50, CURVE);
-    expect(state.members).toEqual({ rowan: { level: 1, exp: 0 }, bram: { level: 3, exp: 50 } });
+    expect(state.members).toEqual({
+      rowan: { level: 1, exp: 0, equipment: {} },
+      bram: { level: 3, exp: 50, equipment: {} },
+    });
+  });
+
+  test('leaves what a member has on as it was', () => {
+    const state = joinParty(start(), 'bram', { weapon: 'hand-axe' });
+    expect(gainExp(state, 'bram', 10, CURVE).members.bram?.equipment).toEqual({
+      weapon: 'hand-axe',
+    });
   });
 
   test('comes in whole amounts, to members of the party, and none changes nothing', () => {
@@ -271,6 +385,68 @@ describe('EXP', () => {
     for (const amount of [-1, 1.5, Number.NaN]) {
       expect(() => gainExp(state, 'rowan', amount, CURVE)).toThrow(RangeError);
     }
+  });
+});
+
+describe('equipment', () => {
+  /** Rowan in a Bronze Sword, with an Iron Sword and an Anklet to put on, and Bram. */
+  const kitted = (): GameState => {
+    let state = createGameState({ ...START, party: [] });
+    state = joinParty(state, 'rowan', { weapon: 'bronze-sword' });
+    state = joinParty(state, 'bram');
+    state = addItem(state, 'iron-sword');
+    return addItem(addItem(state, 'swift-anklet'), 'chain-mail');
+  };
+
+  test('goes on from the inventory, and what was in its slot goes back', () => {
+    const state = equip(kitted(), 'rowan', 'iron-sword', DB);
+    expect(state.members.rowan?.equipment).toEqual({ weapon: 'iron-sword' });
+    expect(state.inventory).toEqual({ 'bronze-sword': 1, 'swift-anklet': 1, 'chain-mail': 1 });
+  });
+
+  test('fills an empty slot, the one it goes in', () => {
+    const state = equip(equip(kitted(), 'bram', 'chain-mail', DB), 'bram', 'swift-anklet', DB);
+    expect(state.members.bram?.equipment).toEqual({
+      armor: 'chain-mail',
+      accessory: 'swift-anklet',
+    });
+    expect(state.inventory).toEqual({ 'iron-sword': 1 });
+  });
+
+  test('only goes on someone who can wear it, and anyone can wear an accessory', () => {
+    const state = addItem(kitted(), 'hand-axe');
+    expect(() => equip(state, 'rowan', 'hand-axe', DB)).toThrow("Rowan can't equip Hand Axe");
+    expect(() => equip(state, 'rowan', 'chain-mail', DB)).toThrow("Rowan can't equip Chain Mail");
+    expect(() => equip(state, 'bram', 'iron-sword', DB)).toThrow("Bram can't equip Iron Sword");
+    expect(equip(state, 'bram', 'hand-axe', DB).members.bram?.equipment).toEqual({
+      weapon: 'hand-axe',
+    });
+    expect(equip(state, 'rowan', 'swift-anklet', DB).members.rowan?.equipment).toEqual({
+      weapon: 'bronze-sword',
+      accessory: 'swift-anklet',
+    });
+  });
+
+  test('has to be equipment the party has, going on a member of the party', () => {
+    const state = addItem(kitted(), 'potion');
+    expect(() => equip(state, 'rowan', 'potion', DB)).toThrow("Potion isn't equipment");
+    expect(() => equip(state, 'bram', 'hand-axe', DB)).toThrow(
+      "Can't remove 1 hand-axe: the party has 0",
+    );
+    expect(() => equip(state, 'rowan', 'excalibur', DB)).toThrow(
+      "There's no item called excalibur",
+    );
+    expect(() => equip(state, 'liora', 'iron-sword', DB)).toThrow(
+      "liora can't equip anything: they aren't in the party",
+    );
+  });
+
+  test('comes off back into the inventory, and an empty slot changes nothing', () => {
+    const state = unequip(kitted(), 'rowan', 'weapon');
+    expect(state.members.rowan?.equipment).toEqual({});
+    expect(state.inventory).toMatchObject({ 'bronze-sword': 1 });
+    expect(unequip(state, 'rowan', 'weapon')).toBe(state);
+    expect(() => unequip(state, 'liora', 'weapon')).toThrow("liora can't take anything off");
   });
 });
 
@@ -352,7 +528,10 @@ describe('checkedGameState', () => {
     const extra = broken((state) => {
       state.cheats = true;
       state.location = { ...full().location, spawn: 'door' };
-      state.members = { rowan: { level: 1, exp: 0, mood: 'sunny' }, bram: { level: 1, exp: 0 } };
+      state.members = {
+        rowan: { level: 1, exp: 0, equipment: {}, mood: 'sunny' },
+        bram: { level: 1, exp: 0, equipment: {} },
+      };
     });
     expect(checkedGameState(extra)).toEqual(full());
   });
@@ -392,8 +571,25 @@ describe('checkedGameState', () => {
     ],
     [
       'bram missing from members',
-      (s) => (s.members = { rowan: { level: 1, exp: 0 } }),
+      (s) => (s.members = { rowan: { level: 1, exp: 0, equipment: {} } }),
       "bram is in the party, but isn't a member",
+    ],
+    [
+      'a member with no equipment',
+      (s) => (s.members = { ...full().members, bram: { level: 1, exp: 0 } }),
+      "bram's equipment isn't an object",
+    ],
+    [
+      'something in a slot there isn’t',
+      (s) =>
+        (s.members = { ...full().members, bram: { level: 1, exp: 0, equipment: { cape: 'x' } } }),
+      '"cape", which isn\'t a slot',
+    ],
+    [
+      'equipment that isn’t an item ID',
+      (s) =>
+        (s.members = { ...full().members, bram: { level: 1, exp: 0, equipment: { weapon: 3 } } }),
+      "bram's weapon isn't text",
     ],
     ['a list of items', (s) => (s.inventory = ['potion']), "The inventory isn't an object"],
     ['none of an item', (s) => (s.inventory = { potion: 0 }), 'from 1 up, not 0'],

@@ -48,7 +48,9 @@ async function step(page: Page, key: string, times = 1): Promise<void> {
   }
 }
 
-test('New Game starts afresh: Rowan alone at Tamsin’s door, with nothing yet', async ({ page }) => {
+test('New Game starts afresh: Rowan alone at Tamsin’s door, in their starting gear', async ({
+  page,
+}) => {
   await toTitle(page);
   // Something from before, which New Game should throw away.
   await page.evaluate(() => {
@@ -78,7 +80,9 @@ test('New Game starts afresh: Rowan alone at Tamsin’s door, with nothing yet',
   const { playTimeMs, ...rest } = await state(page);
   expect(rest).toEqual({
     party: ['rowan'],
-    members: { rowan: { level: 1, exp: 0 } },
+    members: {
+      rowan: { level: 1, exp: 0, equipment: { weapon: 'bronze-sword', armor: 'travel-clothes' } },
+    },
     inventory: {},
     gold: 0,
     flags: {},

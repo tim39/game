@@ -1,4 +1,6 @@
+import type { GameDb } from './db';
 import { DIRECTIONS, isDirection, type Direction } from './direction';
+import { SLOTS, canEquip, slotOf, type Equipment, type Slot } from './equipment';
 import { isId, isNamespacedId } from './ids';
 import { levelForExp, type ExpCurve } from './levels';
 
@@ -30,11 +32,13 @@ export interface GameState {
   readonly playTimeMs: number;
 }
 
-/** How far a party member has come. M3 adds HP, MP and equipment, along with the stats. */
+/** How far a party member has come, and what they have on. M3 adds HP and MP, for battles. */
 export interface MemberState {
   readonly level: number;
   /** All the EXP they've earned. */
   readonly exp: number;
+  /** What's in their weapon, armor and accessory slots. Equipping takes it from the inventory. */
+  readonly equipment: Equipment;
 }
 
 /** Where the player stands: a cell on a map, facing one way. */
@@ -141,17 +145,18 @@ export function removeGold(state: GameState, amount: number): GameState {
 export const inParty = (state: GameState, id: CharacterId): boolean =>
   state.party.includes(checkedId('Character', id));
 
-/** Someone joins the end of the party at level 1. Joining again does nothing. */
-export function joinParty(state: GameState, id: CharacterId): GameState {
+/**
+ * Someone joins the end of the party at level 1, wearing `equipment`, which doesn't come out of
+ * the inventory: `recruit` (src/core/party.ts) gives them the gear their character starts with.
+ * Joining again does nothing.
+ */
+export function joinParty(state: GameState, id: CharacterId, equipment: Equipment = {}): GameState {
   if (inParty(state, id)) return state;
   if (state.party.length >= MAX_PARTY_SIZE) {
     throw new RangeError(`${id} can't join: the party is full (${state.party.join(', ')})`);
   }
-  return {
-    ...state,
-    party: [...state.party, id],
-    members: { ...state.members, [id]: { level: 1, exp: 0 } },
-  };
+  const member = { level: 1, exp: 0, equipment: checkedEquipment(id, equipment) };
+  return { ...state, party: [...state.party, id], members: { ...state.members, [id]: member } };
 }
 
 /**
@@ -164,15 +169,43 @@ export function gainExp(
   amount: number,
   curve: ExpCurve,
 ): GameState {
-  const member = own(state.members, checkedId('Character', id));
-  if (!member) throw new RangeError(`${id} can't gain EXP: they aren't in the party`);
+  const member = memberOf(state, id, 'gain EXP');
   if (!Number.isSafeInteger(amount) || amount < 0) {
     throw new RangeError(`EXP comes in whole amounts from 0 up, not ${amount}`);
   }
   if (amount === 0) return state;
   const exp = member.exp + amount;
   const level = Math.max(member.level, levelForExp(exp, curve));
-  return { ...state, members: { ...state.members, [id]: { level, exp } } };
+  return withMember(state, id, { ...member, level, exp });
+}
+
+/**
+ * A member equips an item from the inventory, in the slot it goes in, and what was there goes back
+ * into the inventory. They must be able to wear it: a weapon of their kind, armor of a kind they
+ * wear, or any accessory (see src/core/equipment.ts).
+ */
+export function equip(state: GameState, id: CharacterId, item: ItemId, db: GameDb): GameState {
+  const member = memberOf(state, id, 'equip anything');
+  const character = own(db.characters, id);
+  const def = own(db.items, checkedId('Item', item));
+  if (!character) throw new RangeError(`${id} can't equip anything: there's no such character`);
+  if (!def) throw new RangeError(`There's no item called ${item} to equip`);
+  const slot = slotOf(def);
+  if (!slot) throw new RangeError(`${def.name} isn't equipment`);
+  if (!canEquip(character, def)) throw new RangeError(`${character.name} can't equip ${def.name}`);
+  const taken = removeItem(state, item);
+  const old = member.equipment[slot];
+  const equipment = { ...member.equipment, [slot]: item };
+  return withMember(old === undefined ? taken : addItem(taken, old), id, { ...member, equipment });
+}
+
+/** A member takes off what's in a slot, which goes back into the inventory. */
+export function unequip(state: GameState, id: CharacterId, slot: Slot): GameState {
+  const member = memberOf(state, id, 'take anything off');
+  const old = member.equipment[slot];
+  if (old === undefined) return state;
+  const equipment = without(member.equipment, slot);
+  return withMember(addItem(state, old), id, { ...member, equipment });
 }
 
 /** Moves the player to another map, another cell, or just to face another way. */
@@ -236,6 +269,18 @@ export function checkedGameState(json: unknown): GameState {
   };
 }
 
+/** A member of the party, who's about to `act`. Throws for anyone who isn't one. */
+function memberOf(state: GameState, id: CharacterId, act: string): MemberState {
+  const member = own(state.members, checkedId('Character', id));
+  if (!member) throw new RangeError(`${id} can't ${act}: they aren't in the party`);
+  return member;
+}
+
+const withMember = (state: GameState, id: CharacterId, member: MemberState): GameState => ({
+  ...state,
+  members: { ...state.members, [id]: member },
+});
+
 /** A record's own value for a key: never one inherited from Object, like `constructor`. */
 const own = <T>(record: Readonly<Record<string, T>>, key: string): T | undefined =>
   Object.hasOwn(record, key) ? record[key] : undefined;
@@ -298,7 +343,23 @@ function checkedMember(id: string, json: unknown): MemberState {
   if (!Number.isSafeInteger(exp) || exp < 0) {
     throw new RangeError(`${id}'s EXP is ${exp}: EXP is a whole number from 0 up`);
   }
-  return { level, exp };
+  const worn = recordOf(member.equipment, `${id}'s equipment`, (slot, item) => [
+    slot,
+    textOf(item, `${id}'s ${slot}`),
+  ]);
+  return { level, exp, equipment: checkedEquipment(id, worn) };
+}
+
+/** A copy of what someone has on, checked: items by their IDs, in slots there are. */
+function checkedEquipment(id: string, equipment: Readonly<Record<string, string>>): Equipment {
+  return Object.fromEntries(
+    Object.entries(equipment).map(([slot, item]) => {
+      if (!(SLOTS as readonly string[]).includes(slot)) {
+        throw new RangeError(`${id} has something in "${slot}", which isn't a slot`);
+      }
+      return [slot, checkedId('Item', item)];
+    }),
+  );
 }
 
 /** A location's fields, of the right types: `checkedLocation` checks the rest. */

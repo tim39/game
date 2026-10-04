@@ -1,14 +1,22 @@
 import { describe, expect, test } from 'vitest';
 import type { MapContent, MapDef } from '../src/core/map/types';
 import type { NewGame } from '../src/core/state';
+import { EXP_CURVE } from '../src/data/balance';
 import { CHARACTERS } from '../src/data/characters';
 import { EVENTS } from '../src/data/events';
 import { ITEMS } from '../src/data/items';
 import { MAPS } from '../src/data/maps';
 import { NEW_GAME } from '../src/data/new-game';
+import { SKILLS } from '../src/data/skills';
 import { SPEAKERS } from '../src/data/speakers';
 import { MAP_CONTENT, PREFABS, TERRAINS } from '../src/data/terrain';
-import { checkContent, checkNewGame, type ContentSources } from './content-checks';
+import {
+  checkCharacters,
+  checkContent,
+  checkNewGame,
+  type CharacterSources,
+  type ContentSources,
+} from './content-checks';
 
 describe('checkContent', () => {
   /** A map with one of every kind of object, all well-formed. */
@@ -43,11 +51,84 @@ describe('checkContent', () => {
       res: [7, 70],
       spd: [11, 28],
     },
+    weapon: 'sword',
+    armor: ['light'],
+    equipment: { weapon: 'bronze-sword' },
+    skills: [
+      { skill: 'sweep', level: 3 },
+      { skill: 'sweep', flag: 'story.tide-spark' },
+    ],
+  };
+
+  const SWEEP = {
+    name: 'Sweep',
+    description: 'Hits every enemy.',
+    kind: 'physical',
+    power: 0.6,
+    mp: 5,
+    rank: 'normal',
+    target: 'all-enemies',
+  };
+  const POTION = {
+    name: 'Potion',
+    description: 'Restores HP.',
+    kind: 'consumable',
+    price: 25,
+    target: 'one-ally',
+    effects: [{ type: 'restore', hp: 50 }],
   };
 
   const VALID = {
     characters: { rowan: ROWAN },
-    items: { potion: { name: 'Potion' } },
+    skills: {
+      sweep: SWEEP,
+      provoke: {
+        name: 'Provoke',
+        description: 'Draws every enemy.',
+        kind: 'support',
+        mp: 2,
+        rank: 'quick',
+        target: 'all-enemies',
+        effects: [
+          { type: 'status', status: 'provoke', chance: 0.9 },
+          { type: 'delay', amount: 0.5 },
+        ],
+      },
+      heal: { ...SWEEP, kind: 'healing', target: 'one-ally' },
+    },
+    items: {
+      potion: POTION,
+      bomb: {
+        ...POTION,
+        target: 'one-enemy',
+        effects: [{ type: 'damage', amount: 40, element: 'fire' }],
+      },
+      'bronze-sword': {
+        name: 'Bronze Sword',
+        description: 'A sword.',
+        kind: 'weapon',
+        weapon: 'sword',
+        element: 'water',
+        price: 60,
+        stats: { atk: 4, spd: -1 },
+      },
+      vest: {
+        name: 'Vest',
+        description: 'Light.',
+        kind: 'armor',
+        armor: 'light',
+        price: 30,
+        stats: {},
+      },
+      ring: {
+        name: 'Ring',
+        description: 'Shiny.',
+        kind: 'accessory',
+        price: 300,
+        stats: { spd: 2 },
+      },
+      shard: { name: 'Shard', description: 'A memory.', kind: 'key' },
+    },
     speakers: { ada: { name: 'Ada', portrait: 'portrait.ada' }, sign: { name: '' } },
     terrains: {
       grass: {
@@ -101,7 +182,7 @@ describe('checkContent', () => {
   test('reports IDs that are not kebab-case, of things and inside them', () => {
     expect(
       check({
-        items: { Potion: { name: 'Potion' } },
+        items: { Potion: POTION },
         events: { 'town/Ada': VALID.events['town/ada'] },
         maps: townWith(3, { ...TOWN.objects[3], id: 'Ada' }),
       }),
@@ -115,7 +196,7 @@ describe('checkContent', () => {
   test('reports fields that are missing, of the wrong type, or unknown', () => {
     expect(
       check({
-        items: { potion: {}, ether: { name: 3 } },
+        items: { potion: { ...POTION, name: undefined }, ether: { ...POTION, name: 3 } },
         speakers: { ada: { name: 'Ada', portrait: 'Ada.png' } },
         maps: townWith(3, { ...TOWN.objects[3], wnader: 2 }),
       }),
@@ -130,7 +211,7 @@ describe('checkContent', () => {
   test('reports numbers out of range, empty names and lists of the wrong length', () => {
     expect(
       check({
-        items: { potion: { name: '' }, ether: { name: 'Ether ' } },
+        items: { potion: { ...POTION, name: '' }, ether: { ...POTION, name: 'Ether ' } },
         terrains: { ...VALID.terrains, grass: { ...VALID.terrains.grass, tiles: [[0, 0, 0]] } },
         maps: townWith(3, { ...TOWN.objects[3], at: [1.5, -1, 0] }),
         newGame: { ...VALID.newGame, party: ['a', 'b', 'c', 'd', 'e'], inventory: { potion: 0 } },
@@ -270,7 +351,7 @@ describe('checkContent', () => {
             ...ROWAN,
             stats: { ...ROWAN.stats, hp: [0, 900], spd: [11, 9], luck: [1, 2] },
           },
-          bram: { name: 'Bram', stats: { hp, mp, atk, def, res, spd: [7] } },
+          bram: { ...ROWAN, name: 'Bram', stats: { hp, mp, atk, def, res, spd: [7] } },
         },
       }),
     ).toEqual([
@@ -279,6 +360,83 @@ describe('checkContent', () => {
       "Character rowan: stats has a field it shouldn't: luck",
       'Character bram: stats.mag is missing',
       'Character bram: stats.spd should have at least 2 entries, not 1',
+    ]);
+  });
+
+  test('reports skills of a kind with a target, power or effects it can’t have', () => {
+    expect(
+      check({
+        skills: {
+          slash: { ...SWEEP, target: 'one-ally' },
+          rally: { ...SWEEP, kind: 'support', power: undefined },
+          zap: { ...SWEEP, kind: 'magic' },
+        },
+      }),
+    ).toEqual([
+      'Skill slash: target should be one of "one-enemy", "all-enemies", not "one-ally"',
+      'Skill rally: effects is missing',
+      "Skill rally has a field it shouldn't: power",
+      'Skill zap: kind should be one of "physical", "magical", "healing", "support", not "magic"',
+    ]);
+  });
+
+  test('reports effects there are no such things as, or that do nothing', () => {
+    const effects = (...list: unknown[]) => ({ potion: { ...POTION, effects: list } });
+    expect(
+      check({
+        items: effects(
+          { type: 'teleport' },
+          { type: 'status', status: 'frozen' },
+          { type: 'restore' },
+          { type: 'status', status: 'poison', chance: 1.5 },
+        ),
+      }),
+    ).toEqual([
+      'Item potion: effects[0].type should be one of "delay", "status", "cure", "reveal", ' +
+        '"restore", "revive", "damage", "escape", not "teleport"',
+      expect.stringMatching(
+        /^Item potion: effects\[1\]\.status should be one of "poison", .*, not "frozen"$/,
+      ),
+      'Item potion: effects[2] should restore some HP or MP',
+      'Item potion: effects[3].chance should be at most 1, not 1.5',
+    ]);
+    expect(check({ items: effects() })).toEqual(['Item potion: effects is empty']);
+  });
+
+  test('reports equipment of a kind that isn’t one, and key items with a price', () => {
+    expect(
+      check({
+        items: {
+          sword: { ...VALID.items['bronze-sword'], weapon: 'light' },
+          vest: { ...VALID.items.vest, stats: { def: 1.5, luck: 1 } },
+          shard: { ...VALID.items.shard, price: 10 },
+        },
+      }),
+    ).toEqual([
+      'Item sword: weapon should be one of "sword", "axe", "staff", "dagger", not "light"',
+      'Item vest: stats.def should be a whole number, not 1.5',
+      "Item vest: stats has a field it shouldn't: luck",
+      "Item shard has a field it shouldn't: price",
+    ]);
+  });
+
+  test('reports characters who learn skills both ways, or wear gear in slots there aren’t', () => {
+    expect(
+      check({
+        characters: {
+          rowan: {
+            ...ROWAN,
+            armor: [],
+            equipment: { cape: 'red-cape' },
+            skills: [{ skill: 'sweep', level: 3, flag: 'story.tide-spark' }, { skill: 'sweep' }],
+          },
+        },
+      }),
+    ).toEqual([
+      'Character rowan: armor is empty',
+      "Character rowan: equipment has a field it shouldn't: cape",
+      'Character rowan: skills[0] should be learned at a level or with a flag: one or the other',
+      'Character rowan: skills[1] should be learned at a level or with a flag: one or the other',
     ]);
   });
 
@@ -291,6 +449,7 @@ describe('checkContent', () => {
     expect(
       checkContent({
         characters: CHARACTERS,
+        skills: SKILLS,
         items: ITEMS,
         speakers: SPEAKERS,
         terrains: TERRAINS,
@@ -378,6 +537,103 @@ describe('checkNewGame', () => {
         content: MAP_CONTENT,
         characters: CHARACTERS,
         items: ITEMS,
+      }),
+    ).toEqual([]);
+  });
+});
+
+describe('checkCharacters', () => {
+  const stats: CharacterSources['characters'][string]['stats'] = {
+    hp: [60, 900],
+    mp: [12, 110],
+    atk: [12, 115],
+    def: [9, 85],
+    mag: [7, 70],
+    res: [7, 70],
+    spd: [11, 28],
+  };
+  const SOURCES: CharacterSources = {
+    characters: {
+      rowan: {
+        name: 'Rowan',
+        stats,
+        weapon: 'sword',
+        armor: ['light'],
+        equipment: { weapon: 'bronze-sword', armor: 'vest' },
+        skills: [{ skill: 'sweep', level: 3 }],
+      },
+    },
+    skills: { sweep: {} },
+    items: {
+      'bronze-sword': {
+        name: 'Bronze Sword',
+        description: 'A sword.',
+        kind: 'weapon',
+        weapon: 'sword',
+        price: 60,
+        stats: {},
+      },
+      'hand-axe': {
+        name: 'Hand Axe',
+        description: 'An axe.',
+        kind: 'weapon',
+        weapon: 'axe',
+        price: 70,
+        stats: {},
+      },
+      vest: {
+        name: 'Vest',
+        description: 'Light.',
+        kind: 'armor',
+        armor: 'light',
+        price: 30,
+        stats: {},
+      },
+    },
+    maxLevel: 30,
+  };
+  const rowan = (changes: Partial<CharacterSources['characters'][string]>) =>
+    checkCharacters({
+      ...SOURCES,
+      characters: { rowan: { ...SOURCES.characters.rowan!, ...changes } },
+    });
+
+  test('passes characters in gear that exists and fits them, who learn skills that exist', () => {
+    expect(checkCharacters(SOURCES)).toEqual([]);
+  });
+
+  test('reports gear that doesn’t exist, isn’t for its slot, or they can’t equip', () => {
+    expect(rowan({ equipment: { weapon: 'excalibur', armor: 'bronze-sword' } })).toEqual([
+      "Character rowan: starts with excalibur, which isn't an item",
+      "Character rowan: starts with bronze-sword as their armor, which it isn't",
+    ]);
+    expect(rowan({ equipment: { weapon: 'hand-axe' } })).toEqual([
+      "Character rowan: starts with hand-axe, which they can't equip",
+    ]);
+  });
+
+  test('reports skills that don’t exist, or are learned past the last level', () => {
+    expect(
+      rowan({
+        skills: [
+          { skill: 'sweep', level: 31 },
+          { skill: 'tide-edge', flag: 'story.tide-spark' },
+        ],
+      }),
+    ).toEqual([
+      'Character rowan: learns sweep at level 31, but levels stop at 30',
+      "Character rowan: learns tide-edge, which isn't a skill",
+    ]);
+  });
+
+  // The same check as `npm run validate`, so it also runs with the unit tests.
+  test('the real characters check out', () => {
+    expect(
+      checkCharacters({
+        characters: CHARACTERS,
+        skills: SKILLS,
+        items: ITEMS,
+        maxLevel: EXP_CURVE.maxLevel,
       }),
     ).toEqual([]);
   });

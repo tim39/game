@@ -2,20 +2,23 @@
 // and exits non-zero on any problem (see Content data in docs/TECH.md).
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { EXP_CURVE } from '../src/data/balance';
 import { CHARACTERS } from '../src/data/characters';
 import { EVENTS } from '../src/data/events';
 import { ITEMS } from '../src/data/items';
 import { MAPS } from '../src/data/maps';
 import { NEW_GAME } from '../src/data/new-game';
+import { SKILLS } from '../src/data/skills';
 import { SPEAKERS } from '../src/data/speakers';
 import { MAP_CONTENT, PREFABS, TERRAINS } from '../src/data/terrain';
 import { CHEST_TEXT } from '../src/data/ui-text';
 import { ASSETS } from '../src/systems/asset-manifest';
 import { checkAssets, pngSize } from './asset-checks';
-import { checkContent, checkNewGame } from './content-checks';
+import { checkCharacters, checkContent, checkNewGame } from './content-checks';
 import { checkEvents } from './event-checks';
 import { measureBodyFont } from './font-metrics';
 import { checkMapNames, checkMaps, checkReachable } from './map-checks';
+import { checkText } from './text-checks';
 
 const ROOT = join(import.meta.dirname, '..');
 const PUBLIC = join(ROOT, 'public');
@@ -35,6 +38,7 @@ const assetProblems = checkAssets({
 // The schemas come first: the checks after them take the content's shape on trust.
 const content = {
   characters: CHARACTERS,
+  skills: SKILLS,
   items: ITEMS,
   speakers: SPEAKERS,
   terrains: TERRAINS,
@@ -86,6 +90,13 @@ const problems = [
     items: ITEMS,
   }),
   ...checkReachable({ maps: MAPS, start: NEW_GAME.location.map, teleports: events.teleports }),
+  ...checkCharacters({
+    characters: CHARACTERS,
+    skills: SKILLS,
+    items: ITEMS,
+    maxLevel: EXP_CURVE.maxLevel,
+  }),
+  ...checkText({ characters: CHARACTERS, skills: SKILLS, items: ITEMS, speakers: SPEAKERS }, font),
 ];
 if (problems.length > 0) fail(problems);
 
@@ -98,8 +109,8 @@ const chests = Object.values(MAPS).flatMap((map) =>
   (map.objects ?? []).filter((object) => object.type === 'chest'),
 ).length;
 console.log(
-  `Content: ${some(size(CHARACTERS), 'character')}, ${some(size(ITEMS), 'item')}, ` +
-    `${some(size(SPEAKERS), 'speaker')}, ` +
+  `Content: ${some(size(CHARACTERS), 'character')}, ${some(size(SKILLS), 'skill')}, ` +
+    `${some(size(ITEMS), 'item')}, ${some(size(SPEAKERS), 'speaker')}, ` +
     `${some(size(TERRAINS), 'terrain')}, ${some(size(PREFABS), 'prefab')}, ` +
     `${some(maps, 'map')}, ${some(size(EVENTS), 'event script')} and the new game all match ` +
     'their schemas.',
@@ -121,4 +132,8 @@ console.log(
 );
 console.log(
   'New game: it starts on a cell the player can stand on, with characters and items that exist.',
+);
+console.log(
+  'Party: everyone starts in gear that exists and that they can equip, and learns skills that ' +
+    'exist, at levels there are. Every name and description is in characters the font has.',
 );

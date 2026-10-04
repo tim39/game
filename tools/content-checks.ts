@@ -1,7 +1,8 @@
 import type { z } from 'zod';
+import { canEquip, slotOf } from '../src/core/equipment';
 import { compileMap, isBlocked, type CompiledMap } from '../src/core/map/compile';
 import type { MapContent, MapDef } from '../src/core/map/types';
-import { CONTENT_SCHEMAS } from '../src/core/schema';
+import { CONTENT_SCHEMAS, type CharacterDef, type ItemDef } from '../src/core/schema';
 import type { NewGame } from '../src/core/state';
 
 type Kind = keyof typeof CONTENT_SCHEMAS;
@@ -12,6 +13,7 @@ export type ContentSources = { readonly [K in Kind]: unknown };
 /** What each kind of content is called in a problem, before its ID: `Item potion`. */
 const NAMES: { readonly [K in Kind]: string } = {
   characters: 'Character',
+  skills: 'Skill',
   items: 'Item',
   speakers: 'Speaker',
   terrains: 'Terrain',
@@ -244,6 +246,50 @@ export function checkNewGame({
   for (const item of Object.keys(newGame.inventory ?? {})) {
     if (!Object.hasOwn(items, item)) {
       problems.push(`The new game starts with ${item}, which isn't an item`);
+    }
+  }
+  return problems;
+}
+
+export interface CharacterSources {
+  readonly characters: Readonly<Record<string, CharacterDef>>;
+  readonly skills: Readonly<Record<string, unknown>>;
+  readonly items: Readonly<Record<string, ItemDef>>;
+  /** The last level there is, EXP_CURVE.maxLevel in src/data/balance.ts. */
+  readonly maxLevel: number;
+}
+
+/**
+ * Checks each character against the skills and items. Returns one line per problem: the gear they
+ * start with exists, is for the slot it's in, and is something they can equip; and the skills they
+ * learn exist, at levels there are.
+ */
+export function checkCharacters({
+  characters,
+  skills,
+  items,
+  maxLevel,
+}: CharacterSources): string[] {
+  const problems: string[] = [];
+  for (const [id, character] of Object.entries(characters)) {
+    const owner = `Character ${id}`;
+    for (const [slot, item] of Object.entries(character.equipment)) {
+      const def = Object.hasOwn(items, item) ? items[item] : undefined;
+      if (!def) problems.push(`${owner}: starts with ${item}, which isn't an item`);
+      else if (slotOf(def) !== slot)
+        problems.push(`${owner}: starts with ${item} as their ${slot}, which it isn't`);
+      else if (!canEquip(character, def)) {
+        problems.push(`${owner}: starts with ${item}, which they can't equip`);
+      }
+    }
+    for (const { skill, level } of character.skills) {
+      if (!Object.hasOwn(skills, skill)) {
+        problems.push(`${owner}: learns ${skill}, which isn't a skill`);
+      } else if (level !== undefined && level > maxLevel) {
+        problems.push(
+          `${owner}: learns ${skill} at level ${level}, but levels stop at ${maxLevel}`,
+        );
+      }
     }
   }
   return problems;

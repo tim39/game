@@ -24,10 +24,30 @@ export interface SaveFile {
 export type Migration = (state: Readonly<Record<string, unknown>>) => Record<string, unknown>;
 
 /**
+ * Version 2 gave party members equipment. Version 1's party only ever held Rowan, who now starts
+ * with a Bronze Sword and Travel Clothes, so they get those; anyone else gets nothing.
+ */
+const giveEquipment: Migration = (state) => {
+  const { members } = state;
+  if (!isObject(members)) return { ...state };
+  const startingGear = (id: string) =>
+    id === 'rowan' ? { weapon: 'bronze-sword', armor: 'travel-clothes' } : {};
+  return {
+    ...state,
+    members: Object.fromEntries(
+      Object.entries(members).map(([id, member]) => [
+        id,
+        isObject(member) ? { ...member, equipment: startingGear(id) } : member,
+      ]),
+    ),
+  };
+};
+
+/**
  * Every migration, oldest first. A change to GameState's shape adds one, with a test, and that
  * bumps SAVE_VERSION; add a save of the new version to src/core/save-fixtures/ as well.
  */
-export const MIGRATIONS: readonly Migration[] = [];
+export const MIGRATIONS: readonly Migration[] = [giveEquipment];
 
 /** The version saves are written in. Every migration adds one. */
 export const SAVE_VERSION = MIGRATIONS.length + 1;

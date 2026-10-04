@@ -1,0 +1,34 @@
+{
+  "version": 2,
+  "savedAt": "2026-10-04T21:05:30.154Z",
+  "state": {
+    "party": [
+      "rowan"
+    ],
+    "members": {
+      "rowan": {
+        "level": 1,
+        "exp": 0,
+        "equipment": {
+          "weapon": "bronze-sword",
+          "armor": "travel-clothes"
+        }
+      }
+    },
+    "inventory": {
+      "potion": 1
+    },
+    "gold": 0,
+    "flags": {
+      "chest.saltmere-tamsin-01": true
+    },
+    "vars": {},
+    "location": {
+      "map": "saltmere-tamsin",
+      "x": 2,
+      "y": 3,
+      "facing": "left"
+    },
+    "playTimeMs": 2816.6
+  }
+}

@@ -1,5 +1,6 @@
 import { expect, test } from 'vitest';
 import { chestScript, type Chest, type ChestText } from './chest';
+import type { GameDb } from './db';
 import { createScriptContext, type Stage, type StateStore } from './script-context';
 import { createGameState, setFlag, type GameState } from './state';
 
@@ -7,6 +8,9 @@ const START = createGameState({
   location: { map: 'test-cellar', x: 2, y: 2, facing: 'down' },
   party: ['rowan'],
 });
+
+/** Chests need no content: they only give items and gold, and say so. */
+const NO_CONTENT: GameDb = { characters: {}, skills: {}, items: {} };
 
 const TEXT: ChestText = {
   speaker: 'sign',
@@ -54,7 +58,7 @@ function storeOf(state: GameState): StateStore {
 async function open(chest: Chest, state: GameState = START) {
   const said: string[] = [];
   const store = storeOf(state);
-  await chestScript(chest, TEXT)(createScriptContext(talkingStage(said), store));
+  await chestScript(chest, TEXT)(createScriptContext(talkingStage(said), store, NO_CONTENT));
   return { said, state: store.get() };
 }
 
@@ -98,7 +102,7 @@ test('a chest that cannot say what is inside stays shut', async () => {
   const said: string[] = [];
   const store = storeOf(START);
   await expect(
-    chestScript(POTION, mute)(createScriptContext(talkingStage(said), store)),
+    chestScript(POTION, mute)(createScriptContext(talkingStage(said), store, NO_CONTENT)),
   ).rejects.toThrow("There's no item called potion");
   expect(said).toEqual([]);
   expect(store.get()).toBe(START);

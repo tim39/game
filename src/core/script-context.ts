@@ -1,11 +1,12 @@
+import type { GameDb } from './db';
 import type { EventContext } from './events';
+import { recruit } from './party';
 import {
   addGold,
   addItem,
   getVar,
   hasFlag,
   hasItem,
-  joinParty,
   removeGold,
   removeItem,
   setFlag,
@@ -30,9 +31,10 @@ export interface StateStore {
 
 /**
  * A script's context: the stage's verbs, and the ones that read and change the game state, done
- * with the operations in state.ts, so they check what they're given as those do.
+ * with the operations in state.ts, so they check what they're given as those do. Someone who
+ * joins the party comes with the gear their character in `db` starts with.
  */
-export function createScriptContext(stage: Stage, store: StateStore): EventContext {
+export function createScriptContext(stage: Stage, store: StateStore, db: GameDb): EventContext {
   const change = (operation: (state: GameState) => GameState): void => {
     store.set(operation(store.get()));
   };
@@ -57,6 +59,6 @@ export function createScriptContext(stage: Stage, store: StateStore): EventConte
     gold: () => store.get().gold,
     giveGold: (amount) => change((state) => addGold(state, amount)),
     takeGold: (amount) => change((state) => removeGold(state, amount)),
-    joinParty: (character) => change((state) => joinParty(state, character)),
+    joinParty: (character) => change((state) => recruit(state, character, db)),
   };
 }

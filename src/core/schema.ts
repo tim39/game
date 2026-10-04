@@ -1,5 +1,7 @@
 import { z } from 'zod';
+import { ELEMENTS, RANKS, STATUSES, TARGETS } from './battle/terms';
 import { DIRECTIONS } from './direction';
+import { ARMOR_TYPES, SLOTS, WEAPON_TYPES } from './equipment';
 import type { EventScript } from './events';
 import { isId, isNamespacedId, isScriptId } from './ids';
 import { blobLookup, parseNeighbours } from './map/autotile';
@@ -31,12 +33,13 @@ const textThat = (test: (text: string) => boolean, problem: string) =>
 
 // Names and IDs (see src/core/ids.ts).
 
-/** A name the game shows, like an item's or a map's. */
-const NameSchema = z
+/** Text the game shows: a map's or an item's name, say, or what a skill does. */
+const TextSchema = z
   .string()
   .min(1)
-  .refine((name) => name.trim() === name, { error: 'starts or ends with a space' });
+  .refine((text) => text.trim() === text, { error: 'starts or ends with a space' });
 const IdSchema = textThat(isId, "isn't kebab-case, like tide-caves-b1");
+const FlagSchema = textThat(isNamespacedId, "isn't a flag, like story.beacon-out");
 const ScriptIdSchema = textThat(isScriptId, "isn't an event script's ID, like saltmere/tamsin");
 /** A key in the asset manifest (src/systems/asset-manifest.ts). Checks there say what's in it. */
 const AssetKeySchema = textThat(isNamespacedId, "isn't an asset key, like tiles.floor");
@@ -181,7 +184,7 @@ const MapObjectSchema = z.discriminatedUnion('type', [
 
 const MapSchema = z.strictObject({
   id: IdSchema,
-  name: NameSchema,
+  name: TextSchema,
   music: AssetKeySchema.optional(),
   terrain: z.string(),
   /** One character each. */
@@ -189,6 +192,137 @@ const MapSchema = z.strictObject({
   objects: z.array(MapObjectSchema).optional(),
   edges: z.partialRecord(z.enum(SIDES), WarpTargetSchema).optional(),
 });
+
+// Battle: what skills and items do (see src/core/battle/terms.ts).
+
+const ElementSchema = z.enum(ELEMENTS);
+const StatusSchema = z.enum(STATUSES);
+const TargetSchema = z.enum(TARGETS);
+/** How hard a skill hits or heals: Attack's power is 1. */
+const PowerSchema = z.number().positive();
+
+/** Something an action does to each target, besides the damage or healing of its power. */
+const EffectSchema = z.discriminatedUnion('type', [
+  /** Pushes the target back in line by this much of its Normal delay. */
+  z.strictObject({ type: z.literal('delay'), amount: z.number().positive() }),
+  /** Gives the target a status: always, or this share of the time. */
+  z.strictObject({
+    type: z.literal('status'),
+    status: StatusSchema,
+    chance: z.number().gt(0).max(1).optional(),
+  }),
+  /** Takes statuses away. */
+  z.strictObject({ type: z.literal('cure'), statuses: z.array(StatusSchema).min(1) }),
+  /** Shows how the target takes each element: Insight. */
+  z.strictObject({ type: z.literal('reveal') }),
+  /** Gives back this much HP or MP, or both. */
+  z
+    .strictObject({
+      type: z.literal('restore'),
+      hp: z.int().min(1).optional(),
+      mp: z.int().min(1).optional(),
+    })
+    .refine((restore) => restore.hp !== undefined || restore.mp !== undefined, {
+      error: 'should restore some HP or MP',
+    }),
+  /** Gets a KO'd ally back up, with this share of their HP. */
+  z.strictObject({ type: z.literal('revive'), hp: z.number().gt(0).max(1) }),
+  /** Deals this much damage, of an element if it names one: a bomb. */
+  z.strictObject({
+    type: z.literal('damage'),
+    amount: z.int().min(1),
+    element: ElementSchema.optional(),
+  }),
+  /** Gets the party out of a battle, unless it's against a boss. */
+  z.strictObject({ type: z.literal('escape') }),
+]);
+const EffectsSchema = z.array(EffectSchema).min(1);
+
+/** What every skill has: its MP cost, and its rank, which sets how soon its user acts again. */
+const SKILL = {
+  name: TextSchema,
+  description: TextSchema,
+  mp: z.int().min(0),
+  rank: z.enum(RANKS),
+};
+
+/** A skill: damage or healing from its power, effects, or both (see The party in DESIGN.md). */
+const SkillSchema = z.discriminatedUnion('kind', [
+  /** Physical skills pit ATK against DEF, magical ones MAG against RES. */
+  z.strictObject({
+    ...SKILL,
+    kind: z.enum(['physical', 'magical']),
+    element: ElementSchema.optional(),
+    power: PowerSchema,
+    target: TargetSchema.extract(['one-enemy', 'all-enemies']),
+    effects: EffectsSchema.optional(),
+  }),
+  /** Healing goes by MAG. */
+  z.strictObject({
+    ...SKILL,
+    kind: z.literal('healing'),
+    power: PowerSchema,
+    target: TargetSchema.extract(['self', 'one-ally', 'all-allies']),
+    effects: EffectsSchema.optional(),
+  }),
+  /** Support skills only have effects. */
+  z.strictObject({
+    ...SKILL,
+    kind: z.literal('support'),
+    target: TargetSchema,
+    effects: EffectsSchema,
+  }),
+]);
+export type SkillDef = ContentOf<typeof SkillSchema>;
+
+// Items.
+
+/** What an item costs in a shop. It sells for half (see Items and economy in DESIGN.md). */
+const PriceSchema = z.int().min(1);
+/** What equipment adds to its wearer's stats. A penalty is a bonus below 0. */
+const BonusSchema = z.strictObject({
+  hp: z.int().optional(),
+  mp: z.int().optional(),
+  atk: z.int().optional(),
+  def: z.int().optional(),
+  mag: z.int().optional(),
+  res: z.int().optional(),
+  spd: z.int().optional(),
+});
+const ITEM = { name: TextSchema, description: TextSchema };
+
+/** An item: something to use up, equipment for one of the three slots, or a key item. */
+const ItemSchema = z.discriminatedUnion('kind', [
+  /** Used up when used, in battle (a Quick action) or from the menu. */
+  z.strictObject({
+    ...ITEM,
+    kind: z.literal('consumable'),
+    price: PriceSchema,
+    target: TargetSchema,
+    effects: EffectsSchema,
+  }),
+  /** A weapon of one kind; Attack takes its element, if it has one. */
+  z.strictObject({
+    ...ITEM,
+    kind: z.literal('weapon'),
+    price: PriceSchema,
+    weapon: z.enum(WEAPON_TYPES),
+    element: ElementSchema.optional(),
+    stats: BonusSchema,
+  }),
+  z.strictObject({
+    ...ITEM,
+    kind: z.literal('armor'),
+    price: PriceSchema,
+    armor: z.enum(ARMOR_TYPES),
+    stats: BonusSchema,
+  }),
+  /** Anyone can wear an accessory. */
+  z.strictObject({ ...ITEM, kind: z.literal('accessory'), price: PriceSchema, stats: BonusSchema }),
+  /** A story item: it can't be sold or used up. */
+  z.strictObject({ ...ITEM, kind: z.literal('key') }),
+]);
+export type ItemDef = ContentOf<typeof ItemSchema>;
 
 // The party.
 
@@ -198,9 +332,16 @@ const growth = (least: number) =>
     .tuple([z.int().min(least), z.int().min(least)])
     .refine(([first, last]) => last >= first, { error: 'is lower at level 30 than at level 1' });
 
+/** A skill a character learns: at a level, or once a story flag is set. */
+const LearnSchema = z
+  .strictObject({ skill: IdSchema, level: z.int().min(1).optional(), flag: FlagSchema.optional() })
+  .refine((learn) => (learn.level === undefined) !== (learn.flag === undefined), {
+    error: 'should be learned at a level or with a flag: one or the other',
+  });
+
 /** Someone who can be in the party. */
 const CharacterSchema = z.strictObject({
-  name: NameSchema,
+  name: TextSchema,
   /** Each stat at level 1 and at level 30. */
   stats: z.strictObject({
     hp: growth(1),
@@ -211,14 +352,18 @@ const CharacterSchema = z.strictObject({
     res: growth(0),
     spd: growth(0),
   }),
+  /** The kind of weapon they fight with. */
+  weapon: z.enum(WEAPON_TYPES),
+  /** The kinds of armor they wear. */
+  armor: z.array(z.enum(ARMOR_TYPES)).min(1),
+  /** What they're wearing when they join the party. */
+  equipment: z.partialRecord(z.enum(SLOTS), IdSchema),
+  /** The skills they learn, in the order their menu lists them. */
+  skills: z.array(LearnSchema),
 });
 export type CharacterDef = ContentOf<typeof CharacterSchema>;
 
 // Everything else.
-
-/** An item: so far, just what it's called. M3 adds what it does, its price and who can equip it. */
-const ItemSchema = z.strictObject({ name: NameSchema });
-export type ItemDef = ContentOf<typeof ItemSchema>;
 
 /** Who speaks in the dialogue box: the name in its tab, and a portrait if they have one. */
 const SpeakerSchema = z.strictObject({
@@ -252,6 +397,7 @@ const EventScriptSchema = z.custom<EventScript>((value) => typeof value === 'fun
  */
 export const CONTENT_SCHEMAS = {
   characters: z.record(IdSchema, CharacterSchema),
+  skills: z.record(IdSchema, SkillSchema),
   items: z.record(IdSchema, ItemSchema),
   speakers: z.record(IdSchema, SpeakerSchema),
   terrains: z.record(IdSchema, TerrainSchema),

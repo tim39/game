@@ -34,6 +34,7 @@ import {
   type WalkWorld,
 } from '../core/walker';
 import { FIELD_SPEEDS, MAP_FADE_MS, NPC_TUNING } from '../data/balance';
+import { DB } from '../data/db';
 import { EVENTS } from '../data/events';
 import { MAPS } from '../data/maps';
 import { SPEAKERS } from '../data/speakers';
@@ -508,12 +509,16 @@ export class FieldScene extends Phaser.Scene {
       bgm: (track) => audio.playMusic(track),
       sfx: (sound) => audio.playSound(sound),
     };
-    return createScriptContext(stage, {
-      get: () => session.state,
-      set: (state) => {
-        session.state = state;
+    return createScriptContext(
+      stage,
+      {
+        get: () => session.state,
+        set: (state) => {
+          session.state = state;
+        },
       },
-    });
+      DB,
+    );
   }
 
   /** The NPC on this map a script calls `id`. */
