@@ -29,8 +29,9 @@ Versions were checked in October 2026. M0 installs the latest compatible ones.
 ├── src/
 │   ├── main.ts           Phaser config, scene list, boot
 │   ├── core/             pure game rules: no Phaser, no DOM
-│   │   ├── battle/       CTB engine, damage, statuses, enemy AI; terms.ts: elements, statuses,
-│   │   │                 ranks and targets
+│   │   ├── battle/       the battle engine (battle.ts): turn order, damage, statuses, events;
+│   │   │                 enemy AI to come; terms.ts: elements, reactions, statuses, ranks and
+│   │   │                 targets; fixtures.ts: the tests' content
 │   │   ├── map/          map format, autotiler, compiler, collision
 │   │   ├── walker.ts     grid movement
 │   │   ├── npc.ts        how NPCs stand, wander and look at the player
@@ -115,7 +116,7 @@ Boot → Preload → Title ──▶ Field ◀──▶ Battle ──▶ GameOve
 ```ts
 interface GameState {
   party: CharacterId[];                        // in battle order, 4 at most
-  members: Record<CharacterId, MemberState>;   // level, EXP and equipment; M3 adds HP and MP
+  members: Record<CharacterId, MemberState>;   // level, EXP and equipment; M4 adds HP and MP
   inventory: Record<ItemId, number>;           // only items the party has
   gold: number;
   flags: Record<string, true>;                 // only flags that are set
@@ -125,7 +126,7 @@ interface GameState {
 }
 ```
 
-- `GameState` is plain JSON, owned by `src/core/state.ts`, and never changes in place: its fields are read-only and every operation returns a new state, so scenes read it and change it only through core functions: `createGameState`, `hasFlag`/`setFlag`, `getVar`/`setVar`, `itemCount`/`hasItem`/`addItem`/`removeItem`, `addGold`/`removeGold`, `inParty`/`joinParty`, `gainExp` and `equip`/`unequip` (see [Characters and stats](#characters-and-stats)), `setLocation` and `addPlayTime`. M3 adds HP and MP; battles add `knownWeaknesses: Record<EnemyId, Element[]>`.
+- `GameState` is plain JSON, owned by `src/core/state.ts`, and never changes in place: its fields are read-only and every operation returns a new state, so scenes read it and change it only through core functions: `createGameState`, `hasFlag`/`setFlag`, `getVar`/`setVar`, `itemCount`/`hasItem`/`addItem`/`removeItem`, `addGold`/`removeGold`, `inParty`/`joinParty`, `gainExp` and `equip`/`unequip` (see [Characters and stats](#characters-and-stats)), `setLocation` and `addPlayTime`. M4, which brings battles into the game, adds HP and MP, which carry over between battles, and `knownWeaknesses: Record<EnemyId, Element[]>`, what the party has learned of each kind of enemy.
 - The operations check what they're given and throw a `RangeError` rather than break the state: IDs must be kebab-case, and flag and var names namespaced (`isId` and `isNamespacedId` in `src/core/ids.ts`); counts and gold are whole numbers; nothing can take items or gold the party doesn't have; and the party can't grow past 4. Unit tests (`state.test.ts`) cover each operation, and check that none changes the state it was given.
 - **The game being played** is `session.state` (`src/systems/session.ts`). Scenes swap in what an operation returns: `session.state = setFlag(session.state, 'story.beacon-out')`. New Game replaces it with `startGame(NEW_GAME, DB)` (`src/core/party.ts`), which starts the party in their starting gear. The field keeps `location` in step with the player on every step, turn and arrival (except for the step into a way out, which can be off the map: until they arrive, the player is still where they last stood), and adds each frame's real time to `playTimeMs` (Phaser's `delta` is smoothed, and held to 1/60 s while the window isn't focused, so it uses `game.loop.rawDelta`, capped like every frame). Battles will count play time too; the title screen doesn't.
 - **A save** (`src/core/save.ts`) is `{ version, savedAt, state }` as JSON: the version of the save format, when it was saved (ISO 8601; core can't read the clock, so it's passed in) and the game state. `parseSave` reads one back and trusts none of it: it must be JSON, with a version from 1 up that this game can read, a real time, and a state that `checkedGameState` (`state.ts`) accepts, which holds it to the rules the operations keep, field by field, and copies just the fields a state has. Anything else throws a `SaveError` saying what's wrong, and whether the save is `damaged` (or not a save at all) or `newer`, made by a newer version of the game.
@@ -166,9 +167,9 @@ export const skills = defineSkills({
 });
 ```
 
-**Schemas** (`src/core/schema.ts`) say what types can't: IDs are kebab-case (event scripts' are `area/name`), cells and counts are whole numbers in range, names aren't empty or padded with spaces, a chest holds an item or some gold but not both, a prefab has one doorway at most, a blob layout's neighbours read right, and nothing has a field it shouldn't. `CONTENT_SCHEMAS` lists the collections, each a record by ID (characters, skills, items, speakers, terrains, prefabs, maps and event scripts), and the new game.
+**Schemas** (`src/core/schema.ts`) say what types can't: IDs are kebab-case (event scripts' are `area/name`), cells and counts are whole numbers in range, names aren't empty or padded with spaces, a chest holds an item or some gold but not both, a prefab has one doorway at most, a blob layout's neighbours read right, and nothing has a field it shouldn't. `CONTENT_SCHEMAS` lists the collections, each a record by ID (characters, skills, items, enemies, speakers, terrains, prefabs, maps and event scripts), and the new game.
 
-- **A new kind of content** adds its schema and its collection there, and takes its TypeScript type from the schema, read-only all the way down (`type ItemDef = ContentOf<typeof ItemSchema>`), so the two can't drift apart. `CharacterDef`, `SkillDef`, `ItemDef` and `Speaker` work this way. The map format's types came first, and the compiler is built on them, so they stay in `src/core/map/types.ts` and the map schemas are written to match them, as the new game's is to match `NewGame` in `state.ts`. Change such a type and its schema together: the schemas are strict, so content with a field its schema doesn't know fails validation.
+- **A new kind of content** adds its schema and its collection there, and takes its TypeScript type from the schema, read-only all the way down (`type ItemDef = ContentOf<typeof ItemSchema>`), so the two can't drift apart. `CharacterDef`, `SkillDef`, `ItemDef`, `EnemyDef` and `Speaker` work this way. The map format's types came first, and the compiler is built on them, so they stay in `src/core/map/types.ts` and the map schemas are written to match them, as the new game's is to match `NewGame` in `state.ts`. Change such a type and its schema together: the schemas are strict, so content with a field its schema doesn't know fails validation.
 - **Schemas only check.** They never fill in defaults or change what they check, as the game reads content just as it's written. Only the tools and the tests run them, so the game takes just the types from `schema.ts` and doesn't ship Zod (an ESLint rule keeps it so).
 - **IDs are unique** by construction: TypeScript won't let an object literal name a key twice, and `MAPS` and `EVENTS`, which are built from lists, use `recordById` (`src/core/ids.ts`), which throws on a repeat. The game, the tests and `npm run validate` then all stop at once, naming the ID.
 
@@ -178,13 +179,15 @@ export const skills = defineSkills({
 2. The asset manifest against the files (see [Assets](#assets)), the maps (see [Maps](#maps)) and the event scripts (see [Event scripts](#event-scripts)).
 3. That everything content names exists: the terrains, prefabs and sheets the maps use, the scripts, speakers, portraits, people, spawns, items, characters, music and sounds the maps and scripts name (the characters a script's `joinParty` adds, say), the new game's map, characters and items, and that it starts on a cell the player can stand on (`checkNewGame`), and each character's starting gear and skills: the gear exists, is for the slot it's in and is something they can equip, and the skills they learn exist, at levels there are (`checkCharacters`). Each new kind of content adds its own: items in shops and drops, encounter tables on maps.
 4. That every map can be reached from where a new game starts (`checkReachable` in `tools/map-checks.ts`), through doorways, warps and map edges, or by a script a map runs teleporting the player, as the event checks find it can. The test maps (`test-*`), which only the tests and the debug menu go to, are left out.
-5. That every name and description the menus and the dialogue box show (characters', skills', items' and speakers') is in characters the body font has (`tools/text-checks.ts`). How wide they may be is for the menus to say, once there are some.
+5. That every name and description the menus, battles and the dialogue box show (characters', skills', items', enemies' and speakers') is in characters the body font has (`tools/text-checks.ts`). How wide they may be is for the menus to say, once there are some.
 
 Each check also runs as a unit test on the real content, beside its tests on small fixtures.
 
-**Skills** (`src/data/skills.ts`) have a name, a description, an MP cost, a rank and a target, and a kind. Physical and magical skills (ATK against DEF, MAG against RES) have a power and maybe an element, and target enemies; healing skills have a power, going by MAG, and target allies; support skills have only effects. Any skill can have **effects**, which items share: `delay` (push the target back in line by that much of its Normal delay), `status` (give one, maybe by chance), `cure`, `reveal` (Insight), `restore` (so much HP or MP), `revive` (with that share of HP), `damage` (so much, maybe of an element: bombs) and `escape`. The statuses, elements, ranks and targets are `src/core/battle/terms.ts`; what each does is the battle engine's to say.
+**Skills** (`src/data/skills.ts`) have a name, a description, an MP cost, a rank and a target, and a kind. Physical and magical skills (ATK against DEF, MAG against RES) have a power and maybe an element, and target enemies; healing skills have a power, going by MAG, and target allies; support skills have only effects. Any skill can have **effects**, which items share: `delay` (push the target back in line by that much of its Normal delay), `status` (give one, maybe by chance), `cure`, `reveal` (Insight), `restore` (so much HP or MP), `revive` (with that share of HP), `damage` (so much, maybe of an element: bombs) and `escape`. The statuses, elements, reactions, ranks and targets are `src/core/battle/terms.ts`; what each does is the battle engine's to say (see [Battle engine](#battle-engine)).
 
 **Items** (`src/data/items.ts`) have a name, a description and a kind: a `consumable` has a price, a target and effects, and using one is Quick; a `weapon` (of a kind: sword, axe, staff or dagger, maybe with an element for Attack), `armor` (light, heavy or robe) or `accessory` has a price and stat bonuses; and a `key` item has neither, so it can't be sold or used up. Prices are what shops charge; items sell for half. Messages name items with `itemName`.
+
+**Enemies** (`src/data/enemies.ts`) have a name, stats that don't grow, as each kind is met at one strength, how they take each element they don't take normally (`weak`, `resist`, `immune` or `absorb`), and whether they're a boss. So far there's a wolf. The enemy AI adds what they do, and M4 their sprites, EXP, gold and drops.
 
 ## Maps
 
@@ -269,18 +272,27 @@ export const tamsin = defineEvent(async (ev) => {
 
 ## Battle engine
 
-Pure, synchronous and deterministic, in `src/core/battle/`:
+Pure, synchronous and deterministic, in `src/core/battle/` (the rules are Battle system in DESIGN.md):
 
 ```ts
-startBattle(setup, state, db, rng): BattleState
-nextActor(battle): CombatantId
-previewTurnOrder(battle, pending?: Action, count = 10): CombatantId[]
+startBattle(setup, state, db, tuning, rng): BattleState  // the party, from the game state, against setup.enemies
 applyAction(battle, action, rng): { battle: BattleState; events: BattleEvent[] }
-chooseEnemyAction(battle, enemyId, rng): Action
-battleResult(battle): 'ongoing' | 'victory' | 'defeat' | 'fled'
+previewTurnOrder(battle, pending?: Action, count = 10): FighterId[]
+checkCommand(battle, command), checkAction(battle, action): string | undefined  // why not, if not
+targetChoices(battle, command): FighterId[]
+fleeChance(battle): number
+chooseEnemyAction(battle, enemyId, rng): Action  // the enemy AI, still to come in M3
 ```
 
-`BattleEvent`s (`action-start`, `damage`, `heal`, `miss`, `status-added`, `stagger`, `ko`, `turn-order`, …) are the only thing `BattleScene` reads to animate. The same engine runs headless for unit tests and for the simulator.
+- **A battle** is a `BattleState` (`battle.ts`): plain data that never changes in place, like the game state. It holds the fighters (the party in battle order, then the enemies left to right); whose turn it is (`active`, null once it's over); the `outcome` (`ongoing`, `victory`, `defeat` or `fled`); the party's inventory, which items are used up from; the elements the party knows each kind of enemy's reaction to (`known`); whether there's a boss; how many turns have started; and the rules it runs by, the tuning and the skills and items, so nothing after `startBattle` needs the content.
+- **Fighters** (`fighter.ts`) carry their stats with equipment (buffs apply as the stats are used), HP, MP, CT, statuses with the turns they have left, whether they've been staggered since their last turn, their reactions to elements, their Attack's element and their skills. A party member is their character's ID; an enemy is its ID and a letter, `wolf-a`, named Wolf A when there's more than one of its kind. HP and MP start full until M4 carries them over from the game state.
+- **Turns:** `startBattle` starts the first turn. `applyAction` plays the action of whoever's turn it is, ends their turn (their CT becomes the action's delay, and statuses on their last turn wear off), and carries on to the next turn that needs an action. As each turn starts, that fighter's CT passes for everyone, Guard ends, statuses count down, Poison and Regen tick, and a sleeping fighter's turn passes them by. So the battle scene and the simulator only ever deal with decisions. An action the fighter can't take throws a `RangeError` saying why; `checkCommand` and `checkAction` say the same without throwing, for menus to grey things out, and `targetChoices` lists who a command can be aimed at (Provoke narrows it).
+- **Events** (`events.ts`) say what happened, in order: `turn`, `action`, `miss`, `damage`, `heal`, `mp`, `status-added`, `status-removed`, `status-resisted`, `stagger`, `delay`, `reveal`, `ko`, `revive`, `asleep` and `flee`. They're the only thing `BattleScene` reads to animate, and all a log needs.
+- **The preview** plays out only the timeline: the pending action's delay and what it does to CTs (Delay, Haste, Slow, staggers on weaknesses the party knows, revivals), then everyone taking Normal actions.
+- **The rules' pieces** are pure functions with their own tests: `turn-order.ts` (delays and tie-breaks), `damage.ts` (the formulas and multipliers) and `statuses.ts` (durations, opposites, ticks, and the start and end of a turn).
+- **Tuning** is `BATTLE_TUNING` in `balance.ts`: the delay constants and ranks, first turns, Haste and Slow, the element multipliers, critical hits, Guard, buffs, the variance, the damage cap, Stagger, Poison, Regen, Blind, how long each status lasts, and the flee chance.
+- **Randomness** is drawn in a fixed order, so a seed replays a battle exactly: one roll per fighter for their first turn, party first; then, for each target of an action in turn, Blind's roll, the critical hit roll (physical hits) and the variance; a status's chance; and Flee's roll.
+- **Tests** use the small content in `fixtures.ts`, with tuning that leaves nothing to chance (no variance or critical hits, and first turns after exactly a Normal delay), so damage and turn orders can be worked out by hand. `battle.test.ts` covers each rule; `play.test.ts` plays 250 battles at random, checking after every action that the rules still hold and that the preview foretold the turns that came; and `src/data/battle.test.ts` fights with the real content and tuning.
 
 **The simulator** (`npm run sim`) runs N seeded battles for each encounter group and boss, with the party at that area's target level and gear (from `balance.ts`) and a simple party AI. It prints win rate, average rounds and HP left, and flags anything outside the targets in DESIGN.md. Run it after every balance or content change.
 

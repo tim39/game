@@ -32,7 +32,7 @@ export interface GameState {
   readonly playTimeMs: number;
 }
 
-/** How far a party member has come, and what they have on. M3 adds HP and MP, for battles. */
+/** How far a party member has come, and what they have on. M4 adds HP and MP, for battles. */
 export interface MemberState {
   readonly level: number;
   /** All the EXP they've earned. */

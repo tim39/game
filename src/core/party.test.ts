@@ -64,6 +64,7 @@ const DB: GameDb = {
       stats: { spd: 2 },
     },
   },
+  enemies: {},
 };
 
 const NEW_GAME: NewGame = {

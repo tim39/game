@@ -8,6 +8,13 @@ export const ELEMENTS = ['fire', 'water', 'wind', 'earth', 'light', 'gloam'] as 
 export type Element = (typeof ELEMENTS)[number];
 
 /**
+ * How a fighter takes an element: a weakness takes more damage and staggers them, a resistance
+ * less, immunity none at all, and absorbing it heals them instead.
+ */
+export const REACTIONS = ['weak', 'normal', 'resist', 'immune', 'absorb'] as const;
+export type Reaction = (typeof REACTIONS)[number];
+
+/**
  * The statuses skills and items can give and cure. KO and Guard aren't among them: running out
  * of HP is what KOs, and Guard is a command.
  */

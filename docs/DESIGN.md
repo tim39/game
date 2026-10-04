@@ -53,11 +53,11 @@ Town (story, shops, inn) → overworld → dungeon (explore, fight, treasure, a 
 - Random encounters happen on dungeon floors and dangerous overworld terrain. Steps until the next one: random 24–40, scaled by the **Encounter rate** option: Off, Low (half as often), Normal, High (twice as often). Off is a legitimate way to play for the story.
 - Each area has an encounter table of weighted enemy groups. Bosses and mini-bosses are visible, fixed encounters.
 - 8% chance of a **preemptive strike** (the party acts first) and 4% of an **ambush** (enemies act first).
-- **Flee** is a command on any party member's turn. Chance = 50% + 2% × (average party SPD − average enemy SPD), clamped to 20–95%. A failed attempt uses up the turn. You can't flee from bosses.
+- **Flee** is a command on any party member's turn. Chance = 50% + 2% × (average party SPD − average enemy SPD), clamped to 20–95%, counting only those still standing. A failed attempt uses up the turn, as a Normal action. You can't flee from bosses.
 
 ## Battle system
 
-Side view: enemies on the left, the party on the right, the timeline across the top, and the command window and party status along the bottom.
+Side view: enemies on the left, the party on the right, the timeline across the top, and the command window and party status along the bottom. A battle has one to six enemies; several of a kind are lettered, Wolf A and Wolf B.
 
 ```
  NEXT ▸ Rowan · Wolf A · Liora · Wolf B · Rowan · Bram · Cass · Wolf A …
@@ -89,15 +89,16 @@ delay = round(rank × K / (SPD + C))      starting constants: K = 1000, C = 10
 | Slow | 1.4 | Big spells, heavy hits |
 | Very slow | 2.0 | Ultimate skills, some boss attacks |
 
+- CTs are whole numbers. A delay is at least 1, and Haste and Slow multiply it before it's rounded.
 - **Ties** go to higher SPD, then the party before enemies, then left-to-right slot order. Turn order is fully deterministic.
-- **At battle start,** each combatant's CT is their Normal delay × a seeded random number from 0.4 to 1.0. A preemptive strike sets the party's CT to 0; an ambush does the same for the enemies.
-- **The preview is the point.** The timeline shows the next 10 turns. While the player browses commands and targets, it shows what the order *will be* after they confirm: slow actions push the actor back, Delay skills push the target back, Haste pulls an ally forward. Slots that change are highlighted.
+- **At battle start,** each combatant's CT is their Normal delay × a seeded random number from 0.4 to 1.0, rounded. A preemptive strike sets the party's CT to 0; an ambush does the same for the enemies.
+- **The preview is the point.** The timeline shows the next 10 turns. While the player browses commands and targets, it shows what the order *will be* after they confirm: slow actions push the actor back, Delay skills push the target back, Haste pulls an ally forward, Slow pushes an enemy back, a stagger pushes back an enemy hit on a weakness, and a revived ally gets back in line. Slots that change are highlighted. It shows the action landing in full (it can't know who'll miss, resist or fall), and everyone after taking Normal actions. It only shows a stagger on a weakness the party already knows, so it never gives one away.
 
 ### Commands
 
 - **Attack:** physical, power 1.0, Normal rank, using the weapon's element if it has one.
 - **Skill:** costs MP. Each character has their own list (see [The party](#the-party)).
-- **Item:** Quick rank. Works on any party member, including KO'd ones for revival items.
+- **Item:** Quick rank. Works on any party member: revival items only on the KO'd, and everything else only on those standing.
 - **Guard:** Quick rank. Halves damage taken until the guarder's next turn.
 - **Flee:** see [Encounters](#encounters).
 
@@ -119,17 +120,21 @@ These never reach zero and give defense gentle diminishing returns. Then apply, 
 
 Round the result. The minimum is 1 unless the target is immune, and the cap is 9,999. Physical attacks always hit unless the attacker is Blinded, and skills can set their own accuracy. There is no evasion stat.
 
+- A target that **absorbs** the element heals by what the hit would have done to them.
+- **Healing** gets the variance too, with the same minimum and cap, and never goes past the target's most HP.
+- **Bombs** and other items that deal damage do exactly what they say, times the element's reaction, and Guard halves it; they're never critical and don't vary.
+
 ### Elements and Stagger
 
 Six elements: **Fire, Water, Wind** and **Earth** (one per Beacon), plus **Light** and **Gloam** (dark). Every enemy reacts to each one in one of five ways: weak, normal, resist, immune or absorb.
 
-**Stagger** is the system's signature. Hitting a weakness also pushes the target back on the timeline by 25% of its Normal delay, with a "STAGGER" pop-up. A target can be staggered at most once between its own turns, so it can't be locked down, and bosses take half the push. Playing to elements *is* playing the timeline.
+**Stagger** is the system's signature. Hitting a weakness also pushes the target back on the timeline by 25% of its Normal delay, with a "STAGGER" pop-up. A target can be staggered at most once between its own turns, so it can't be locked down, and bosses take half the push. A hit that KOs doesn't stagger. Playing to elements *is* playing the timeline.
 
-An enemy's weakness is revealed the first time you hit it with that element (or by Liora's *Insight*), and the game remembers it for every later fight.
+How an enemy takes an element is revealed the first time you hit that kind of enemy with it, whatever the reaction (or all at once by Liora's *Insight*), and the game remembers it for every later fight.
 
 ### Status effects
 
-Durations count the affected unit's own turns.
+Durations count the affected unit's own turns, starting with their next one: a status given on the unit's own turn also lasts the rest of that turn. A status wears off at the end of its last turn.
 
 | Status | Effect | Lasts |
 |---|---|---|
@@ -146,7 +151,13 @@ Durations count the affected unit's own turns.
 | Provoke | Must target the provoker when possible | 2 turns |
 | Guard | Damage taken ×0.5 | until their next turn |
 
-Re-applying a status refreshes its duration; nothing stacks, so a stat is up, down or neither. Bosses are immune to Sleep and take half duration from Slow.
+Re-applying a status refreshes its duration; nothing stacks, so a stat is up, down or neither: Up replaces Down, and Haste replaces Slow, and the other way round. Bosses are immune to Sleep and take half duration from Slow, rounded up.
+
+- **Haste and Slow** change the wait for the unit's next turn as soon as they're given (or cured), as well as the delays of their actions while they last.
+- **Poison** can KO. Its damage doesn't wake a sleeper, though a hit does.
+- **Silence** stops magical and healing skills; other skills, Attack and items still work.
+- **Provoke** means an action aimed at one enemy must be aimed at the provoker, while they're standing. Actions aimed at everyone are unaffected.
+- **A KO** takes every status away. A revived unit gets back in line after their Normal delay.
 
 ### Enemy behavior
 

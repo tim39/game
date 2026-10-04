@@ -3,6 +3,7 @@ import type { MapContent, MapDef } from '../src/core/map/types';
 import type { NewGame } from '../src/core/state';
 import { EXP_CURVE } from '../src/data/balance';
 import { CHARACTERS } from '../src/data/characters';
+import { ENEMIES } from '../src/data/enemies';
 import { EVENTS } from '../src/data/events';
 import { ITEMS } from '../src/data/items';
 import { MAPS } from '../src/data/maps';
@@ -128,6 +129,18 @@ describe('checkContent', () => {
         stats: { spd: 2 },
       },
       shard: { name: 'Shard', description: 'A memory.', kind: 'key' },
+    },
+    enemies: {
+      wolf: {
+        name: 'Wolf',
+        stats: { hp: 30, mp: 0, atk: 12, def: 6, mag: 2, res: 4, spd: 12 },
+        reactions: { fire: 'weak', water: 'normal', gloam: 'absorb' },
+      },
+      warden: {
+        name: 'Drowned Warden',
+        stats: { hp: 400, mp: 40, atk: 20, def: 15, mag: 10, res: 12, spd: 9 },
+        boss: true,
+      },
     },
     speakers: { ada: { name: 'Ada', portrait: 'portrait.ada' }, sign: { name: '' } },
     terrains: {
@@ -440,6 +453,34 @@ describe('checkContent', () => {
     ]);
   });
 
+  test('reports enemies with stats or reactions that are out of range', () => {
+    const wolf = VALID.enemies.wolf;
+    expect(
+      check({
+        enemies: {
+          wolf: {
+            ...wolf,
+            stats: { ...wolf.stats, hp: 0, spd: 2.5 },
+            reactions: { fire: 'weakness', ice: 'weak' },
+          },
+          rat: { name: 'Rat', stats: { hp: 5, atk: 3 }, boss: 'yes' },
+        },
+      }),
+    ).toEqual([
+      'Enemy wolf: stats.hp should be at least 1, not 0',
+      'Enemy wolf: stats.spd should be a whole number, not 2.5',
+      'Enemy wolf: reactions.fire should be one of "weak", "normal", "resist", "immune", ' +
+        '"absorb", not "weakness"',
+      "Enemy wolf: reactions has a field it shouldn't: ice",
+      'Enemy rat: stats.mp is missing',
+      'Enemy rat: stats.def is missing',
+      'Enemy rat: stats.mag is missing',
+      'Enemy rat: stats.res is missing',
+      'Enemy rat: stats.spd is missing',
+      'Enemy rat: boss should be true or false, not "yes"',
+    ]);
+  });
+
   test('reports a collection that is not a record', () => {
     expect(check({ items: [] })).toEqual(['Items should be an object, not a list']);
   });
@@ -451,6 +492,7 @@ describe('checkContent', () => {
         characters: CHARACTERS,
         skills: SKILLS,
         items: ITEMS,
+        enemies: ENEMIES,
         speakers: SPEAKERS,
         terrains: TERRAINS,
         prefabs: PREFABS,

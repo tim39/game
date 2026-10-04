@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { EXP_CURVE } from '../src/data/balance';
 import { CHARACTERS } from '../src/data/characters';
+import { ENEMIES } from '../src/data/enemies';
 import { EVENTS } from '../src/data/events';
 import { ITEMS } from '../src/data/items';
 import { MAPS } from '../src/data/maps';
@@ -40,6 +41,7 @@ const content = {
   characters: CHARACTERS,
   skills: SKILLS,
   items: ITEMS,
+  enemies: ENEMIES,
   speakers: SPEAKERS,
   terrains: TERRAINS,
   prefabs: PREFABS,
@@ -96,7 +98,10 @@ const problems = [
     items: ITEMS,
     maxLevel: EXP_CURVE.maxLevel,
   }),
-  ...checkText({ characters: CHARACTERS, skills: SKILLS, items: ITEMS, speakers: SPEAKERS }, font),
+  ...checkText(
+    { characters: CHARACTERS, skills: SKILLS, items: ITEMS, enemies: ENEMIES, speakers: SPEAKERS },
+    font,
+  ),
 ];
 if (problems.length > 0) fail(problems);
 
@@ -110,7 +115,8 @@ const chests = Object.values(MAPS).flatMap((map) =>
 ).length;
 console.log(
   `Content: ${some(size(CHARACTERS), 'character')}, ${some(size(SKILLS), 'skill')}, ` +
-    `${some(size(ITEMS), 'item')}, ${some(size(SPEAKERS), 'speaker')}, ` +
+    `${some(size(ITEMS), 'item')}, ${some(size(ENEMIES), 'enemy', 'enemies')}, ` +
+    `${some(size(SPEAKERS), 'speaker')}, ` +
     `${some(size(TERRAINS), 'terrain')}, ${some(size(PREFABS), 'prefab')}, ` +
     `${some(maps, 'map')}, ${some(size(EVENTS), 'event script')} and the new game all match ` +
     'their schemas.',

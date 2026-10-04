@@ -10,7 +10,7 @@ const START = createGameState({
 });
 
 /** Chests need no content: they only give items and gold, and say so. */
-const NO_CONTENT: GameDb = { characters: {}, skills: {}, items: {} };
+const NO_CONTENT: GameDb = { characters: {}, skills: {}, items: {}, enemies: {} };
 
 const TEXT: ChestText = {
   speaker: 'sign',

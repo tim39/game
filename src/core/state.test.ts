@@ -106,6 +106,7 @@ const DB: GameDb = {
       effects: [{ type: 'restore', hp: 50 }],
     },
   },
+  enemies: {},
 };
 
 const START: NewGame = {

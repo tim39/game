@@ -15,6 +15,7 @@ const NAMES: { readonly [K in Kind]: string } = {
   characters: 'Character',
   skills: 'Skill',
   items: 'Item',
+  enemies: 'Enemy',
   speakers: 'Speaker',
   terrains: 'Terrain',
   prefabs: 'Prefab',

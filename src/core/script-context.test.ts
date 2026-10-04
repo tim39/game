@@ -31,6 +31,7 @@ const DB: GameDb = {
   },
   skills: {},
   items: {},
+  enemies: {},
 };
 
 /** A stage that answers at once, writes down everything asked of it, and picks `answers` in turn. */

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { ELEMENTS, RANKS, STATUSES, TARGETS } from './battle/terms';
+import { ELEMENTS, RANKS, REACTIONS, STATUSES, TARGETS } from './battle/terms';
 import { DIRECTIONS } from './direction';
 import { ARMOR_TYPES, SLOTS, WEAPON_TYPES } from './equipment';
 import type { EventScript } from './events';
@@ -363,6 +363,31 @@ const CharacterSchema = z.strictObject({
 });
 export type CharacterDef = ContentOf<typeof CharacterSchema>;
 
+// Enemies.
+
+/** Something to fight. */
+const EnemySchema = z.strictObject({
+  name: TextSchema,
+  /** Its stats, which don't grow: each kind of enemy is as strong as where it's met. */
+  stats: z.strictObject({
+    hp: z.int().min(1),
+    mp: z.int().min(0),
+    atk: z.int().min(0),
+    def: z.int().min(0),
+    mag: z.int().min(0),
+    res: z.int().min(0),
+    spd: z.int().min(0),
+  }),
+  /** How it takes each element it doesn't take normally. */
+  reactions: z.partialRecord(ElementSchema, z.enum(REACTIONS)).optional(),
+  /**
+   * A boss can't be fled from or put to sleep, takes half the push of a stagger, and is Slowed for
+   * half as long.
+   */
+  boss: z.boolean().optional(),
+});
+export type EnemyDef = ContentOf<typeof EnemySchema>;
+
 // Everything else.
 
 /** Who speaks in the dialogue box: the name in its tab, and a portrait if they have one. */
@@ -399,6 +424,7 @@ export const CONTENT_SCHEMAS = {
   characters: z.record(IdSchema, CharacterSchema),
   skills: z.record(IdSchema, SkillSchema),
   items: z.record(IdSchema, ItemSchema),
+  enemies: z.record(IdSchema, EnemySchema),
   speakers: z.record(IdSchema, SpeakerSchema),
   terrains: z.record(IdSchema, TerrainSchema),
   prefabs: z.record(IdSchema, PrefabSchema),

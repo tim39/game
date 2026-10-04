@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { expect, test } from 'vitest';
 import { CHARACTERS } from '../src/data/characters';
+import { ENEMIES } from '../src/data/enemies';
 import { ITEMS } from '../src/data/items';
 import { SKILLS } from '../src/data/skills';
 import { SPEAKERS } from '../src/data/speakers';
@@ -15,7 +16,13 @@ const FONT: MeasuredFont = {
   has: (char) => !'‘’“”'.includes(char),
 };
 
-const NOTHING: TextSources = { characters: {}, skills: {}, items: {}, speakers: {} };
+const NOTHING: TextSources = {
+  characters: {},
+  skills: {},
+  items: {},
+  enemies: {},
+  speakers: {},
+};
 
 test('passes names and descriptions in characters the font has', () => {
   expect(
@@ -24,6 +31,7 @@ test('passes names and descriptions in characters the font has', () => {
         characters: { rowan: { name: 'Rowan' } },
         skills: { sweep: { name: 'Sweep', description: "It's a wide swing." } },
         items: { potion: { name: 'Potion', description: 'Restores HP.' } },
+        enemies: { wolf: { name: 'Wolf' } },
         speakers: { sign: { name: '' } },
       },
       FONT,
@@ -38,6 +46,7 @@ test('reports names and descriptions with characters the font lacks', () => {
         ...NOTHING,
         skills: { sweep: { name: 'Sweep', description: 'It’s a “wide” swing.' } },
         items: { 'old-key': { name: 'Tamsin’s Key', description: 'Old.' } },
+        enemies: { 'tide-wraith': { name: 'Tide “Wraith”' } },
         speakers: { tamsin: { name: 'Tamsin’' } },
       },
       FONT,
@@ -45,6 +54,7 @@ test('reports names and descriptions with characters the font lacks', () => {
   ).toEqual([
     'Skill sweep: its description, "It’s a “wide” swing.", uses "’", "“", "”", which the font lacks',
     'Item old-key: its name, "Tamsin’s Key", uses "’", which the font lacks',
+    'Enemy tide-wraith: its name, "Tide “Wraith”", uses "“", "”", which the font lacks',
     'Speaker tamsin: its name, "Tamsin’", uses "’", which the font lacks',
   ]);
 });
@@ -55,6 +65,15 @@ test('the real names and descriptions are in characters the font has', () => {
     readFileSync(join(import.meta.dirname, '../public', ASSETS['font.body'].url)),
   );
   expect(
-    checkText({ characters: CHARACTERS, skills: SKILLS, items: ITEMS, speakers: SPEAKERS }, font),
+    checkText(
+      {
+        characters: CHARACTERS,
+        skills: SKILLS,
+        items: ITEMS,
+        enemies: ENEMIES,
+        speakers: SPEAKERS,
+      },
+      font,
+    ),
   ).toEqual([]);
 });
