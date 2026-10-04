@@ -1,7 +1,7 @@
 import { defineEvent } from '../../core/events';
 
-// Saltmere on Kindling day. Draft lines, to be rewritten with the opening (M2) and when the village
-// is fully populated (M6).
+// Saltmere on Kindling day. Draft lines, to be rewritten with the opening and when the village is
+// fully populated (both M6).
 
 export const tamsin = defineEvent(async (ev) => {
   await ev.say(

@@ -56,7 +56,7 @@ Start a session and say **"next task"**, or name one. Claude takes the first unc
 - [x] Audio manager: music per map with crossfades, sound effects, audio unlock on first input.
 - [x] Save and load: three slots plus autosave on every map change, save versioning and migrations, Continue on the title screen, save export and import in the debug menu.
 
-★ **Checkpoint:** the opening plays (festival, lamps, the Beacon going dark), villagers react to it, a chest gives a Potion exactly once, and after saving and reloading the page you're right back where you were.
+★ **Checkpoint:** in Saltmere, Tamsin asks you something and the kid knows about it afterwards, a chest gives a Potion exactly once, and after saving and reloading the page you're right back where you were. The opening itself (Kindling day and the Beacon going dark) comes with the vertical slice, in M6.
 
 ## M3: Rules engine
 
@@ -100,7 +100,7 @@ Start a session and say **"next task"**, or name one. Claude takes the first unc
 - [ ] Saltmere fully populated: NPCs whose lines change with story flags, a shop, an inn, chests, Tamsin's house.
 - [ ] The Tide Caves: three floors, the tide-switch gimmick, 5–6 enemy types, treasure, Light Shrines.
 - [ ] Boss: the Drowned Warden, with phases and one telegraphed attack.
-- [ ] Cutscenes: the prologue, the Beacon going out, the Beacon chamber, Rowan gaining Tide Edge.
+- [ ] Cutscenes: the opening on Kindling day (lighting the village lamps, Bram arriving, the festival), the Beacon going out, the Beacon chamber, Rowan gaining Tide Edge.
 - [ ] Title screen art and a short intro.
 - [ ] Balance pass with the simulator, then a playtest by you.
 - [ ] Bug bash and juice: screen shake, hit-stop, transitions, sound everywhere.

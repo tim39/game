@@ -17,7 +17,7 @@ const PAGES: readonly DialogueLine[] = [
   },
   {
     name: 'Preview',
-    text: 'This is a preview of the dialogue box. Real conversations arrive in milestone M2.',
+    text: 'This is a preview of the dialogue box. The real opening arrives in milestone M6.',
   },
 ];
 
