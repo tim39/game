@@ -1,10 +1,6 @@
-/** Who speaks in the dialogue box: the name in its tab, and a portrait if they have one. */
-export interface Speaker {
-  readonly name: string;
-  /** An image key from the asset manifest. */
-  readonly portrait?: string;
-}
+import type { Speaker } from '../core/schema';
 
+/** Who speaks in the dialogue box, by the ID event scripts' `say` names them by. */
 export const SPEAKERS: Readonly<Record<string, Speaker>> = {
   tamsin: { name: 'Tamsin', portrait: 'portrait.tamsin' },
   villager: { name: 'Villager' },

@@ -3,12 +3,18 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, test } from 'vitest';
 import type { MapContent, MapDef } from '../src/core/map/types';
+import { EVENTS } from '../src/data/events';
+import { ITEMS } from '../src/data/items';
 import { MAPS } from '../src/data/maps';
+import { NEW_GAME } from '../src/data/new-game';
+import { SPEAKERS } from '../src/data/speakers';
 import { MAP_CONTENT } from '../src/data/terrain';
+import { CHEST_TEXT } from '../src/data/ui-text';
 import { ASSETS, type AssetEntry } from '../src/systems/asset-manifest';
 import { pngSize } from './asset-checks';
+import { checkEvents } from './event-checks';
 import { measureBodyFont, type MeasuredFont } from './font-metrics';
-import { checkMapNames, checkMaps } from './map-checks';
+import { checkMapNames, checkMaps, checkReachable } from './map-checks';
 
 const MANIFEST: Record<string, AssetEntry> = {
   'tiles.grass': { type: 'spritesheet', url: 'grass.png', frameWidth: 16, frameHeight: 16 },
@@ -153,6 +159,66 @@ test('reports chests that share a flag with a chest on another map', () => {
   expect(problems).toEqual([
     'Map b: the chest at (1, 0) has the flag chest.a-02, as the chest at (1, 0) on a does',
   ]);
+});
+
+describe('reaching maps', () => {
+  const to = (map: string) => ({ map, spawn: 'in' });
+  const room = (id: string, overrides: Partial<MapDef> = {}): MapDef => ({
+    id,
+    name: id,
+    terrain: '..',
+    legend: { '.': 'grass' },
+    ...overrides,
+  });
+  const MAPS_TO_REACH: Record<string, MapDef> = {
+    start: room('start', {
+      objects: [{ type: 'prefab', prefab: 'door', at: [0, 0], to: to('house') }],
+    }),
+    house: room('house', { objects: [{ type: 'warp', at: [1, 0], to: to('cellar') }] }),
+    cellar: room('cellar', { edges: { south: to('cave') } }),
+    cave: room('cave'),
+    // Only a script on the cave leads here; and nothing leads to the island at all.
+    vault: room('vault'),
+    island: room('island', { edges: { west: to('start') } }),
+    // The tests go to the test maps through the debug menu.
+    'test-yard': room('test-yard'),
+  };
+
+  test('reports maps that no way out or script leads to from the start', () => {
+    const teleports = new Map([['cave', new Set(['vault'])]]);
+    expect(checkReachable({ maps: MAPS_TO_REACH, start: 'start', teleports })).toEqual([
+      "Map island can't be reached from start, where a new game starts",
+    ]);
+    expect(checkReachable({ maps: MAPS_TO_REACH, start: 'start', teleports: new Map() })).toEqual([
+      "Map vault can't be reached from start, where a new game starts",
+      "Map island can't be reached from start, where a new game starts",
+    ]);
+  });
+
+  test('leaves a start that is not a map to the new game check', () => {
+    expect(checkReachable({ maps: MAPS_TO_REACH, start: 'nowhere', teleports: new Map() })).toEqual(
+      [],
+    );
+  });
+
+  // The same check as `npm run validate`, so it also runs with the unit tests.
+  test('every real map but the test maps can be reached from where a new game starts', async () => {
+    const font = measureBodyFont(
+      readFileSync(
+        join(fileURLToPath(new URL('../public', import.meta.url)), ASSETS['font.body'].url),
+      ),
+    );
+    const { teleports } = await checkEvents({
+      events: EVENTS,
+      speakers: SPEAKERS,
+      maps: MAPS,
+      items: ITEMS,
+      manifest: ASSETS,
+      font,
+      chestText: CHEST_TEXT,
+    });
+    expect(checkReachable({ maps: MAPS, start: NEW_GAME.location.map, teleports })).toEqual([]);
+  });
 });
 
 // The same check as `npm run validate`, so it also runs with the unit tests.

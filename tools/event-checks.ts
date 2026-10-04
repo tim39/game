@@ -16,7 +16,7 @@ import {
   setVar,
   type GameState,
 } from '../src/core/state';
-import type { Speaker } from '../src/data/speakers';
+import type { Speaker } from '../src/core/schema';
 import type { AssetEntry } from '../src/systems/asset-manifest';
 import { CHOICE_BOX, MAX_CHOICES, MAX_LINES, lineWidth } from '../src/ui/dialogue-layout';
 import { wrapText } from '../src/ui/text-wrap';
@@ -26,12 +26,24 @@ export interface EventSources {
   readonly events: Readonly<Record<string, EventScript>>;
   readonly speakers: Readonly<Record<string, Speaker>>;
   readonly maps: Readonly<Record<string, MapDef>>;
+  /** Every item, by ID, as in src/data/items.ts. */
+  readonly items: Readonly<Record<string, unknown>>;
   /** Logical key → entry, as in src/systems/asset-manifest.ts. */
   readonly manifest: Readonly<Record<string, AssetEntry>>;
   /** The body font, which dialogue is drawn in. */
   readonly font: MeasuredFont;
   /** What opening a chest says, as in src/data/ui-text.ts. */
   readonly chestText: ChestText;
+}
+
+export interface EventReport {
+  /** One line per problem. */
+  readonly problems: string[];
+  /**
+   * Where scripts take the player: for each map that runs a script that teleports, every map it
+   * can teleport to from there. Scripts no map runs aren't counted, as nothing sets them off.
+   */
+  readonly teleports: ReadonlyMap<string, ReadonlySet<string>>;
 }
 
 /** More questions than this in one run of a script stops the run: it's probably asking in a loop. */
@@ -45,31 +57,36 @@ const PLENTY_OF_GOLD = 999_999;
 class LongPath extends Error {}
 
 /**
- * Checks the event scripts, who speaks in them, and the maps that run them. Returns one line per
+ * Checks the event scripts, who speaks in them, and the maps that run them. Reports one line per
  * problem:
  * - every script a map's NPC, prefab or trigger runs exists;
  * - every speaker's portrait is an image in the asset manifest;
  * - every script, run against a stand-in context that answers at once, finishes without an error,
  *   down every path it can take. A path is an answer to each question the script asks: which
  *   choice the player picks, whether a flag it hasn't set itself is set, whether the party has an
- *   item, or gold. It starts on each map that runs it, and must only name speakers that exist,
- *   move and turn people who are on the map it's on, teleport to spawns that exist, wait and fade
- *   for real lengths of time, and play music and sound effects that are in the asset manifest;
+ *   item, or gold. It starts on each map that runs it, and must only name speakers and items that
+ *   exist, move and turn people who are on the map it's on, teleport to spawns that exist, wait
+ *   and fade for real lengths of time, and play music and sound effects that are in the asset
+ *   manifest;
  * - every line it says fits in the dialogue box (three lines, narrower beside a portrait), every
  *   choice it offers fits the choice box, it offers one to four at a time, and the font has every
  *   character they use;
  * - every chest's script passes the same checks, run on its map: what it says when it opens and
  *   when it's empty fits the box, and it holds an item that exists.
+ *
+ * It also reports where the scripts take the player, for checking every map can be reached.
  */
 export async function checkEvents({
   events,
   speakers,
   maps,
+  items,
   manifest,
   font,
   chestText,
-}: EventSources): Promise<string[]> {
+}: EventSources): Promise<EventReport> {
   const problems: string[] = [];
+  const teleports = new Map<string, Set<string>>();
   // Which maps run each script.
   const runBy = new Map<string, string[]>();
 
@@ -177,6 +194,10 @@ export async function checkEvents({
       }
     };
 
+    const checkItem = (item: string, verb: string): void => {
+      if (!Object.hasOwn(items, item)) report(`it ${verb} ${item}, which isn't an item`);
+    };
+
     // Each run follows a path: the answer to each question, 0 past its end. Reaching a question
     // past the end for the first time queues the paths that answer it the other ways.
     for (const startMap of startMaps) {
@@ -246,8 +267,12 @@ export async function checkEvents({
           },
           teleport: (map, spawn) => {
             const there = maps[map]?.objects?.some((o) => o.type === 'spawn' && o.id === spawn);
-            if (there) mapId = map;
-            else report(`it teleports to spawn ${spawn} on ${map}, which isn't there`);
+            if (!there) {
+              report(`it teleports to spawn ${spawn} on ${map}, which isn't there`);
+              return Promise.resolve();
+            }
+            if (mapId !== null) teleports.set(mapId, (teleports.get(mapId) ?? new Set()).add(map));
+            mapId = map;
             return Promise.resolve();
           },
           bgm: (track) => {
@@ -270,6 +295,7 @@ export async function checkEvents({
             state = setVar(state, name, value);
           },
           hasItem: (item, count = 1) => {
+            checkItem(item, 'checks for');
             if (!settled.items.has(item) && hasItem(state, item, count) === false) {
               settled.items.add(item);
               if (ask(2) === 1) state = addItem(state, item, count);
@@ -277,10 +303,12 @@ export async function checkEvents({
             return hasItem(state, item, count);
           },
           giveItem: (item, count = 1) => {
+            checkItem(item, 'gives');
             state = addItem(state, item, count);
             settled.items.add(item);
           },
           takeItem: (item, count = 1) => {
+            checkItem(item, 'takes');
             state = removeItem(state, item, count);
             settled.items.add(item);
           },
@@ -316,7 +344,7 @@ export async function checkEvents({
     problems.push(...found.values());
   }
 
-  return problems;
+  return { problems, teleports };
 }
 
 /** The script a map object runs, if it runs one. */

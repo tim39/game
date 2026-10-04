@@ -10,7 +10,7 @@ Architecture and tooling. Until the code exists, this is the plan; once it does,
 | Engine | Phaser 4 (4.2.x) | Tilemaps, cameras, tweens, particles, input, audio, scenes |
 | Build | Vite 8 | Dev server and static build |
 | Unit tests | Vitest 5 | Runs `src/core` and the data checks in Node |
-| Data validation | Zod 4 | A schema for every kind of content |
+| Data validation | Zod 4 | A schema for every kind of content. Only the tools and the tests run them, so the game doesn't ship Zod |
 | End-to-end tests | Playwright 1.56.1 (pinned) | Drives the real game in Chromium and takes screenshots. Pinned because it uses Chromium build 1194, the one preinstalled in cloud sessions; bump the two together |
 | Lint and format | ESLint 10 + typescript-eslint, Prettier | |
 | Scripts | tsx | Runs the TypeScript tools (`fetch-assets`, `validate`, `sim`) |
@@ -42,7 +42,7 @@ Versions were checked in October 2026. M0 installs the latest compatible ones.
 │   │   ├── conditions.ts flag conditions, for triggers
 │   │   ├── chest.ts      treasure chests: the script opening one runs
 │   │   ├── route.ts      walking someone along a route, for scripts
-│   │   ├── schema.ts     Zod schemas and the types derived from them
+│   │   ├── schema.ts     Zod schemas for every kind of content, and types derived from them
 │   │   └── rng.ts        seeded RNG
 │   ├── data/             content: characters, skills, items, enemies, encounters,
 │   │                     shops, balance.ts, terrain.ts, maps/, events/, speakers.ts
@@ -64,8 +64,9 @@ Versions were checked in October 2026. M0 installs the latest compatible ones.
 - `data` imports only from `core` (schemas, `define*` helpers, types).
 - `systems`, `scenes` and `ui` may import `core`, `data` and each other.
 - Only `main.ts` imports `debug`, and only in dev and test builds.
+- The game takes only types from `src/core/schema.ts`, and never imports `zod`: only the tools and the tests run the schemas (see [Content data](#content-data)).
 
-`eslint.config.js` enforces the first two with `no-restricted-imports`, and also bans `Math.random`, `Date.now` and browser globals (`window`, `document`, `localStorage`, `performance`) inside `src/core`.
+`eslint.config.js` enforces the first two with `no-restricted-imports`, and the last with its TypeScript version, which allows `import type`; it also bans `Math.random`, `Date.now` and browser globals (`window`, `document`, `localStorage`, `performance`) inside `src/core`.
 
 TypeScript is split in two: `tsconfig.app.json` covers `src/` (browser code, DOM types), and `tsconfig.node.json` covers the config files, `tests/` and `tools/` (Node types). `tsconfig.json` only references the two, which is what editors and ESLint pick up.
 
@@ -159,11 +160,20 @@ export const skills = defineSkills({
 });
 ```
 
-`npm run validate` checks the asset manifest, the maps and the event scripts so far (see [Assets](#assets), [Maps](#maps) and [Event scripts](#event-scripts)), including that every chest holds an item that exists and that no two chests share a flag. M3 makes it check:
+**Schemas** (`src/core/schema.ts`) say what types can't: IDs are kebab-case (event scripts' are `area/name`), cells and counts are whole numbers in range, names aren't empty or padded with spaces, a chest holds an item or some gold but not both, a prefab has one doorway at most, a blob layout's neighbours read right, and nothing has a field it shouldn't. `CONTENT_SCHEMAS` lists the collections, each a record by ID (items, speakers, terrains, prefabs, maps and event scripts), and the new game.
 
-- every collection against its schema, with unique IDs;
-- that every reference resolves: skills in learnsets; items in shops, drops and event scripts; encounter tables on maps; sprite and audio keys in the asset manifest;
-- that every map can be reached from the start.
+- **A new kind of content** adds its schema and its collection there, and takes its TypeScript type from the schema, read-only all the way down (`type ItemDef = ContentOf<typeof ItemSchema>`), so the two can't drift apart. `ItemDef` and `Speaker` work this way. The map format's types came first, and the compiler is built on them, so they stay in `src/core/map/types.ts` and the map schemas are written to match them, as the new game's is to match `NewGame` in `state.ts`. Change such a type and its schema together: the schemas are strict, so content with a field its schema doesn't know fails validation.
+- **Schemas only check.** They never fill in defaults or change what they check, as the game reads content just as it's written. Only the tools and the tests run them, so the game takes just the types from `schema.ts` and doesn't ship Zod (an ESLint rule keeps it so).
+- **IDs are unique** by construction: TypeScript won't let an object literal name a key twice, and `MAPS` and `EVENTS`, which are built from lists, use `recordById` (`src/core/ids.ts`), which throws on a repeat. The game, the tests and `npm run validate` then all stop at once, naming the ID.
+
+**`npm run validate`** (`tools/validate.ts`) checks, in order:
+
+1. Every collection, and the new game, against its schema (`tools/content-checks.ts`). Each problem is a line saying whose it is, where and what's wrong: `Map saltmere: objects[3].wander should be at least 0, not -1`. The checks after this take the content's shape on trust, so they wait until it all matches; the asset checks run regardless.
+2. The asset manifest against the files (see [Assets](#assets)), the maps (see [Maps](#maps)) and the event scripts (see [Event scripts](#event-scripts)).
+3. That everything content names exists: the terrains, prefabs and sheets the maps use, the scripts, speakers, portraits, people, spawns, items, music and sounds the maps and scripts name, and the new game's map and items, and that it starts on a cell the player can stand on (`checkNewGame`). Each new kind of content adds its own: characters in the party and in `joinParty`, skills in learnsets, items in shops and drops, encounter tables on maps.
+4. That every map can be reached from where a new game starts (`checkReachable` in `tools/map-checks.ts`), through doorways, warps and map edges, or by a script a map runs teleporting the player, as the event checks find it can. The test maps (`test-*`), which only the tests and the debug menu go to, are left out.
+
+Each check also runs as a unit test on the real content, beside its tests on small fixtures.
 
 Items (`src/data/items.ts`) have only a name so far, which messages show (`itemName`); M3 gives them the rest.
 
@@ -206,7 +216,7 @@ Event triggers (`touch`, `enter` and `auto` objects) are described under [Event 
 - **Rooms** use the `house-wall` and `cellar-wall` terrains, from the pack's simple room frame. It has only the shapes a rectangle needs (four corners, four sides, solid wall), so their rooms must be rectangles with walls one cell thick; anything else won't compile. Saltmere's draft interiors use it, furnished with prefabs. The pack's fuller interior walls (`Interior/TilesetInterior.png`: walls drawn as lines, in four colours, with windows and arches) are still to be worked out.
 - **The compiler** (`compileMap` in `src/core/map/compile.ts`, pure and unit-tested) turns a map into three layers, `ground`, `base` (trunks, walls) and `overhead` (treetops, roof tops), plus a `solid` grid. `isBlocked(map, x, y)` answers whether a cell can be walked into (off the map is blocked unless that edge leads somewhere), `isOutOfBounds(map, x, y)` whether it's off an edge that leads nowhere (the one wall noclip doesn't open), `exitAt(map, x, y)` where stepping into it leads, `scriptAt(map, x, y)` the script examining it runs, and `chestAt(map, x, y)` the chest standing there. Anything that doesn't fit throws an error naming the map and the cell: an unknown character, ragged rows, a shape with no tile, a prefab off the map or on top of another, a spawn or warp on a solid cell, two spawns with one ID; a chest whose flag isn't like `chest.saltmere-01` or is another chest's on the map, that holds an item and gold both or gold that isn't a whole number from 1 up, or that isn't on open ground clear of ways out, spawns, people, touches, scripts and other chests.
 - **The field scene** draws the layers as a Phaser tilemap (`src/systems/tilemap.ts`). Every tile sheet a map uses becomes a tileset with its own range of tile IDs, so any layer can mix sheets. Characters are drawn between `base` and `overhead` (see `DEPTH`), the debug collision view over everything, and the world camera is zoomed 2×.
-- **`npm run validate`** compiles every map, checks that every tile a terrain or prefab names is inside a 16×16 sprite sheet from the asset manifest, that every way out leads to a spawn that exists, that every NPC's sprite is a character sheet, that every map's music is a `bgm.*` sound in the manifest, that no two chests share a flag, on any map, and that every map's name fits where the save menu shows it (measured with the body font, as event lines are). `src/data/maps/maps.test.ts` also checks that the layout covers all 47 shapes.
+- **`npm run validate`** compiles every map, checks that every tile a terrain or prefab names is inside a 16×16 sprite sheet from the asset manifest, that every way out leads to a spawn that exists, that every NPC's sprite is a character sheet, that every map's music is a `bgm.*` sound in the manifest, that no two chests share a flag, on any map, that every map's name fits where the save menu shows it (measured with the body font, as event lines are), and that every map but the test maps can be reached from where a new game starts (see [Content data](#content-data)). `src/data/maps/maps.test.ts` also checks that the layout covers all 47 shapes.
 - If the owner wants to hand-paint a map, add a Tiled (`.tmj`) importer and let that map opt out of ASCII. Each map keeps one source of truth.
 
 ## Event scripts
@@ -238,7 +248,7 @@ export const tamsin = defineEvent(async (ev) => {
 - **How they run:** `createScriptContext(stage, store)` (`src/core/script-context.ts`) makes a script's context from a `Stage`, the on-screen verbs, and a `StateStore`, where the game state lives. The field is the stage, and `session.state` the store; unit tests use a fake stage that answers at once and writes down what it was asked (`script-context.test.ts`). The field runs one script at a time, and while it runs, the player can't move or open the save menu, and NPCs stand still, except as the script walks them (`walkRoute` in `src/core/route.ts`, unit-tested). A script that fails logs an error and ends, and the game carries on. A teleport starts the field over on the new map with the script still running, so the map's NPCs are back where they started. If a script ends with the screen black, it fades back in. `__game.run(id)` runs any script on the field, in dev and test builds.
 - **Triggers** set scripts off: `interact` (an NPC's or a prefab's `script`, by facing it and pressing Confirm), and three map objects. `{ type: 'touch', at, script, when? }` runs when the player stops on its cell: a walk stops there, as at a way out, and arriving by a door or teleport doesn't count. It must be on a walkable cell that isn't a way out. `{ type: 'enter', script, when? }` runs on arriving on the map; when a script's teleport brought the player, it waits for that script to end. `{ type: 'auto', script, when }` runs as soon as `when` holds, with nothing else running and the player standing still; it runs at most once a visit, so its script should set a flag that makes `when` false, or it runs again the next time the player comes back. Where a map has several of a kind that could run, the first in its list whose condition holds does.
 - **Conditions** (`src/core/conditions.ts`) are flags: `'story.beacon-out'` holds when that flag is set, `'!story.beacon-out'` when it isn't, and a list holds when all of it does. The map compiler rejects one that names something that isn't a flag.
-- **Checked by `npm run validate`** (`tools/event-checks.ts`): every script a map's NPC, prefab or trigger names exists, and every speaker's portrait is an image in the manifest. Every script runs against a stand-in context that answers at once, once for each map that runs it, down every path it can take: a path is an answer to each question it asks, which choice the player picks, whether a flag it hasn't set itself is set, whether the party has an item or has gold (lots, so a checked purchase works). A run that asks more than 10 questions stops there, so a script that asks in a loop still finishes. Each chest's script runs the same way, on its map, so what it says opened and empty is measured like any line, and an item that doesn't exist (one `itemName` doesn't know) fails it. Each run must finish, only name speakers that exist, only move and turn people who are on the map it's on (a teleport changes which), only teleport to spawns that exist, only offer 1 to 4 choices, only wait and fade for real lengths of time, and only play music and sound effects that are in the asset manifest. It also measures the text with the real body font: every line must fit its box in three lines (narrower beside a portrait), every choice must fit the choice box, and the font must have every character (no curly quotes). In Node there's no canvas, so `tools/png.ts` decodes the font image and `tools/font-metrics.ts` measures it with the same rules as the game.
+- **Checked by `npm run validate`** (`tools/event-checks.ts`): every script a map's NPC, prefab or trigger names exists, and every speaker's portrait is an image in the manifest. Every script runs against a stand-in context that answers at once, once for each map that runs it, down every path it can take: a path is an answer to each question it asks, which choice the player picks, whether a flag it hasn't set itself is set, whether the party has an item or has gold (lots, so a checked purchase works). A run that asks more than 10 questions stops there, so a script that asks in a loop still finishes. Each chest's script runs the same way, on its map, so what it says opened and empty is measured like any line, and an item that doesn't exist (one `itemName` doesn't know) fails it. Each run must finish, only name speakers that exist, only check for, give and take items that exist, only move and turn people who are on the map it's on (a teleport changes which), only teleport to spawns that exist, only offer 1 to 4 choices, only wait and fade for real lengths of time, and only play music and sound effects that are in the asset manifest. It also measures the text with the real body font: every line must fit its box in three lines (narrower beside a portrait), every choice must fit the choice box, and the font must have every character (no curly quotes). In Node there's no canvas, so `tools/png.ts` decodes the font image and `tools/font-metrics.ts` measures it with the same rules as the game. The checks also report where each map's scripts can teleport the player, for the check that every map can be reached.
 
 ## Battle engine
 
@@ -288,7 +298,7 @@ battleResult(battle): 'ongoing' | 'victory' | 'defeat' | 'fled'
 | Layer | Tool | Covers |
 |---|---|---|
 | Rules | Vitest | Formulas, CTB order, statuses, inventory, equipment, EXP, saves and migrations, event scripts against a fake context |
-| Content | `npm run validate` (also run as a test) | The asset manifest against the files, the maps, and the event scripts and speakers, with every line and choice measured to fit; from M3, schemas and cross-references |
+| Content | `npm run validate` (also run as a test) | Every collection against its schema; the asset manifest against the files; the maps, and the event scripts and speakers, with every line and choice measured to fit; that everything content names exists; and that every map can be reached |
 | Balance | `npm run sim` | Win rates and battle length against the targets |
 | Game | Playwright | Boots with no console errors; new game → walk → talk → battle → save → reload; screenshots of key screens |
 

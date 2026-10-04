@@ -5,6 +5,7 @@ import type { ChestText } from '../src/core/chest';
 import { defineEvent } from '../src/core/events';
 import type { MapDef } from '../src/core/map/types';
 import { EVENTS } from '../src/data/events';
+import { ITEMS } from '../src/data/items';
 import { MAPS } from '../src/data/maps';
 import { SPEAKERS } from '../src/data/speakers';
 import { CHEST_TEXT } from '../src/data/ui-text';
@@ -55,16 +56,19 @@ const map: MapDef = {
   ],
 };
 
-const check = (overrides: Partial<EventSources>): Promise<string[]> =>
-  checkEvents({
-    events: { hello },
-    speakers: { ada: { name: 'Ada', portrait: 'portrait.ada' } },
-    maps: {},
-    manifest: MANIFEST,
-    font: FONT,
-    chestText: CHEST_TEXT_ADA,
-    ...overrides,
-  });
+const sources = (overrides: Partial<EventSources>): EventSources => ({
+  events: { hello },
+  speakers: { ada: { name: 'Ada', portrait: 'portrait.ada' } },
+  maps: {},
+  items: { potion: { name: 'Potion' }, 'old-key': { name: 'Old Key' } },
+  manifest: MANIFEST,
+  font: FONT,
+  chestText: CHEST_TEXT_ADA,
+  ...overrides,
+});
+
+const check = async (overrides: Partial<EventSources>): Promise<string[]> =>
+  (await checkEvents(sources(overrides))).problems;
 
 test('passes when every script, speaker and portrait exists', async () => {
   expect(await check({ maps: { a: { ...map, objects: map.objects?.slice(0, 1) } } })).toEqual([]);
@@ -232,6 +236,24 @@ test('follows both ways the party can have an item or gold, so a checked take wo
   ]);
 });
 
+test('reports items that scripts check for, give or take but do not exist', async () => {
+  const problems = await check({
+    events: {
+      pockets: defineEvent(async (ev) => {
+        if (ev.hasItem('pebble')) ev.takeItem('pebble');
+        ev.giveItem('potion');
+        ev.giveItem('shell', 2);
+        await ev.say('ada', 'Hello.');
+      }),
+    },
+  });
+  expect(problems).toEqual([
+    "Event pockets: it checks for pebble, which isn't an item",
+    "Event pockets: it gives shell, which isn't an item",
+    "Event pockets: it takes pebble, which isn't an item",
+  ]);
+});
+
 test('checks the people a script moves and turns are on each map that runs it', async () => {
   const runner = (id: string, objects: MapDef['objects']): MapDef => ({ ...map, id, objects });
   const ada = { type: 'npc', id: 'ada', sprite: 'ada', at: [0, 0], facing: 'down' } as const;
@@ -285,6 +307,44 @@ test('checks teleports go to spawns that exist, and who is about on the map afte
     "Event trip: it teleports to spawn nowhere on b, which isn't there",
     "Event trip: it teleports to spawn gate on c, which isn't there",
   ]);
+});
+
+test('reports where the scripts each map runs can take the player', async () => {
+  const room = (id: string, objects: MapDef['objects']): MapDef => ({ ...map, id, objects });
+  const gate = { type: 'spawn', id: 'gate', at: [0, 0], facing: 'up' } as const;
+  const { teleports } = await checkEvents(
+    sources({
+      maps: {
+        a: room('a', [gate, { type: 'enter', script: 'tour' }]),
+        b: room('b', [gate, { type: 'touch', at: [1, 0], script: 'home' }]),
+        c: room('c', [gate]),
+        d: room('d', [gate]),
+      },
+      events: {
+        // From a, to b if a flag is set, then on to c; or to d, but not to anywhere that isn't.
+        tour: defineEvent(async (ev) => {
+          if (ev.flag('story.left')) {
+            await ev.teleport('b', 'gate');
+            await ev.teleport('c', 'gate');
+          } else await ev.teleport('d', 'gate');
+          await ev.teleport('e', 'gate');
+        }),
+        home: defineEvent(async (ev) => {
+          await ev.teleport('a', 'gate');
+        }),
+        // Nothing runs this one.
+        lost: defineEvent(async (ev) => {
+          await ev.teleport('c', 'gate');
+        }),
+      },
+    }),
+  );
+  expect(teleports).toEqual(
+    new Map([
+      ['a', new Set(['d', 'b'])],
+      ['b', new Set(['c', 'a'])],
+    ]),
+  );
 });
 
 test('checks waits and fades take a real length of time', async () => {
@@ -376,10 +436,11 @@ test('runs every chest, which must say what it holds in a line that fits', async
 
 // The same check as `npm run validate`, so it also runs with the unit tests.
 test('the real event scripts, speakers and maps check out', async () => {
-  const problems = await checkEvents({
+  const { problems } = await checkEvents({
     events: EVENTS,
     speakers: SPEAKERS,
     maps: MAPS,
+    items: ITEMS,
     manifest: ASSETS,
     font: measureBodyFont(
       readFileSync(join(import.meta.dirname, '../public', ASSETS['font.body'].url)),

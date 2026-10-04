@@ -1,7 +1,4 @@
-/** An item: so far, just what it's called. M3 adds what it does, its price and who can equip it. */
-export interface ItemDef {
-  readonly name: string;
-}
+import type { ItemDef } from '../core/schema';
 
 /** Every item, by ID. */
 export const ITEMS: Readonly<Record<string, ItemDef>> = {

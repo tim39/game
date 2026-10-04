@@ -49,8 +49,8 @@ export const stone = defineEvent(async (ev) => {
     return;
   }
   ev.setFlag('test.stone-found');
-  ev.giveItem('pebble');
-  await ev.say('sign', 'A loose stone wobbles underfoot. You pocket a pebble from under it.');
+  ev.giveItem('potion');
+  await ev.say('sign', 'A loose stone wobbles underfoot. You find a Potion under it.');
 });
 
 export const guide = defineEvent(async (ev) => {

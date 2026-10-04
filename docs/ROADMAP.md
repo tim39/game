@@ -62,7 +62,7 @@ Start a session and say **"next task"**, or name one. Claude takes the first unc
 
 *Goal: the whole battle system working headlessly, proven by tests and the simulator.*
 
-- [ ] Zod schemas and `npm run validate` with cross-reference checks, also run as a test.
+- [x] Zod schemas and `npm run validate` with cross-reference checks, also run as a test.
 - [ ] Characters, growth and the EXP curve; stat calculation (base + growth + equipment + buffs), with tests.
 - [ ] Act 1 data: Rowan's, Bram's and Liora's skills, items and equipment; inventory and equip operations, with tests.
 - [ ] CTB engine: turn order, ranks, preview, damage, elements and Stagger, statuses, KO, victory and defeat, fleeing. Thoroughly tested.

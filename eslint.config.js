@@ -17,6 +17,13 @@ const DATA_ONLY_USES_CORE = {
   regex: '(^|/)(systems|scenes|ui|debug)(/|$)',
   message: 'src/data may only import from src/core.',
 };
+const SCHEMAS_ARE_FOR_CHECKS = {
+  regex: '^zod(/|$)|(^|/)schema$',
+  allowTypeImports: true,
+  message:
+    "Only the tools and the tests run the content schemas, so the game doesn't ship Zod: " +
+    'import just the types, with `import type`.',
+};
 
 export default defineConfig([
   globalIgnores([
@@ -59,6 +66,13 @@ export default defineConfig([
     files: ['src/data/**/*.ts'],
     rules: {
       'no-restricted-imports': ['error', { patterns: [NO_PHASER, DATA_ONLY_USES_CORE] }],
+    },
+  },
+  {
+    files: ['src/**/*.ts'],
+    ignores: ['src/core/schema.ts', 'src/**/*.test.ts'],
+    rules: {
+      '@typescript-eslint/no-restricted-imports': ['error', { patterns: [SCHEMAS_ARE_FOR_CHECKS] }],
     },
   },
   {

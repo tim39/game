@@ -135,6 +135,49 @@ export function checkMaps({ maps, content, manifest, imageSize }: MapSources): s
   return problems;
 }
 
+export interface ReachSources {
+  readonly maps: Readonly<Record<string, MapDef>>;
+  /** The map a new game starts on. */
+  readonly start: string;
+  /** Where scripts take the player from each map, as checkEvents reports. */
+  readonly teleports: ReadonlyMap<string, ReadonlySet<string>>;
+}
+
+/** The test maps, which only the tests and the debug menu go to. */
+const isTestMap = (id: string): boolean => id.startsWith('test-');
+
+/**
+ * Checks that every map can be reached from where a new game starts: through doorways, warps and
+ * map edges, or by a script on a map teleporting the player. Returns one line per map that can't
+ * be. The test maps (`test-*`) are left out.
+ */
+export function checkReachable({ maps, start, teleports }: ReachSources): string[] {
+  // checkNewGame reports a start that isn't a map.
+  if (!Object.hasOwn(maps, start)) return [];
+  const reached = new Set([start]);
+  const queue = [start];
+  for (let id = queue.shift(); id !== undefined; id = queue.shift()) {
+    const map = maps[id];
+    const next = [...(map ? waysOut(map) : []), ...(teleports.get(id) ?? [])];
+    for (const there of next.filter((to) => Object.hasOwn(maps, to) && !reached.has(to))) {
+      reached.add(there);
+      queue.push(there);
+    }
+  }
+  return Object.keys(maps)
+    .filter((id) => !reached.has(id) && !isTestMap(id))
+    .map((id) => `Map ${id} can't be reached from ${start}, where a new game starts`);
+}
+
+/** The maps a map's doorways, warps and edges lead to. */
+function waysOut(map: MapDef): string[] {
+  const exits = (map.objects ?? []).flatMap((object) =>
+    (object.type === 'prefab' || object.type === 'warp') && object.to ? [object.to.map] : [],
+  );
+  const edges = Object.values(map.edges ?? {}).map((edge) => edge.map);
+  return [...exits, ...edges];
+}
+
 /**
  * Checks that every map's name fits where the save menu shows where a game was saved, in
  * characters the body font has. Returns one line per problem.

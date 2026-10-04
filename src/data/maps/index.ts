@@ -1,3 +1,4 @@
+import { recordById } from '../../core/ids';
 import type { MapDef } from '../../core/map/types';
 import saltmere from './saltmere';
 import saltmereCottage from './saltmere-cottage';
@@ -10,8 +11,9 @@ import testMeadow from './test-meadow';
 import testShore from './test-shore';
 import testSquare from './test-square';
 
-/** Every map, by ID. */
-export const MAPS: Readonly<Record<string, MapDef>> = Object.fromEntries(
+/** Every map, by ID. Two with the same ID are an error, rather than one replacing the other. */
+export const MAPS: Readonly<Record<string, MapDef>> = recordById(
+  'map',
   [
     saltmere,
     saltmereTamsin,
@@ -23,5 +25,5 @@ export const MAPS: Readonly<Record<string, MapDef>> = Object.fromEntries(
     testCellar,
     testMeadow,
     testSquare,
-  ].map((map) => [map.id, map]),
+  ].map((map) => [map.id, map] as const),
 );

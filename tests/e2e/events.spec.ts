@@ -91,12 +91,14 @@ test('stepping onto a touch stops the walk there and runs its script', async ({ 
 
   // Holding right, the player walks to the stone at (6, 6) and stops on it.
   await page.keyboard.down('ArrowRight');
-  await untilSaid(page, 'A loose stone wobbles underfoot. You pocket a pebble from under it.');
+  await untilSaid(page, 'A loose stone wobbles underfoot. You find a Potion under it.');
   await page.keyboard.up('ArrowRight');
   expect(await field(page)).toMatchObject({ x: 6, y: 6, running: true, script: 'test/stone' });
+  await page.waitForFunction(() => window.__game?.inspect('dialogue')?.prompt === true);
+  await page.screenshot({ path: 'test-results/screenshots/events-touch.png' });
   await readOn(page);
   await untilIdle(page);
-  expect((await state(page))?.inventory).toEqual({ pebble: 1 });
+  expect((await state(page))?.inventory).toEqual({ potion: 1 });
 
   // Off it and back on again: the flag it set changes what it says.
   await page.keyboard.press('ArrowLeft');
@@ -106,7 +108,7 @@ test('stepping onto a touch stops the walk there and runs its script', async ({ 
   await untilSaid(page, 'The loose stone wobbles again.');
   await readOn(page);
   await untilIdle(page);
-  expect((await state(page))?.inventory).toEqual({ pebble: 1 });
+  expect((await state(page))?.inventory).toEqual({ potion: 1 });
   expect(errors).toEqual([]);
 });
 
