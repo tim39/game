@@ -15,7 +15,7 @@ import { MAP_CONTENT, PREFABS, TERRAINS } from '../src/data/terrain';
 import { CHEST_TEXT } from '../src/data/ui-text';
 import { ASSETS } from '../src/systems/asset-manifest';
 import { checkAssets, pngSize } from './asset-checks';
-import { checkCharacters, checkContent, checkNewGame } from './content-checks';
+import { checkCharacters, checkContent, checkEnemies, checkNewGame } from './content-checks';
 import { checkEvents } from './event-checks';
 import { measureBodyFont } from './font-metrics';
 import { checkMapNames, checkMaps, checkReachable } from './map-checks';
@@ -98,6 +98,7 @@ const problems = [
     items: ITEMS,
     maxLevel: EXP_CURVE.maxLevel,
   }),
+  ...checkEnemies({ enemies: ENEMIES, skills: SKILLS }),
   ...checkText(
     { characters: CHARACTERS, skills: SKILLS, items: ITEMS, enemies: ENEMIES, speakers: SPEAKERS },
     font,
@@ -141,5 +142,9 @@ console.log(
 );
 console.log(
   'Party: everyone starts in gear that exists and that they can equip, and learns skills that ' +
-    'exist, at levels there are. Every name and description is in characters the font has.',
+    'exist, at levels there are.',
+);
+console.log(
+  'Enemies: every skill they use exists, and only actions aimed at one fighter pick a target. ' +
+    'Every name and description is in characters the font has.',
 );

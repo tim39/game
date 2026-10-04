@@ -45,3 +45,10 @@ export type Rank = (typeof RANKS)[number];
 /** Who an action is aimed at: the one using it, or one or all on either side. */
 export const TARGETS = ['self', 'one-ally', 'all-allies', 'one-enemy', 'all-enemies'] as const;
 export type Target = (typeof TARGETS)[number];
+
+/**
+ * How an enemy picks whom to aim an action at, of those it could: anyone, at random; whoever has
+ * the least HP for their most; whoever has the most ATK; or a healer. Provoke overrides them all.
+ */
+export const TARGET_RULES = ['random', 'lowest-hp', 'highest-atk', 'healer'] as const;
+export type TargetRule = (typeof TARGET_RULES)[number];

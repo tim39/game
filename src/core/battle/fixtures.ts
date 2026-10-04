@@ -93,6 +93,12 @@ export const SKILLS: Readonly<Record<string, SkillDef>> = {
   insight: support('Insight', 'one-enemy', { type: 'reveal' }, 'quick'),
   raise: support('Raise', 'one-ally', { type: 'revive', hp: 0.5 }),
   rebirth: support('Rebirth', 'all-allies', { type: 'revive', hp: 0.25 }),
+  // The enemies'.
+  bite: physical('Bite', { power: 1.3, mp: 0 }),
+  howl: { ...support('Howl', 'self', { type: 'status', status: 'atk-up' }, 'quick'), mp: 0 },
+  crush: physical('Crush', { power: 2.5, mp: 5, rank: 'slow' }),
+  'tidal-wave': { ...magical('Tidal Wave', 'water', 'all-enemies'), mp: 8 },
+  mend: { ...about('Mend'), kind: 'healing', power: 1, mp: 3, rank: 'normal', target: 'one-ally' },
   esuna: support('Esuna', 'one-ally', { type: 'cure', statuses: ['poison', 'blind', 'slow'] }),
 };
 
@@ -160,6 +166,11 @@ export const DB: GameDb = {
       name: 'Wolf',
       stats: { hp: 60, mp: 10, atk: 12, def: 6, mag: 4, res: 4, spd: 12 },
       reactions: { fire: 'weak', water: 'resist', earth: 'immune', gloam: 'absorb' },
+      actions: [
+        { type: 'attack', weight: 3 },
+        { type: 'skill', skill: 'bite', weight: 2, target: 'lowest-hp' },
+        { type: 'skill', skill: 'howl', weight: 4, when: { alliesBelow: 2, once: true } },
+      ],
     },
     slime: {
       name: 'Slime',
@@ -170,6 +181,21 @@ export const DB: GameDb = {
       stats: { hp: 500, mp: 50, atk: 25, def: 15, mag: 10, res: 12, spd: 10 },
       reactions: { fire: 'weak' },
       boss: true,
+      // Every third turn it telegraphs a Crush; below half its HP, it calls the tide as well.
+      actions: [
+        { type: 'attack', weight: 2, target: 'highest-atk' },
+        { type: 'skill', skill: 'crush', when: { every: 3 }, telegraph: true, weight: 100 },
+      ],
+      phases: [
+        {
+          below: 0.5,
+          actions: [
+            { type: 'attack', target: 'healer' },
+            { type: 'skill', skill: 'tidal-wave', weight: 2 },
+            { type: 'skill', skill: 'crush', when: { every: 3 }, telegraph: true, weight: 100 },
+          ],
+        },
+      ],
     },
   },
 };

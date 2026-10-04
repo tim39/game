@@ -1,8 +1,9 @@
 import type { SkillDef } from '../core/schema';
 
 /**
- * Every skill, by ID. Who learns which, and when, is in src/data/characters.ts. So far, Act 1's:
- * Rowan's and Bram's, and what Liora knows when she joins.
+ * Every skill, by ID. Who learns which, and when, is in src/data/characters.ts, and which enemies
+ * use which in src/data/enemies.ts. So far, Act 1's: Rowan's and Bram's, what Liora knows when she
+ * joins, and the wolf's.
  */
 export const SKILLS: Readonly<Record<string, SkillDef>> = {
   // Rowan: the sword, and a spark from each Beacon.
@@ -93,5 +94,25 @@ export const SKILLS: Readonly<Record<string, SkillDef>> = {
     rank: 'quick',
     target: 'one-enemy',
     effects: [{ type: 'reveal' }],
+  },
+
+  // Enemies'.
+  bite: {
+    name: 'Bite',
+    description: 'Teeth, and not gently.',
+    kind: 'physical',
+    power: 1.4,
+    mp: 0,
+    rank: 'normal',
+    target: 'one-enemy',
+  },
+  howl: {
+    name: 'Howl',
+    description: 'A lone howl that steels the howler. ATK Up.',
+    kind: 'support',
+    mp: 0,
+    rank: 'quick',
+    target: 'self',
+    effects: [{ type: 'status', status: 'atk-up' }],
   },
 };

@@ -161,9 +161,16 @@ Re-applying a status refreshes its duration; nothing stacks, so a stat is up, do
 
 ### Enemy behavior
 
-Enemies choose from a data-defined, weighted list of actions with simple conditions (`self.hp < 50%`, `every 3rd turn`, `once`, `allies < 2`) and targeting rules (random, lowest HP, highest ATK, the healer). Provoke overrides targeting.
+Enemies choose from a data-defined, weighted list of actions (Attack, Guard or a skill) with simple conditions (`self.hp < 50%`, `every 3rd turn`, `once`, `allies < 2`) and targeting rules (random, lowest HP, highest ATK, the healer). Provoke overrides targeting.
+
+- On its turn, an enemy picks at random, by weight, from the actions whose conditions hold and that it can take: it has the MP, isn't Silenced for a magic skill, and has someone to aim at. With none, it attacks.
+- **Conditions:** its HP is below a share of its most; it's an Nth turn of its own (every 3rd is its 3rd, its 6th and so on); a skill kept for once a battle hasn't been used yet; fewer than so many of its side are standing, itself included (`allies < 2` is when it's alone). An action can have several, and they must all hold.
+- **Targeting:** at random; lowest HP, meaning the least for their most, so it goes for whoever's worst hurt (with everyone unhurt, the one with least HP); highest ATK, buffs included; or the healer, someone who knows a healing skill (anyone, if nobody does). Ties go to whoever comes first in battle order.
 
 **Bosses** add phases at HP thresholds and **telegraphs**: a big attack is announced one turn ahead and marked on the timeline, so the player can Guard, heal, or Delay the boss past it.
+
+- A boss enters a phase the first time its HP falls below the phase's share (straight to the last one, if a big hit takes it below several), and from then on picks from that phase's actions. Phases never go back, even if it's healed.
+- Telegraphing a skill takes the boss's turn, as a Normal action, and says whom it's aimed at. On its next turn the skill comes: at that target if it still can be, or at someone else at random if they've fallen. If it can't be used by then (Silence, say), the boss does something else instead. Pushing the boss back on the timeline puts it off, and Guard and healing blunt it. Telegraphs are for bosses, though any enemy could have one.
 
 ### Winning and losing
 

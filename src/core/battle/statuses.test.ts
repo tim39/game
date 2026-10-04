@@ -34,6 +34,9 @@ const WOLF: Fighter = {
   boss: false,
   skills: [],
   turns: 0,
+  phase: 0,
+  skillsUsed: [],
+  telegraph: null,
 };
 
 const BOSS: Fighter = { ...WOLF, id: 'warden-a', kind: 'warden', boss: true };
@@ -216,8 +219,14 @@ describe('what statuses change', () => {
     expect(tickAmount(10, 0.08)).toBe(1);
   });
 
-  test('a KO takes every status away, and the fighter off the timeline', () => {
-    const hurt = { ...WOLF, hp: 3, staggered: true, statuses: { poison: {}, guard: {} } };
+  test('a KO takes every status away, the fighter off the timeline, and their telegraph', () => {
+    const hurt = {
+      ...WOLF,
+      hp: 3,
+      staggered: true,
+      statuses: { poison: {}, guard: {} },
+      telegraph: { skill: 'crush', target: 'rowan' },
+    };
     expect(knockedOut(hurt)).toEqual({ ...WOLF, hp: 0, ct: 0 });
   });
 });

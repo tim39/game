@@ -2,7 +2,14 @@ import type { z } from 'zod';
 import { canEquip, slotOf } from '../src/core/equipment';
 import { compileMap, isBlocked, type CompiledMap } from '../src/core/map/compile';
 import type { MapContent, MapDef } from '../src/core/map/types';
-import { CONTENT_SCHEMAS, type CharacterDef, type ItemDef } from '../src/core/schema';
+import {
+  CONTENT_SCHEMAS,
+  type CharacterDef,
+  type EnemyActionDef,
+  type EnemyDef,
+  type ItemDef,
+  type SkillDef,
+} from '../src/core/schema';
 import type { NewGame } from '../src/core/state';
 
 type Kind = keyof typeof CONTENT_SCHEMAS;
@@ -290,6 +297,46 @@ export function checkCharacters({
         problems.push(
           `${owner}: learns ${skill} at level ${level}, but levels stop at ${maxLevel}`,
         );
+      }
+    }
+  }
+  return problems;
+}
+
+export interface EnemySources {
+  readonly enemies: Readonly<Record<string, EnemyDef>>;
+  readonly skills: Readonly<Record<string, SkillDef>>;
+}
+
+/**
+ * Checks each enemy's actions, in every phase, against the skills. Returns one line per problem:
+ * the skills they use exist, and an action with a rule for picking its target is aimed at one
+ * fighter.
+ */
+export function checkEnemies({ enemies, skills }: EnemySources): string[] {
+  const problems: string[] = [];
+  for (const [id, enemy] of Object.entries(enemies)) {
+    const lists: [string, readonly EnemyActionDef[]][] = [
+      ['actions', enemy.actions ?? []],
+      ...(enemy.phases ?? []).map((phase, index): [string, readonly EnemyActionDef[]] => [
+        `phases[${index}].actions`,
+        phase.actions,
+      ]),
+    ];
+    for (const [path, actions] of lists) {
+      for (const [index, action] of actions.entries()) {
+        if (action.type !== 'skill') continue;
+        const where = `Enemy ${id}: ${path}[${index}]`;
+        const skill = Object.hasOwn(skills, action.skill) ? skills[action.skill] : undefined;
+        if (!skill) {
+          problems.push(`${where} uses ${action.skill}, which isn't a skill`);
+        } else if (
+          action.target !== undefined &&
+          skill.target !== 'one-enemy' &&
+          skill.target !== 'one-ally'
+        ) {
+          problems.push(`${where} picks a target for ${skill.name}, which isn't aimed at one`);
+        }
       }
     }
   }

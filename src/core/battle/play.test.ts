@@ -1,6 +1,7 @@
 import { expect, test } from 'vitest';
 import { Rng } from '../rng';
 import type { Action, Command } from './actions';
+import { chooseEnemyAction } from './ai';
 import {
   activeFighter,
   applyAction,
@@ -17,8 +18,8 @@ import { DB, TUNING, gameWith } from './fixtures';
 import type { BattleTuning } from './tuning';
 
 // Hundreds of battles, played by picking at random from everything the fighter whose turn it is
-// could do. After every action, the battle must still keep the rules, and the preview must have
-// shown the turns that came.
+// could do, or with the enemies doing as their AI says. After every action, the battle must still
+// keep the rules, and the preview must have shown the turns that came.
 
 /** The test tuning, with chance put back: the variance, critical hits and random first turns. */
 const CHANCY: BattleTuning = {
@@ -39,6 +40,7 @@ function choices(battle: BattleState): Action[] {
     { type: 'guard' },
     { type: 'flee' },
     ...actor.skills.map((skill): Command => ({ type: 'skill', skill })),
+    ...actor.skills.map((skill): Command => ({ type: 'telegraph', skill })),
     ...Object.keys(battle.inventory).map((item): Command => ({ type: 'item', item })),
   ];
   return commands.flatMap((command) => {
@@ -60,8 +62,10 @@ function problemsWith(battle: BattleState, events: readonly BattleEvent[]): stri
     if (!Number.isInteger(hp) || hp < 0 || hp > stats.hp) problems.push(`${id} has ${hp} HP`);
     if (!Number.isInteger(mp) || mp < 0 || mp > stats.mp) problems.push(`${id} has ${mp} MP`);
     if (!Number.isInteger(ct) || ct < 0) problems.push(`${id} has CT ${ct}`);
-    if (isKo(fighter) && Object.keys(statuses).length > 0)
+    if (isKo(fighter) && Object.keys(statuses).length > 0) {
       problems.push(`${id} is KO'd with statuses`);
+    }
+    if (isKo(fighter) && fighter.telegraph !== null) problems.push(`${id} is KO'd, telegraphing`);
     if (statuses.haste && statuses.slow) problems.push(`${id} is Hasted and Slowed`);
     for (const [status, state] of Object.entries(statuses)) {
       if (state.turns !== undefined && state.turns < 0) {
@@ -107,11 +111,18 @@ const asPreviewed = (events: readonly BattleEvent[]): boolean =>
     ['miss', 'status-resisted', 'ko', 'asleep', 'reveal'].includes(event.type),
   );
 
-test('battles played at random keep the rules, end, and go as the preview shows', () => {
+/**
+ * Plays battles from seeds, the party picking at random from what they could do, and the enemies
+ * too, or as their AI says. Returns what went wrong, how many battles ended, and how many turns
+ * the preview was bound to be right about.
+ */
+function playBattles(
+  battles: number,
+  enemiesBy: 'chance' | 'ai',
+): { problems: string[]; ended: number; previewed: number } {
   const problems: string[] = [];
   let ended = 0;
   let previewed = 0;
-  const battles = 250;
   for (let seed = 0; seed < battles; seed++) {
     const rng = Rng.fromSeed(seed);
     const picks = Rng.fromSeed(`picks ${seed}`);
@@ -123,11 +134,16 @@ test('battles played at random keep the rules, end, and go as the preview shows'
       ...problemsWith(battle, []).map((problem) => `${seed}, at the start: ${problem}`),
     );
     for (let step = 0; step < 2000 && battle.active !== null; step++) {
-      const options = choices(battle);
-      const action = picks.pick(options);
+      const say = (problem: string) => `${seed}, turn ${battle.turn}: ${problem}`;
+      const ai = enemiesBy === 'ai' && activeFighter(battle).side === 'enemies';
+      const action = ai ? chooseEnemyAction(battle, picks) : picks.pick(choices(battle));
+      const wrong = checkAction(battle, action);
+      if (wrong !== undefined) {
+        problems.push(say(`the AI chose ${JSON.stringify(action)}: ${wrong}`));
+        break;
+      }
       const preview = previewTurnOrder(battle, action);
       const result = applyAction(battle, action, rng);
-      const say = (problem: string) => `${seed}, turn ${battle.turn}: ${problem}`;
       problems.push(...problemsWith(result.battle, result.events).map(say));
       if (result.battle.active !== null && asPreviewed(result.events)) {
         previewed++;
@@ -141,8 +157,20 @@ test('battles played at random keep the rules, end, and go as the preview shows'
     }
     if (battle.active === null) ended++;
   }
+  return { problems, ended, previewed };
+}
+
+test('battles played at random keep the rules, end, and go as the preview shows', () => {
+  const { problems, ended, previewed } = playBattles(250, 'chance');
   expect(problems.slice(0, 10)).toEqual([]);
-  expect(ended).toBe(battles);
+  expect(ended).toBe(250);
   // Most turns go as previewed, so the comparison counts for something.
-  expect(previewed).toBeGreaterThan(battles * 10);
+  expect(previewed).toBeGreaterThan(2500);
+});
+
+test('battles against enemies that follow their AI do too, and the AI only does what it can', () => {
+  const { problems, ended, previewed } = playBattles(250, 'ai');
+  expect(problems.slice(0, 10)).toEqual([]);
+  expect(ended).toBe(250);
+  expect(previewed).toBeGreaterThan(2500);
 });

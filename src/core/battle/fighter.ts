@@ -24,6 +24,13 @@ export interface StatusState {
   readonly from?: FighterId;
 }
 
+/** A skill a fighter has telegraphed: announced on their turn, to be used on their next. */
+export interface Telegraph {
+  readonly skill: string;
+  /** Whom they announced it at, for a skill aimed at one fighter. */
+  readonly target?: FighterId;
+}
+
 /** Someone in a battle. It never changes in place: the engine makes a new one instead. */
 export interface Fighter {
   readonly id: FighterId;
@@ -53,6 +60,12 @@ export interface Fighter {
   readonly skills: readonly string[];
   /** How many turns they've had. */
   readonly turns: number;
+  /** Which of its phases a boss is in: 0 until its HP first falls below a phase's share. */
+  readonly phase: number;
+  /** The skills they've used in this battle, in the order they first used each. */
+  readonly skillsUsed: readonly string[];
+  /** A skill they've telegraphed, to use on their next turn. */
+  readonly telegraph: Telegraph | null;
 }
 
 export const isKo = (fighter: Fighter): boolean => fighter.hp === 0;

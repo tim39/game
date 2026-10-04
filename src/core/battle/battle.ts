@@ -1,7 +1,7 @@
 import type { GameDb } from '../db';
 import { knownSkills, memberStats } from '../party';
 import type { Rng } from '../rng';
-import type { ItemDef, SkillDef } from '../schema';
+import type { EnemyDef, ItemDef, SkillDef } from '../schema';
 import type { GameState } from '../state';
 import { withBuffs } from '../stats';
 import type { Action, Command } from './actions';
@@ -51,11 +51,12 @@ export interface BattleSetup {
 /** How a battle stands: going on, or won, lost or fled. */
 export type Outcome = 'ongoing' | 'victory' | 'defeat' | 'fled';
 
-/** What a battle runs by: the tuning, and the skills and items there are. */
+/** What a battle runs by: the tuning, and the skills, items and enemies there are. */
 export interface BattleRules {
   readonly tuning: BattleTuning;
   readonly skills: Readonly<Record<string, SkillDef>>;
   readonly items: Readonly<Record<string, ItemDef>>;
+  readonly enemies: Readonly<Record<string, EnemyDef>>;
 }
 
 /** A battle in progress, or over. */
@@ -116,7 +117,7 @@ export function startBattle(
     known: {},
     boss: foes.some((foe) => foe.boss),
     turn: 0,
-    rules: { tuning, skills: db.skills, items: db.items },
+    rules: { tuning, skills: db.skills, items: db.items, enemies: db.enemies },
   };
   const resolver = new Resolver(battle, rng);
   nextTurn(resolver);
@@ -140,6 +141,8 @@ export function applyAction(
   const actor = activeFighter(battle);
   const targets = targetsOf(battle, action);
   resolver.emit({ type: 'action', actor: actor.id, action, targets });
+  // Whatever they telegraphed comes now, or not at all.
+  if (actor.telegraph !== null) resolver.set({ ...actor, telegraph: null });
   act(resolver, battle, actor.id, action, targets);
   if (!resolver.settle()) {
     endTurn(resolver, actor.id, rankOf(battle, action));
@@ -225,10 +228,11 @@ export function previewTurnOrder(battle: BattleState, pending?: Action, count = 
   const { tuning } = battle.rules;
   const line = new Map<FighterId, Entry>();
   for (const fighter of battle.fighters) {
-    if (!isKo(fighter)) line.set(fighter.id, entryOf(fighter, tuning));
+    if (!isKo(fighter)) line.set(fighter.id, entryOf(fighter, battle));
   }
   const actor = activeFighter(battle);
-  if (pending !== undefined) {
+  // A telegraph does nothing to anyone's place in line until its skill comes.
+  if (pending !== undefined && pending.type !== 'telegraph') {
     for (const target of targetsOf(battle, pending)) {
       previewOn(battle, line, actor, pending, fighterOf(battle, target));
     }
@@ -242,8 +246,13 @@ export function previewTurnOrder(battle: BattleState, pending?: Action, count = 
       entry.speedTurns = undefined;
     }
   };
+  // Without a pending action, the fighter whose turn it is uses what they telegraphed, if anything.
   const own = line.get(actor.id);
-  if (own) turn(own, pending === undefined ? 'normal' : rankOf(battle, pending));
+  if (own) {
+    const rank = pending === undefined ? (own.nextRank ?? 'normal') : rankOf(battle, pending);
+    own.nextRank = pending?.type === 'telegraph' ? skillOf(battle, pending.skill).rank : undefined;
+    turn(own, rank);
+  }
 
   const order: FighterId[] = [];
   while (order.length < count && line.size > 0) {
@@ -253,7 +262,9 @@ export function previewTurnOrder(battle: BattleState, pending?: Action, count = 
     const elapsed = next.ct;
     for (const entry of line.values()) entry.ct -= elapsed;
     if (next.speedTurns !== undefined) next.speedTurns -= 1;
-    turn(next, 'normal');
+    const rank = next.nextRank ?? 'normal';
+    next.nextRank = undefined;
+    turn(next, rank);
   }
   return order;
 }
@@ -292,6 +303,7 @@ function aimOf(battle: BattleState, command: Command): Target {
     case 'attack':
       return 'one-enemy';
     case 'skill':
+    case 'telegraph':
       return skillOf(battle, command.skill).target;
     case 'item':
       return consumableOf(battle, command.item).target;
@@ -303,7 +315,10 @@ function aimOf(battle: BattleState, command: Command): Target {
 
 const aimsAtOne = (aim: Target): boolean => aim === 'one-ally' || aim === 'one-enemy';
 
-/** The rank of a command: Attack and Flee are Normal, items and Guard Quick, a skill its own. */
+/**
+ * The rank of a command: Attack, Flee and telegraphing are Normal, items and Guard Quick, and a
+ * skill its own.
+ */
 function rankOf(battle: BattleState, command: Command): Rank {
   switch (command.type) {
     case 'skill':
@@ -313,6 +328,7 @@ function rankOf(battle: BattleState, command: Command): Rank {
       return 'quick';
     case 'attack':
     case 'flee':
+    case 'telegraph':
       return 'normal';
   }
 }
@@ -323,6 +339,7 @@ function nameOf(battle: BattleState, command: Command): string {
     case 'attack':
       return 'Attack';
     case 'skill':
+    case 'telegraph':
       return skillOf(battle, command.skill).name;
     case 'item':
       return consumableOf(battle, command.item).name;
@@ -333,10 +350,14 @@ function nameOf(battle: BattleState, command: Command): string {
   }
 }
 
-/** What a command does besides any hit or healing of its own. */
+/**
+ * What a command does besides any hit or healing of its own. A telegraph does nothing yet, but is
+ * aimed as its skill will be.
+ */
 function effectsOf(battle: BattleState, command: Command): NonNullable<SkillDef['effects']> {
   switch (command.type) {
     case 'skill':
+    case 'telegraph':
       return skillOf(battle, command.skill).effects ?? [];
     case 'item':
       return consumableOf(battle, command.item).effects;
@@ -383,7 +404,11 @@ function whyUnusable(battle: BattleState, actor: Fighter, command: Command): str
     case 'attack':
     case 'guard':
       return undefined;
-    case 'skill': {
+    case 'skill':
+    case 'telegraph': {
+      if (command.type === 'telegraph' && actor.side !== 'enemies') {
+        return `${actor.name} can't telegraph`;
+      }
       const skill = ownOf(battle.rules.skills, command.skill);
       if (!skill) return `There's no skill called ${command.skill}`;
       if (!actor.skills.includes(command.skill)) return `${actor.name} doesn't know ${skill.name}`;
@@ -438,6 +463,7 @@ function consumableOf(battle: BattleState, id: string): Extract<ItemDef, { kind:
 
 /** A battle part way through a turn: `applyAction` changes one, then hands back a new state. */
 class Resolver {
+  readonly rules: BattleRules;
   readonly tuning: BattleTuning;
   readonly events: BattleEvent[] = [];
   inventory: Readonly<Record<string, number>>;
@@ -451,6 +477,7 @@ class Resolver {
     private readonly battle: BattleState,
     readonly rng: Rng,
   ) {
+    this.rules = battle.rules;
     this.tuning = battle.rules.tuning;
     this.fighters = new Map(battle.fighters.map((fighter) => [fighter.id, fighter]));
     this.inventory = battle.inventory;
@@ -523,8 +550,21 @@ function act(
     }
     case 'skill': {
       const skill = skillOf(battle, action.skill);
+      const actor = resolver.get(actorId);
+      if (!actor.skillsUsed.includes(action.skill)) {
+        resolver.set({ ...actor, skillsUsed: [...actor.skillsUsed, action.skill] });
+      }
       if (skill.mp > 0) changeMp(resolver, actorId, -skill.mp);
       for (const target of targets) useSkill(resolver, actorId, skill, target);
+      return;
+    }
+    case 'telegraph': {
+      // Nothing happens yet: the skill comes on their next turn.
+      const actor = resolver.get(actorId);
+      const target = targetOf(action);
+      const telegraph =
+        target === undefined ? { skill: action.skill } : { skill: action.skill, target };
+      resolver.set({ ...actor, telegraph });
       return;
     }
     case 'item': {
@@ -729,11 +769,26 @@ function damage(
   if (hp === 0) {
     resolver.set(knockedOut(target));
     resolver.emit({ type: 'ko', target: targetId });
-  } else if (amount > 0 && details.cause !== 'poison') {
-    resolver.apply(woken({ ...target, hp }));
-  } else {
-    resolver.set({ ...target, hp });
+    return;
   }
+  if (amount > 0 && details.cause !== 'poison') resolver.apply(woken({ ...target, hp }));
+  else resolver.set({ ...target, hp });
+  enterPhase(resolver, targetId);
+}
+
+/**
+ * A boss whose HP has fallen below a later phase's share enters it (the last, if it's below
+ * several), and never goes back, even if healed.
+ */
+function enterPhase(resolver: Resolver, id: FighterId): void {
+  const fighter = resolver.get(id);
+  if (fighter.side !== 'enemies') return;
+  const phases = ownOf(resolver.rules.enemies, fighter.kind)?.phases ?? [];
+  const share = fighter.hp / fighter.stats.hp;
+  const phase = phases.filter((each) => share < each.below).length;
+  if (phase <= fighter.phase) return;
+  resolver.set({ ...fighter, phase });
+  resolver.emit({ type: 'phase', fighter: id, phase });
 }
 
 /** A fighter gains HP, up to their most. */
@@ -830,10 +885,14 @@ function nextTurn(resolver: Resolver): void {
 
 // The preview's timeline.
 
-/** A fighter in the preview's line: when their turn comes, and Haste or Slow while they last. */
+/**
+ * A fighter in the preview's line: when their turn comes, Haste or Slow while they last, and the
+ * rank of the skill they've telegraphed, for their next turn.
+ */
 interface Entry extends TurnKey {
   readonly id: FighterId;
   ct: number;
+  nextRank: Rank | undefined;
   /** What Haste or Slow multiply their delays by, or 1. */
   speed: number;
   /** How many more turns Haste or Slow last, counting as statuses do. */
@@ -841,12 +900,14 @@ interface Entry extends TurnKey {
   staggered: boolean;
 }
 
-function entryOf(fighter: Fighter, tuning: BattleTuning): Entry {
+function entryOf(fighter: Fighter, battle: BattleState): Entry {
   const { haste, slow } = fighter.statuses;
+  const { telegraph } = fighter;
   return {
     ...turnKey(fighter),
     id: fighter.id,
-    speed: speedOf(fighter.statuses, tuning),
+    nextRank: telegraph === null ? undefined : skillOf(battle, telegraph.skill).rank,
+    speed: speedOf(fighter.statuses, battle.rules.tuning),
     speedTurns: (haste ?? slow)?.turns,
     staggered: fighter.staggered,
   };
@@ -864,7 +925,7 @@ function previewOn(
   const effects = effectsOf(battle, action);
   if (isKo(target)) {
     if (effects.some((effect) => effect.type === 'revive')) {
-      line.set(target.id, { ...entryOf(target, tuning), ct: normalDelay(target, tuning) });
+      line.set(target.id, { ...entryOf(target, battle), ct: normalDelay(target, tuning) });
     }
     return;
   }
@@ -929,6 +990,9 @@ function partyFighter(state: GameState, id: string, slot: number, db: GameDb): F
       : {}),
     skills: knownSkills(state, id, db),
     turns: 0,
+    phase: 0,
+    skillsUsed: [],
+    telegraph: null,
   };
 }
 
@@ -956,11 +1020,23 @@ function enemyFighters(kinds: readonly string[], db: GameDb): Fighter[] {
       staggered: false,
       reactions: def.reactions ?? {},
       boss: def.boss ?? false,
-      skills: [],
+      skills: skillsOf(def),
       turns: 0,
+      phase: 0,
+      skillsUsed: [],
+      telegraph: null,
     };
   });
 }
+
+/** The skills an enemy uses, in any phase. */
+const skillsOf = (def: EnemyDef): string[] => [
+  ...new Set(
+    [def.actions ?? [], ...(def.phases ?? []).map((phase) => phase.actions)]
+      .flat()
+      .flatMap((action) => (action.type === 'skill' ? [action.skill] : [])),
+  ),
+];
 
 // Small helpers.
 

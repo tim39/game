@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { ELEMENTS, RANKS, REACTIONS, STATUSES, TARGETS } from './battle/terms';
+import { ELEMENTS, RANKS, REACTIONS, STATUSES, TARGETS, TARGET_RULES } from './battle/terms';
 import { DIRECTIONS } from './direction';
 import { ARMOR_TYPES, SLOTS, WEAPON_TYPES } from './equipment';
 import type { EventScript } from './events';
@@ -365,6 +365,61 @@ export type CharacterDef = ContentOf<typeof CharacterSchema>;
 
 // Enemies.
 
+/**
+ * When an enemy may take an action: everything named must hold. `hpBelow` is a share of its most
+ * HP; `every` counts its own turns (3 is its 3rd, its 6th and so on); and `alliesBelow` counts its
+ * side still standing, itself included (2 is when it's alone).
+ */
+const WHEN = {
+  hpBelow: z.number().gt(0).max(1).optional(),
+  every: z.int().min(2).optional(),
+  alliesBelow: z.int().min(2).optional(),
+};
+const hasConditions = (when: object): boolean => Object.keys(when).length > 0;
+const WhenSchema = z.strictObject(WHEN).refine(hasConditions, { error: 'has no conditions' });
+/** A skill can also be kept for `once` a battle. */
+const SkillWhenSchema = z
+  .strictObject({ ...WHEN, once: z.literal(true).optional() })
+  .refine(hasConditions, { error: 'has no conditions' });
+
+/** How likely an action is to be picked, against the others it could take: 1 if not given. */
+const WeightSchema = z.number().positive();
+const TargetRuleSchema = z.enum(TARGET_RULES);
+
+/**
+ * Something an enemy might do on its turn: Attack, Guard or a skill, how likely it is, when, and
+ * whom it picks to aim at. A skill can be telegraphed: announced on one turn, and used on the next.
+ */
+const EnemyActionSchema = z.discriminatedUnion('type', [
+  z.strictObject({
+    type: z.literal('attack'),
+    weight: WeightSchema.optional(),
+    when: WhenSchema.optional(),
+    target: TargetRuleSchema.optional(),
+  }),
+  z.strictObject({
+    type: z.literal('guard'),
+    weight: WeightSchema.optional(),
+    when: WhenSchema.optional(),
+  }),
+  z.strictObject({
+    type: z.literal('skill'),
+    skill: IdSchema,
+    weight: WeightSchema.optional(),
+    when: SkillWhenSchema.optional(),
+    target: TargetRuleSchema.optional(),
+    telegraph: z.literal(true).optional(),
+  }),
+]);
+export type EnemyActionDef = ContentOf<typeof EnemyActionSchema>;
+const EnemyActionsSchema = z.array(EnemyActionSchema).min(1);
+
+/** A later phase of a boss's: from when its HP first falls below this share, it acts this way. */
+const PhaseSchema = z.strictObject({
+  below: z.number().gt(0).max(1),
+  actions: EnemyActionsSchema,
+});
+
 /** Something to fight. */
 const EnemySchema = z.strictObject({
   name: TextSchema,
@@ -385,6 +440,17 @@ const EnemySchema = z.strictObject({
    * half as long.
    */
   boss: z.boolean().optional(),
+  /** What it does on its turn, until a phase changes it. Without any, it attacks. */
+  actions: EnemyActionsSchema.optional(),
+  /** Its later phases, each starting at less HP than the one before. */
+  phases: z
+    .array(PhaseSchema)
+    .min(1)
+    .refine(
+      (phases) => phases.every((phase, index) => phase.below < (phases[index - 1]?.below ?? 2)),
+      { error: 'should each start at less HP than the one before' },
+    )
+    .optional(),
 });
 export type EnemyDef = ContentOf<typeof EnemySchema>;
 

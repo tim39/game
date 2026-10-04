@@ -71,6 +71,8 @@ export type BattleEvent =
   | { readonly type: 'ko'; readonly target: FighterId }
   /** A KO'd fighter gets back up, with `hp`. */
   | { readonly type: 'revive'; readonly target: FighterId; readonly hp: number }
+  /** A boss's HP falls below a phase's share, and from now on it acts as that phase says. */
+  | { readonly type: 'phase'; readonly fighter: FighterId; readonly phase: number }
   /** A fighter's turn passes while they sleep. */
   | { readonly type: 'asleep'; readonly fighter: FighterId }
   /** The party tries to get away. */

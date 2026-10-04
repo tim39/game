@@ -1,5 +1,6 @@
 import { expect, test } from 'vitest';
 import type { Action, Command } from '../core/battle/actions';
+import { chooseEnemyAction } from '../core/battle/ai';
 import {
   activeFighter,
   applyAction,
@@ -15,10 +16,10 @@ import { recruit, startGame } from '../core/party';
 import { Rng } from '../core/rng';
 import { addItem, gainExp, setFlag, type GameState } from '../core/state';
 import { BATTLE_TUNING, EXP_CURVE } from './balance';
+import { CHARACTERS } from './characters';
 import { DB } from './db';
 import { ITEMS } from './items';
 import { NEW_GAME } from './new-game';
-import { SKILLS } from './skills';
 
 // The battle engine with the game's own content and tuning (its rules are tested on small
 // fixtures in src/core/battle).
@@ -31,16 +32,22 @@ function aimed(battle: BattleState, command: Command): Action {
 
 test('Rowan and Bram, at the start of the game, see off a pair of wolves', () => {
   const game = recruit(startGame(NEW_GAME, DB), 'bram', DB);
+  const wolvesDid = new Set<string>();
   for (let seed = 0; seed < 50; seed++) {
     const rng = Rng.fromSeed(seed);
     let battle = startBattle({ enemies: ['wolf', 'wolf'] }, game, DB, BATTLE_TUNING, rng);
     while (battle.active !== null) {
-      // Everyone attacks: the party the first wolf standing, the wolves whoever's first.
-      battle = applyAction(battle, aimed(battle, { type: 'attack' }), rng).battle;
+      // The party attacks the first wolf standing, and the wolves do as their AI says.
+      const wolfs = activeFighter(battle).side === 'enemies';
+      const action = wolfs ? chooseEnemyAction(battle, rng) : aimed(battle, { type: 'attack' });
+      if (action.type === 'skill') wolvesDid.add(action.skill);
+      battle = applyAction(battle, action, rng).battle;
       expect(battle.turn).toBeLessThan(100);
     }
     expect(battle.outcome).toBe('victory');
   }
+  // They bite, and the last wolf standing howls.
+  expect([...wolvesDid].sort()).toEqual(['bite', 'howl']);
 });
 
 test('every skill the party learns in Act 1, and every consumable, works in battle', () => {
@@ -70,7 +77,10 @@ test('every skill the party learns in Act 1, and every consumable, works in batt
       used.push(skill);
     }
   }
-  expect(used.sort()).toEqual(Object.keys(SKILLS).sort());
+  const learned = game.party.flatMap(
+    (id) => CHARACTERS[id]?.skills.map(({ skill }) => skill) ?? [],
+  );
+  expect(used.sort()).toEqual(learned.sort());
 
   // With Bram KO'd, so the Ember Feather has someone to revive.
   const hurt = {

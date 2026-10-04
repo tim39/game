@@ -14,7 +14,12 @@ export type Action =
   /** Guard: halves the damage they take until their next turn. */
   | { readonly type: 'guard' }
   /** Flee: the party's way out, though never from a boss. */
-  | { readonly type: 'flee' };
+  | { readonly type: 'flee' }
+  /**
+   * An enemy announces a skill, aimed at its target if it has one, and uses it on its next turn:
+   * a telegraph, which gives the party a turn to guard, heal or push it back.
+   */
+  | { readonly type: 'telegraph'; readonly skill: string; readonly target?: FighterId };
 
 /** An action before its target is chosen, as a menu offers it. Every action is also a command. */
 export type Command =
@@ -22,4 +27,5 @@ export type Command =
   | { readonly type: 'skill'; readonly skill: string }
   | { readonly type: 'item'; readonly item: string }
   | { readonly type: 'guard' }
-  | { readonly type: 'flee' };
+  | { readonly type: 'flee' }
+  | { readonly type: 'telegraph'; readonly skill: string };

@@ -182,13 +182,14 @@ export function atTurnEnd(fighter: Fighter): Change {
   return { fighter: { ...fighter, statuses }, events };
 }
 
-/** A fighter out of HP: KO'd, off the timeline, and with every status gone. */
+/** A fighter out of HP: KO'd, off the timeline, with every status gone, and nothing telegraphed. */
 export const knockedOut = (fighter: Fighter): Fighter => ({
   ...fighter,
   hp: 0,
   ct: 0,
   statuses: {},
   staggered: false,
+  telegraph: null,
 });
 
 const copyOf = (statuses: Statuses): Partial<Record<FighterStatus, StatusState>> => ({
