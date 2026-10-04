@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest';
 import type { MapContent, MapDef } from '../src/core/map/types';
 import type { NewGame } from '../src/core/state';
+import { CHARACTERS } from '../src/data/characters';
 import { EVENTS } from '../src/data/events';
 import { ITEMS } from '../src/data/items';
 import { MAPS } from '../src/data/maps';
@@ -31,7 +32,21 @@ describe('checkContent', () => {
     edges: { east: { map: 'town', spawn: 'start' } },
   };
 
+  const ROWAN = {
+    name: 'Rowan',
+    stats: {
+      hp: [60, 900],
+      mp: [12, 110],
+      atk: [12, 115],
+      def: [9, 85],
+      mag: [7, 70],
+      res: [7, 70],
+      spd: [11, 28],
+    },
+  };
+
   const VALID = {
+    characters: { rowan: ROWAN },
     items: { potion: { name: 'Potion' } },
     speakers: { ada: { name: 'Ada', portrait: 'portrait.ada' }, sign: { name: '' } },
     terrains: {
@@ -245,6 +260,28 @@ describe('checkContent', () => {
     ]);
   });
 
+  test('reports characters whose stats are missing, too low, or lower at level 30', () => {
+    // Bram's stats leave out MAG.
+    const { hp, mp, atk, def, res } = ROWAN.stats;
+    expect(
+      check({
+        characters: {
+          rowan: {
+            ...ROWAN,
+            stats: { ...ROWAN.stats, hp: [0, 900], spd: [11, 9], luck: [1, 2] },
+          },
+          bram: { name: 'Bram', stats: { hp, mp, atk, def, res, spd: [7] } },
+        },
+      }),
+    ).toEqual([
+      'Character rowan: stats.hp[0] should be at least 1, not 0',
+      'Character rowan: stats.spd is lower at level 30 than at level 1',
+      "Character rowan: stats has a field it shouldn't: luck",
+      'Character bram: stats.mag is missing',
+      'Character bram: stats.spd should have at least 2 entries, not 1',
+    ]);
+  });
+
   test('reports a collection that is not a record', () => {
     expect(check({ items: [] })).toEqual(['Items should be an object, not a list']);
   });
@@ -253,6 +290,7 @@ describe('checkContent', () => {
   test('the real content matches its schemas', () => {
     expect(
       checkContent({
+        characters: CHARACTERS,
         items: ITEMS,
         speakers: SPEAKERS,
         terrains: TERRAINS,
@@ -282,20 +320,24 @@ describe('checkNewGame', () => {
     edges: { west: { map: 'field', spawn: 'start' } },
   };
 
-  const check = (location: Partial<NewGame['location']>, inventory?: NewGame['inventory']) =>
+  const check = (
+    location: Partial<NewGame['location']>,
+    more: Omit<Partial<NewGame>, 'location'> = {},
+  ) =>
     checkNewGame({
       newGame: {
         location: { map: 'field', x: 0, y: 0, facing: 'down', ...location },
         party: ['rowan'],
-        ...(inventory ? { inventory } : {}),
+        ...more,
       },
       maps: { field: FIELD },
       content: CONTENT,
+      characters: { rowan: {}, bram: {} },
       items: { potion: { name: 'Potion' } },
     });
 
-  test('passes a start on open ground, with items that exist', () => {
-    expect(check({ x: 2 }, { potion: 3 })).toEqual([]);
+  test('passes a start on open ground, with characters and items that exist', () => {
+    expect(check({ x: 2 }, { party: ['rowan', 'bram'], inventory: { potion: 3 } })).toEqual([]);
   });
 
   test('reports a start on a map that does not exist', () => {
@@ -320,8 +362,9 @@ describe('checkNewGame', () => {
     ]);
   });
 
-  test('reports items that do not exist', () => {
-    expect(check({}, { potion: 1, pebble: 2 })).toEqual([
+  test('reports characters and items that do not exist', () => {
+    expect(check({}, { party: ['rowan', 'vesh'], inventory: { potion: 1, pebble: 2 } })).toEqual([
+      "The new game starts with vesh in the party, which isn't a character",
       "The new game starts with pebble, which isn't an item",
     ]);
   });
@@ -329,7 +372,13 @@ describe('checkNewGame', () => {
   // The same check as `npm run validate`, so it also runs with the unit tests.
   test('the real new game checks out', () => {
     expect(
-      checkNewGame({ newGame: NEW_GAME, maps: MAPS, content: MAP_CONTENT, items: ITEMS }),
+      checkNewGame({
+        newGame: NEW_GAME,
+        maps: MAPS,
+        content: MAP_CONTENT,
+        characters: CHARACTERS,
+        items: ITEMS,
+      }),
     ).toEqual([]);
   });
 });

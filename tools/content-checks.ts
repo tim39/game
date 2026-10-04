@@ -11,6 +11,7 @@ export type ContentSources = { readonly [K in Kind]: unknown };
 
 /** What each kind of content is called in a problem, before its ID: `Item potion`. */
 const NAMES: { readonly [K in Kind]: string } = {
+  characters: 'Character',
   items: 'Item',
   speakers: 'Speaker',
   terrains: 'Terrain',
@@ -200,15 +201,22 @@ export interface NewGameSources {
   readonly newGame: NewGame;
   readonly maps: Readonly<Record<string, MapDef>>;
   readonly content: MapContent;
+  readonly characters: Readonly<Record<string, unknown>>;
   readonly items: Readonly<Record<string, unknown>>;
 }
 
 /**
  * Checks what a new game starts with against the rest of the content. Returns one line per
  * problem: it starts on a map that exists, on a cell of it where the player can stand, and with
- * items that exist.
+ * characters and items that exist.
  */
-export function checkNewGame({ newGame, maps, content, items }: NewGameSources): string[] {
+export function checkNewGame({
+  newGame,
+  maps,
+  content,
+  characters,
+  items,
+}: NewGameSources): string[] {
   const problems: string[] = [];
   const { map: id, x, y } = newGame.location;
   const map = Object.hasOwn(maps, id) ? maps[id] : undefined;
@@ -226,6 +234,11 @@ export function checkNewGame({ newGame, maps, content, items }: NewGameSources):
       problems.push(`The new game starts at (${x}, ${y}) on ${id}, where the player can't stand`);
     } else if (someone) {
       problems.push(`The new game starts at (${x}, ${y}) on ${id}, where npc ${someone.id} stands`);
+    }
+  }
+  for (const id of newGame.party) {
+    if (!Object.hasOwn(characters, id)) {
+      problems.push(`The new game starts with ${id} in the party, which isn't a character`);
     }
   }
   for (const item of Object.keys(newGame.inventory ?? {})) {

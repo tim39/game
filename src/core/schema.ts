@@ -190,6 +190,30 @@ const MapSchema = z.strictObject({
   edges: z.partialRecord(z.enum(SIDES), WarpTargetSchema).optional(),
 });
 
+// The party.
+
+/** A stat at level 1 and at level 30, between which it grows evenly (src/core/stats.ts). */
+const growth = (least: number) =>
+  z
+    .tuple([z.int().min(least), z.int().min(least)])
+    .refine(([first, last]) => last >= first, { error: 'is lower at level 30 than at level 1' });
+
+/** Someone who can be in the party. */
+const CharacterSchema = z.strictObject({
+  name: NameSchema,
+  /** Each stat at level 1 and at level 30. */
+  stats: z.strictObject({
+    hp: growth(1),
+    mp: growth(0),
+    atk: growth(0),
+    def: growth(0),
+    mag: growth(0),
+    res: growth(0),
+    spd: growth(0),
+  }),
+});
+export type CharacterDef = ContentOf<typeof CharacterSchema>;
+
 // Everything else.
 
 /** An item: so far, just what it's called. M3 adds what it does, its price and who can equip it. */
@@ -227,6 +251,7 @@ const EventScriptSchema = z.custom<EventScript>((value) => typeof value === 'fun
  * and the new game stands alone. A new kind of content adds its collection here.
  */
 export const CONTENT_SCHEMAS = {
+  characters: z.record(IdSchema, CharacterSchema),
   items: z.record(IdSchema, ItemSchema),
   speakers: z.record(IdSchema, SpeakerSchema),
   terrains: z.record(IdSchema, TerrainSchema),

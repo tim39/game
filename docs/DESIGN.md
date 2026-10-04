@@ -146,7 +146,7 @@ Durations count the affected unit's own turns.
 | Provoke | Must target the provoker when possible | 2 turns |
 | Guard | Damage taken ×0.5 | until their next turn |
 
-Re-applying a status refreshes its duration; nothing stacks. Bosses are immune to Sleep and take half duration from Slow.
+Re-applying a status refreshes its duration; nothing stacks, so a stat is up, down or neither. Bosses are immune to Sleep and take half duration from Slow.
 
 ### Enemy behavior
 
@@ -175,6 +175,8 @@ Enemies choose from a data-defined, weighted list of actions with simple conditi
 
 Critical-hit chance and elemental reactions come from equipment and skills, not extra stats.
 
+A character's stats come from their level (see [Levels](#levels)), plus their equipment's bonuses. A bonus can be a penalty, but no stat goes below 0. In battle, ATK, DEF, MAG and RES Up and Down then multiply that stat by 1.25 or 0.75. Stats are whole numbers, rounded down at each step.
+
 ### The party
 
 Fixed characters with their own kits; no job system. Full skill lists live in `src/data/skills.ts`. These are their roles:
@@ -186,10 +188,14 @@ Fixed characters with their own kits; no job system. Full skill lists live in `s
 | **Liora** | Priestess, healer | Heals, Regen, buffs, Light magic, Insight; **Haste**, and **Quicken** (an ally acts next) | End of Act 1 |
 | **Cass** | Thief, speed and debuffs | The fastest. Steal, Poison, **Delay Strike** (push an enemy back), Pocket Sand (blinds all enemies) | Act 2 |
 
+Their stats follow their roles at every level: Bram has the most HP and DEF and the least SPD, Cass the most SPD, Liora the most MP, MAG and RES, and Rowan the most ATK. The numbers are in `src/data/characters.ts`, and a test holds them to this.
+
 ### Levels
 
 - Levels run from 1 to 30. The EXP curve lives in `balance.ts` and is tuned so that playing the main path at Normal encounter rate brings the party to the **target levels** below. The targets are the real spec; the curve and enemy stats bend to meet them.
-- Each character has base stats and per-level growth. Skills are learned at set levels and at story beats.
+- Each character's stats are set at level 1 and at level 30, and grow evenly in between, rounded down: each level-up raises a stat by about the same amount.
+- **The EXP curve:** reaching level L takes 12 × (L − 1)^2.5 EXP in all, rounded: 12 for level 2, 384 for level 5, 2,916 for level 10 and 54,347 for level 30. Each level takes more than the last, so enemies in later areas give more EXP. A big win can raise several levels at once. Levels stop at 30, though EXP still counts.
+- Skills are learned at set levels and at story beats.
 
 | Area | Party level on arrival → at the boss |
 |---|---|

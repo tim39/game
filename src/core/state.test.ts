@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'vitest';
+import type { ExpCurve } from './levels';
 import {
   MAX_PARTY_SIZE,
   addGold,
@@ -6,6 +7,7 @@ import {
   addPlayTime,
   checkedGameState,
   createGameState,
+  gainExp,
   getVar,
   hasFlag,
   hasItem,
@@ -20,6 +22,9 @@ import {
   type GameState,
   type NewGame,
 } from './state';
+
+/** Levels 1 to 5 take 0, 10, 40, 90 and 160 EXP in all. */
+const CURVE: ExpCurve = { maxLevel: 5, scale: 10, power: 2 };
 
 const START: NewGame = {
   location: { map: 'test-shore', x: 4, y: 5, facing: 'down' },
@@ -87,6 +92,7 @@ test('no operation changes the state it is given', () => {
     addGold(before, 5),
     removeGold(before, 5),
     joinParty(before, 'bram'),
+    gainExp(before, 'rowan', 15, CURVE),
     setLocation(before, { map: 'test-meadow', x: 1, y: 1, facing: 'up' }),
     addPlayTime(before, 100),
   ];
@@ -234,6 +240,37 @@ describe('the party', () => {
   test('has members with kebab-case IDs', () => {
     expect(() => joinParty(start(), 'Bram')).toThrow(RangeError);
     expect(() => inParty(start(), 'old bram')).toThrow(RangeError);
+  });
+});
+
+describe('EXP', () => {
+  test('adds up, and levels a member up as far as it reaches', () => {
+    let state = gainExp(start(), 'rowan', 9, CURVE);
+    expect(state.members.rowan).toEqual({ level: 1, exp: 9 });
+    state = gainExp(state, 'rowan', 1, CURVE);
+    expect(state.members.rowan).toEqual({ level: 2, exp: 10 });
+    // 95 in all: past level 3 at 40 and level 4 at 90, at once.
+    state = gainExp(state, 'rowan', 85, CURVE);
+    expect(state.members.rowan).toEqual({ level: 4, exp: 95 });
+  });
+
+  test('stops levelling at the last level, but still counts', () => {
+    expect(gainExp(start(), 'rowan', 1000, CURVE).members.rowan).toEqual({ level: 5, exp: 1000 });
+  });
+
+  test('goes to one member, leaving the others as they were', () => {
+    const state = gainExp(start({ party: ['rowan', 'bram'] }), 'bram', 50, CURVE);
+    expect(state.members).toEqual({ rowan: { level: 1, exp: 0 }, bram: { level: 3, exp: 50 } });
+  });
+
+  test('comes in whole amounts, to members of the party, and none changes nothing', () => {
+    const state = start();
+    expect(gainExp(state, 'rowan', 0, CURVE)).toBe(state);
+    expect(() => gainExp(state, 'bram', 5, CURVE)).toThrow("bram can't gain EXP");
+    expect(() => gainExp(state, 'Rowan', 5, CURVE)).toThrow(RangeError);
+    for (const amount of [-1, 1.5, Number.NaN]) {
+      expect(() => gainExp(state, 'rowan', amount, CURVE)).toThrow(RangeError);
+    }
   });
 });
 

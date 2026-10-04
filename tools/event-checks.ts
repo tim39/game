@@ -26,6 +26,8 @@ export interface EventSources {
   readonly events: Readonly<Record<string, EventScript>>;
   readonly speakers: Readonly<Record<string, Speaker>>;
   readonly maps: Readonly<Record<string, MapDef>>;
+  /** Everyone who can be in the party, by ID, as in src/data/characters.ts. */
+  readonly characters: Readonly<Record<string, unknown>>;
   /** Every item, by ID, as in src/data/items.ts. */
   readonly items: Readonly<Record<string, unknown>>;
   /** Logical key → entry, as in src/systems/asset-manifest.ts. */
@@ -64,10 +66,10 @@ class LongPath extends Error {}
  * - every script, run against a stand-in context that answers at once, finishes without an error,
  *   down every path it can take. A path is an answer to each question the script asks: which
  *   choice the player picks, whether a flag it hasn't set itself is set, whether the party has an
- *   item, or gold. It starts on each map that runs it, and must only name speakers and items that
- *   exist, move and turn people who are on the map it's on, teleport to spawns that exist, wait
- *   and fade for real lengths of time, and play music and sound effects that are in the asset
- *   manifest;
+ *   item, or gold. It starts on each map that runs it, and must only name speakers, items and
+ *   characters that exist, move and turn people who are on the map it's on, teleport to spawns
+ *   that exist, wait and fade for real lengths of time, and play music and sound effects that are
+ *   in the asset manifest;
  * - every line it says fits in the dialogue box (three lines, narrower beside a portrait), every
  *   choice it offers fits the choice box, it offers one to four at a time, and the font has every
  *   character they use;
@@ -80,6 +82,7 @@ export async function checkEvents({
   events,
   speakers,
   maps,
+  characters,
   items,
   manifest,
   font,
@@ -328,6 +331,9 @@ export async function checkEvents({
             settled.gold = true;
           },
           joinParty: (character) => {
+            if (!Object.hasOwn(characters, character)) {
+              report(`it adds ${character} to the party, which isn't a character`);
+            }
             state = joinParty(state, character);
           },
         };

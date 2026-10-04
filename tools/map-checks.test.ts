@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, test } from 'vitest';
 import type { MapContent, MapDef } from '../src/core/map/types';
+import { CHARACTERS } from '../src/data/characters';
 import { EVENTS } from '../src/data/events';
 import { ITEMS } from '../src/data/items';
 import { MAPS } from '../src/data/maps';
@@ -212,6 +213,7 @@ describe('reaching maps', () => {
       events: EVENTS,
       speakers: SPEAKERS,
       maps: MAPS,
+      characters: CHARACTERS,
       items: ITEMS,
       manifest: ASSETS,
       font,

@@ -4,6 +4,7 @@ import { expect, test } from 'vitest';
 import type { ChestText } from '../src/core/chest';
 import { defineEvent } from '../src/core/events';
 import type { MapDef } from '../src/core/map/types';
+import { CHARACTERS } from '../src/data/characters';
 import { EVENTS } from '../src/data/events';
 import { ITEMS } from '../src/data/items';
 import { MAPS } from '../src/data/maps';
@@ -60,6 +61,7 @@ const sources = (overrides: Partial<EventSources>): EventSources => ({
   events: { hello },
   speakers: { ada: { name: 'Ada', portrait: 'portrait.ada' } },
   maps: {},
+  characters: { rowan: {}, bram: {} },
   items: { potion: { name: 'Potion' }, 'old-key': { name: 'Old Key' } },
   manifest: MANIFEST,
   font: FONT,
@@ -254,6 +256,19 @@ test('reports items that scripts check for, give or take but do not exist', asyn
   ]);
 });
 
+test('reports scripts that add someone to the party who is not a character', async () => {
+  const problems = await check({
+    events: {
+      recruit: defineEvent((ev) => {
+        ev.joinParty('bram');
+        ev.joinParty('vesh');
+        return Promise.resolve();
+      }),
+    },
+  });
+  expect(problems).toEqual(["Event recruit: it adds vesh to the party, which isn't a character"]);
+});
+
 test('checks the people a script moves and turns are on each map that runs it', async () => {
   const runner = (id: string, objects: MapDef['objects']): MapDef => ({ ...map, id, objects });
   const ada = { type: 'npc', id: 'ada', sprite: 'ada', at: [0, 0], facing: 'down' } as const;
@@ -440,6 +455,7 @@ test('the real event scripts, speakers and maps check out', async () => {
     events: EVENTS,
     speakers: SPEAKERS,
     maps: MAPS,
+    characters: CHARACTERS,
     items: ITEMS,
     manifest: ASSETS,
     font: measureBodyFont(

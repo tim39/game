@@ -1,7 +1,20 @@
+import type { ExpCurve } from '../core/levels';
 import type { NpcTuning } from '../core/npc';
+import type { BuffMultipliers } from '../core/stats';
 import type { WalkSpeeds } from '../core/walker';
 
-/** Tuning numbers. The battle formulas, encounter rates, prices and the EXP curve join these in M3. */
+/** Tuning numbers. The battle formulas, encounter rates and prices join these in M3. */
+
+/**
+ * The EXP curve: reaching level L takes 12 × (L − 1)^2.5 EXP in all, rounded, up to level 30.
+ * Level 2 takes 12, level 5 takes 384, level 10 takes 2,916 and level 30 takes 54,347. Each level
+ * takes more than the last, so later enemies give more EXP. They're tuned to bring the party to
+ * each area at its target level (see Levels in docs/DESIGN.md).
+ */
+export const EXP_CURVE: ExpCurve = { maxLevel: 30, scale: 12, power: 2.5 };
+
+/** ATK, DEF, MAG and RES Up and Down multiply that stat by these (see Status effects). */
+export const BUFF_MULTIPLIERS: BuffMultipliers = { up: 1.25, down: 0.75 };
 
 /** How long the player takes to cross one tile, walking and running. */
 export const FIELD_SPEEDS: WalkSpeeds = { walkMs: 240, runMs: 120 };

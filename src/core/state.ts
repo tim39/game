@@ -1,5 +1,6 @@
 import { DIRECTIONS, isDirection, type Direction } from './direction';
 import { isId, isNamespacedId } from './ids';
+import { levelForExp, type ExpCurve } from './levels';
 
 /** IDs from the content in src/data: `rowan`, `potion`, `saltmere`. */
 export type CharacterId = string;
@@ -151,6 +152,27 @@ export function joinParty(state: GameState, id: CharacterId): GameState {
     party: [...state.party, id],
     members: { ...state.members, [id]: { level: 1, exp: 0 } },
   };
+}
+
+/**
+ * A member of the party gains EXP, and levels up as far as it takes them on the curve (see
+ * src/core/levels.ts), to its last level at most. EXP past that still counts.
+ */
+export function gainExp(
+  state: GameState,
+  id: CharacterId,
+  amount: number,
+  curve: ExpCurve,
+): GameState {
+  const member = own(state.members, checkedId('Character', id));
+  if (!member) throw new RangeError(`${id} can't gain EXP: they aren't in the party`);
+  if (!Number.isSafeInteger(amount) || amount < 0) {
+    throw new RangeError(`EXP comes in whole amounts from 0 up, not ${amount}`);
+  }
+  if (amount === 0) return state;
+  const exp = member.exp + amount;
+  const level = Math.max(member.level, levelForExp(exp, curve));
+  return { ...state, members: { ...state.members, [id]: { level, exp } } };
 }
 
 /** Moves the player to another map, another cell, or just to face another way. */
