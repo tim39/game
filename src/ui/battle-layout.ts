@@ -1,3 +1,4 @@
+import { ICON_SIZE } from '../systems/asset-manifest';
 import { GAME_HEIGHT, GAME_WIDTH } from '../systems/display';
 import { DIALOGUE_BOX_ON_SCREEN } from './dialogue-layout';
 
@@ -45,6 +46,11 @@ const LIST_COLUMN = (STATUS_WIDTH - 2 * (FRAME + INSET.x)) / 2;
 const CURSOR = 5;
 
 export const BATTLE_LAYOUT = {
+  /**
+   * The timeline across the top: a tile for whose turn it is, then, past a ▸, a tile for each of
+   * the turns after it, `gap` apart. A tile is a fighter's icon in a frame.
+   */
+  timeline: { x: BOTTOM.x, y: 2, tile: 20, icon: ICON_SIZE, after: 14, gap: 7 },
   /** The banner: what's being done, or what the cursor is on. Under the timeline. */
   banner: { x: BOTTOM.x, y: 24, width: BOTTOM.width, height: 18 } satisfies Box,
   /** The command window, at the bottom left. */
@@ -92,6 +98,12 @@ export const BATTLE_LAYOUT = {
   /** How far forward a party member steps when their turn comes. */
   stepForward: 14,
 } as const;
+
+/** Where the timeline's `index`th tile goes, by its top-left corner: whose turn it is first. */
+export function timelineSpot(index: number): Point {
+  const { x, y, tile, after, gap } = BATTLE_LAYOUT.timeline;
+  return { x: index === 0 ? x : x + tile + after + (index - 1) * (tile + gap), y };
+}
 
 /**
  * Where each of `count` enemies stands, left to right: evenly across the left of the field, closer

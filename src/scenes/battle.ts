@@ -11,7 +11,7 @@ import {
   type Outcome,
 } from '../core/battle/battle';
 import type { BattleEvent } from '../core/battle/events';
-import type { FighterId, Side } from '../core/battle/fighter';
+import type { Fighter, FighterId, Side } from '../core/battle/fighter';
 import { DIRECTIONS } from '../core/direction';
 import { compileBackdrop } from '../core/map/backdrop';
 import { Rng } from '../core/rng';
@@ -21,6 +21,7 @@ import { BATTLE_PACING, BATTLE_TUNING } from '../data/balance';
 import { DB } from '../data/db';
 import { MAP_CONTENT } from '../data/terrain';
 import { BATTLE_TEXT } from '../data/ui-text';
+import { ASSETS, type AssetEntry } from '../systems/asset-manifest';
 import { BATTLE_POSES } from '../systems/character-frames';
 import { input } from '../systems/input/game-input';
 import { session } from '../systems/session';
@@ -47,12 +48,21 @@ import {
   aimedAt,
   helpLine,
   openBattleMenu,
+  previewAction,
   stepBattleMenu,
   type BattleMenu,
 } from '../ui/battle-menu';
 import { BattlePanels, isHelpful } from '../ui/battle-panels';
+import {
+  changedSlots,
+  letterOf,
+  playTimeline,
+  timelineOf,
+  type TimelineChange,
+} from '../ui/battle-timeline';
 import { applyEvent, fighterView, viewOf, type BattleView } from '../ui/battle-view';
 import { FONT } from '../ui/fonts';
+import { TimelineStrip, type TimelineFigure } from '../ui/timeline-strip';
 
 export const BATTLE_SCENE = 'battle';
 
@@ -173,6 +183,8 @@ export class BattleScene extends Phaser.Scene {
   private view: BattleView = [];
   private figures = new Map<FighterId, Figure>();
   private panels?: BattlePanels;
+  /** The timeline across the top. */
+  private strip?: TimelineStrip;
   /** The ▼ over whoever the menu is aiming at, and the ! over whoever has telegraphed. */
   private marks?: Phaser.GameObjects.Graphics;
   private alerts = new Map<FighterId, Phaser.GameObjects.BitmapText>();
@@ -218,6 +230,8 @@ export class BattleScene extends Phaser.Scene {
     this.alerts = new Map();
     this.placeFighters(battle);
     this.panels = new BattlePanels(this, DEPTH.panels);
+    this.strip = new TimelineStrip(this, DEPTH.panels, timelineFigures(battle));
+    this.strip.show(timelineOf(battle));
     this.marks = this.add.graphics().setDepth(DEPTH.marks);
     this.menu = null;
     this.chosen = undefined;
@@ -275,6 +289,7 @@ export class BattleScene extends Phaser.Scene {
       list: list.map(({ label, detail, enabled }) => ({ label, detail, enabled })),
       aimed: menu ? aimedAt(menu) : [],
       banner: panels?.bannerShown ?? null,
+      timeline: this.strip?.debugInfo() ?? [],
       status: panels?.statusText() ?? [],
       popped: this.popped,
       fighters: this.view.map((fighter) => {
@@ -307,9 +322,10 @@ export class BattleScene extends Phaser.Scene {
         actor.side === 'party' ? await this.choose(battle) : chooseEnemyAction(battle, this.rng);
       if (!this.live(run)) return;
       const result = applyAction(battle, action, this.rng);
+      const timeline = playTimeline(battle, action, result);
       battle = result.battle;
       this.battle = battle;
-      await this.play(result.events, run);
+      await this.play(result.events, timeline, run);
     }
     if (this.live(run) && battle.outcome !== 'ongoing') await this.finish(battle.outcome, run);
   }
@@ -326,9 +342,18 @@ export class BattleScene extends Phaser.Scene {
     });
   }
 
-  /** Plays out what an action led to, event by event, up to the next turn that needs a choice. */
-  private async play(events: readonly BattleEvent[], run: number): Promise<void> {
-    for (const event of events) {
+  /**
+   * Plays out what an action led to, event by event, up to the next turn that needs a choice, with
+   * the timeline keeping up as each starts.
+   */
+  private async play(
+    events: readonly BattleEvent[],
+    timeline: readonly (TimelineChange | null)[],
+    run: number,
+  ): Promise<void> {
+    for (const [index, event] of events.entries()) {
+      const change = timeline[index];
+      if (change) this.strip?.show(change.timeline, { advanced: change.advanced });
       await this.show(event);
       if (!this.live(run)) return;
     }
@@ -340,6 +365,8 @@ export class BattleScene extends Phaser.Scene {
   private async finish(outcome: BattleResult, run: number): Promise<void> {
     const panels = this.panels;
     this.result = outcome;
+    // There are no more turns to come.
+    this.strip?.hide();
     switch (outcome) {
       case 'victory':
         panels?.banner(BATTLE_TEXT.victory);
@@ -851,7 +878,7 @@ export class BattleScene extends Phaser.Scene {
       for (const fighter of battle.fighters.filter((each) => each.side === side)) {
         const home = spots[fighter.slot];
         if (!home) continue;
-        const key = side === 'party' ? `sprite.${fighter.kind}` : `monster.${fighter.kind}`;
+        const key = sheetOf(fighter);
         const sprite = this.add.sprite(home.x, home.y, key).setOrigin(0.5, 1);
         if (side === 'party') sprite.setFrame(BATTLE_POSES.stand);
         else sprite.play(this.idleAnim(key));
@@ -908,10 +935,21 @@ export class BattleScene extends Phaser.Scene {
 
   // The menu and the marks over fighters.
 
+  /**
+   * Shows the menu, or with null, puts it away. The timeline previews what's under the cursor, and
+   * highlights the turns it changes.
+   */
   private showMenu(menu: BattleMenu | null): void {
     this.menu = menu;
     this.panels?.showMenu(menu);
-    this.panels?.banner(menu ? helpLine(menu, this.current()) : null);
+    if (!menu) {
+      this.panels?.banner(null);
+      return;
+    }
+    const battle = this.current();
+    this.panels?.banner(helpLine(menu, battle));
+    const preview = timelineOf(battle, previewAction(menu, battle));
+    this.strip?.show(preview, { changed: changedSlots(timelineOf(battle), preview) });
   }
 
   /** The ▼ bobbing over whoever the menu aims at, and a ! over whoever has telegraphed. */
@@ -1036,4 +1074,23 @@ export class BattleScene extends Phaser.Scene {
   private live(run: number): boolean {
     return run === this.run;
   }
+}
+
+/** The sheet a fighter fights as: a party member's field sprite, or an enemy's monster. */
+const sheetOf = (fighter: Fighter): string =>
+  fighter.side === 'party' ? `sprite.${fighter.kind}` : `monster.${fighter.kind}`;
+
+/** Who's who on the timeline: everyone's icon, and the letters that tell enemies of a kind apart. */
+function timelineFigures(battle: BattleState): TimelineFigure[] {
+  return battle.fighters.map((fighter) => {
+    const sheet = sheetOf(fighter);
+    const entry: AssetEntry | undefined = (ASSETS as Record<string, AssetEntry>)[sheet];
+    return {
+      id: fighter.id,
+      side: fighter.side,
+      sheet,
+      face: entry?.type === 'spritesheet' ? entry.icon : undefined,
+      letter: letterOf(battle, fighter.id),
+    };
+  });
 }

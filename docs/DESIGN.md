@@ -60,7 +60,7 @@ Town (story, shops, inn) → overworld → dungeon (explore, fight, treasure, a 
 Side view: enemies on the left, the party on the right, the timeline across the top, and the command window and party status along the bottom. A battle has one to six enemies; several of a kind are lettered, Wolf A and Wolf B.
 
 ```
- NEXT ▸ Rowan · Wolf A · Liora · Wolf B · Rowan · Bram · Cass · Wolf A …
+ [Rowan] ▸ [Wolf A] [Liora] [Wolf B] [Rowan] [Bram] [Cass] [Wolf A] [Liora] …
 ┌──────────────────────────────────────────────────────────────┐
 │   Wolf A                                         Rowan       │
 │              Wolf B                         Bram             │
@@ -92,7 +92,9 @@ delay = round(rank × K / (SPD + C))      starting constants: K = 1000, C = 10
 - CTs are whole numbers. A delay is at least 1, and Haste and Slow multiply it before it's rounded.
 - **Ties** go to higher SPD, then the party before enemies, then left-to-right slot order. Turn order is fully deterministic.
 - **At battle start,** each combatant's CT is their Normal delay × a seeded random number from 0.4 to 1.0, rounded. A preemptive strike sets the party's CT to 0; an ambush does the same for the enemies.
-- **The preview is the point.** The timeline shows the next 10 turns. While the player browses commands and targets, it shows what the order *will be* after they confirm: slow actions push the actor back, Delay skills push the target back, Haste pulls an ally forward, Slow pushes an enemy back, a stagger pushes back an enemy hit on a weakness, and a revived ally gets back in line. Slots that change are highlighted. It shows the action landing in full (it can't know who'll miss, resist or fall), and everyone after taking Normal actions. It only shows a stagger on a weakness the party already knows, so it never gives one away.
+- **The preview is the point.** The timeline shows whose turn it is, then the next 10 turns. While the player browses commands and targets, it shows what the order *will be* after they confirm: slow actions push the actor back, Delay skills push the target back, Haste pulls an ally forward, Slow pushes an enemy back, a stagger pushes back an enemy hit on a weakness, and a revived ally gets back in line. Slots that change are highlighted. It shows the action landing in full (it can't know who'll miss, resist or fall), and everyone after taking Normal actions. It only shows a stagger on a weakness the party already knows, so it never gives one away.
+- **What it previews:** on the command window, Attack at the first enemy, Guard and Flee (as if it fails); Skill and Item show nothing new until a skill or item is under the cursor, which is previewed aimed where the cursor will start (the first enemy, or the ally worst hurt), and then at whoever the cursor is on. Something that can't be used now previews nothing.
+- **As an action plays out,** the timeline keeps up: a stagger the preview couldn't foresee pushes the enemy back as it lands, the KO'd leave the timeline, and each turn that goes by slides off it.
 
 ### Commands
 
@@ -247,7 +249,8 @@ The simulator's party plays as a sensible but unadventurous player would. It get
 - **Equip:** stat comparison with up and down arrows.
 - **Shop:** Buy and Sell with quantities, showing who can equip each item and how it changes their stats.
 - **Inn:** "Rest for N gold?" → fade out, heal, morning jingle.
-- **Battle:** as shown above: the party's HP with a gauge, the MP they have left and up to two status tags; the command window only on a party member's turn, as they step forward. Skill and Item open their lists in the status panel's place. A banner under the timeline says what the skill or item under the cursor does, whom an action is aimed at (a ▼ marks them too), and what's being done. Numbers and words rise over whoever's hit (Miss, Critical!, Weak, Stagger!, a status's name), and a ! hangs over an enemy that has telegraphed. Winning or losing says so and waits for Confirm. Plus the timeline preview, and a victory panel.
+- **Battle:** as shown above: the party's HP with a gauge, the MP they have left and up to two status tags; the command window only on a party member's turn, as they step forward. Skill and Item open their lists in the status panel's place. A banner under the timeline says what the skill or item under the cursor does, whom an action is aimed at (a ▼ marks them too), and what's being done. Numbers and words rise over whoever's hit (Miss, Critical!, Weak, Stagger!, a status's name), and a ! hangs over an enemy that has telegraphed. Winning or losing says so and waits for Confirm. Plus a victory panel.
+- **Battle timeline:** along the top of the battle screen, whose turn it is, then a ▸ and the next 10 turns, each a little picture of the fighter in a frame, blue for the party and red for enemies (enemies of a kind are lettered, as in Wolf A and Wolf B). Turns the preview changes light up in gold, and a ! marks the turn a telegraphed attack comes on. Turns slide along to their new places as the order changes, and the timeline clears once the battle is over.
 - **Game Over:** Retry battle, Load save, Title.
 - **Options:** text speed, battle speed (1×, 2×, 3×), encounter rate, always run, music and sound volume, screen shake on/off, reduce flashing.
 

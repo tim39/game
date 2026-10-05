@@ -76,7 +76,7 @@ Start a session and say **"next task"**, or name one. Claude takes the first unc
 *Goal: a full battle, from the encounter to the victory screen.*
 
 - [x] BattleScene: layout, backdrop, sprites, command/skill/item/target menus, and animation of every `BattleEvent` (lunges, flashes, numbers, particles).
-- [ ] The timeline strip, with a live preview as you browse commands and targets.
+- [x] The timeline strip, with a live preview as you browse commands and targets.
 - [ ] Encounters: step counter, area tables, transition effect, preemptive strikes and ambushes, battle music, the Encounter rate option.
 - [ ] Rewards: EXP, level-ups with stat gains and new skills, gold, drops.
 - [ ] Game Over with Retry battle, Load save and Title.

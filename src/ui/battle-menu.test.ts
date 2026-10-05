@@ -11,6 +11,7 @@ import {
   listSpots,
   moveInGrid,
   openBattleMenu,
+  previewAction,
   stepBattleMenu,
   type BattleMenu,
   type MenuInput,
@@ -242,6 +243,55 @@ describe('aiming', () => {
     const step = press(openBattleMenu(poor), poor, move('down'), CONFIRM, CONFIRM);
     expect(step.menu.page).toBe('skills');
     expect(selected(step.menu)).toBe('Slash');
+  });
+});
+
+describe('previewAction', () => {
+  const battle = battleWith(['slime', 'wolf']);
+  const menu = openBattleMenu(battle);
+  const preview = (...inputs: MenuInput[]) => {
+    const { menu: moved } = press(menu, battle, ...inputs);
+    return previewAction(moved, battle);
+  };
+
+  test('on the command window: Attack at the first enemy, Guard and Flee, and nothing for lists', () => {
+    expect(preview()).toEqual({ type: 'attack', target: 'slime-a' });
+    expect(preview(move('down'))).toBeUndefined();
+    expect(preview(move('down'), move('down'))).toBeUndefined();
+    expect(preview(move('up'))).toEqual({ type: 'guard' });
+    expect(preview(move('up'), move('right'))).toEqual({ type: 'flee' });
+  });
+
+  test('in a list: what’s under the cursor, aimed where the cursor will start', () => {
+    expect(preview(move('down'), CONFIRM)).toEqual({
+      type: 'skill',
+      skill: 'slash',
+      target: 'slime-a',
+    });
+    // Sweep, beside it, works on every enemy.
+    expect(preview(move('down'), CONFIRM, move('right'))).toEqual({
+      type: 'skill',
+      skill: 'sweep',
+    });
+    const hurt = battleWith(['slime'], (fighter) =>
+      fighter.id === 'bram' ? { ...fighter, hp: 10 } : fighter,
+    );
+    const items = press(openBattleMenu(hurt), hurt, move('down'), move('down'), CONFIRM).menu;
+    expect(previewAction(items, hurt)).toEqual({ type: 'item', item: 'potion', target: 'bram' });
+  });
+
+  test('while aiming: the action at whoever is under the cursor', () => {
+    expect(preview(CONFIRM, move('right'))).toEqual({ type: 'attack', target: 'wolf-a' });
+  });
+
+  test('nothing for what can’t be used now', () => {
+    const boss = battleWith(['warden'], (fighter) =>
+      fighter.id === 'rowan' ? { ...fighter, mp: 0 } : fighter,
+    );
+    const moved = press(openBattleMenu(boss), boss, move('up'), move('right')).menu;
+    expect(previewAction(moved, boss)).toBeUndefined();
+    const skills = press(openBattleMenu(boss), boss, move('down'), CONFIRM).menu;
+    expect(previewAction(skills, boss)).toBeUndefined();
   });
 });
 

@@ -78,6 +78,25 @@ describe('checkAssets', () => {
     ]);
   });
 
+  test('reports a timeline icon that isn’t inside its sheet’s frames', () => {
+    addFile('assets/monsters/boss.png', pngHeader(192, 48));
+    const boss = (x: number, y: number): AssetEntry => ({
+      type: 'spritesheet',
+      url: 'assets/monsters/boss.png',
+      frameWidth: 96,
+      frameHeight: 48,
+      icon: { x, y },
+    });
+    const credits = creditsFor('assets/monsters/boss.png');
+    expect(check({ 'monster.boss': boss(40, 32) }, credits)).toEqual([]);
+    expect(check({ 'monster.boss': boss(40, 33) }, credits)).toEqual([
+      "monster.boss: its 16×16 icon at (40, 33) isn't inside its 96×48 frames",
+    ]);
+    expect(check({ 'monster.boss': boss(-1, 0) }, credits)).toEqual([
+      "monster.boss: its 16×16 icon at (-1, 0) isn't inside its 96×48 frames",
+    ]);
+  });
+
   test('reports two keys that load the same file', () => {
     addFile('assets/sprites/hero.png', pngHeader(64, 112));
     const manifest = {

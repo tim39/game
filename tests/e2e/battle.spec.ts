@@ -33,6 +33,7 @@ interface BattleInfo {
   list: { label: string; detail: string; enabled: boolean }[];
   aimed: string[];
   banner: string | null;
+  timeline: { id: string; telegraph: boolean; changed: boolean }[];
   status: string[];
   popped: string[];
   fighters: FighterInfo[];
@@ -49,6 +50,16 @@ const nextFrames = (page: Page) =>
 
 const info = async (page: Page): Promise<BattleInfo> =>
   (await page.evaluate(() => window.__game?.inspect('battle'))) as unknown as BattleInfo;
+
+/** Whose turns the timeline shows: whose it is now, then the next ten. */
+const turns = (battle: BattleInfo): string[] => battle.timeline.map(({ id }) => id);
+
+/** Where a fighter's next turn is on the timeline, after this one. */
+const nextTurn = (battle: BattleInfo, id: string): number => turns(battle).indexOf(id, 1);
+
+/** The turns the timeline highlights, as the preview changed them. */
+const changed = (battle: BattleInfo): number[] =>
+  battle.timeline.flatMap((slot, index) => (slot.changed ? [index] : []));
 
 const fighter = (battle: BattleInfo, id: string): FighterInfo => {
   const found = battle.fighters.find((each) => each.id === id);
@@ -149,6 +160,11 @@ test('a battle has the enemies on the left, the party on the right, and the comm
   // Whoever's turn it is steps forward.
   expect(rowan?.x).toBeLessThan(rowan?.home.x ?? 0);
   expect(bram?.x).toBe(bram?.home.x);
+  // The timeline: Rowan's turn, then the next ten, everyone's. Attack changes nothing in it.
+  expect(battle.timeline).toHaveLength(11);
+  expect(turns(battle)[0]).toBe('rowan');
+  expect(new Set(turns(battle))).toEqual(new Set(['rowan', 'bram', 'wolf-a', 'wolf-b']));
+  expect(changed(battle)).toEqual([]);
   await page.screenshot({ path: 'test-results/screenshots/battle-commands.png' });
   expect(errors).toEqual([]);
 });
@@ -207,6 +223,8 @@ test('a battle won says so, and Confirm goes back to the field', async ({ page }
   const won = await attackUntilOver(page);
   expect(won).toMatchObject({ outcome: 'victory', result: 'victory', banner: 'Victory!' });
   expect(won.fighters.filter(({ side, hp }) => side === 'enemies' && hp > 0)).toEqual([]);
+  // There are no more turns to come.
+  expect(won.timeline).toEqual([]);
   await page.screenshot({ path: 'test-results/screenshots/battle-victory.png' });
 
   await press(page, 'KeyZ');
@@ -249,19 +267,117 @@ test('the boss can’t be fled from, telegraphs Undertow, and a fallen ally can 
   expect(fighter(readied, 'drowned-warden-a').telegraph).toEqual({ skill: 'undertow' });
   expect(readied).toMatchObject({ active: 'bram', page: 'commands' });
   expect(fighter(readied, 'rowan').hp).toBe(0);
+  // The timeline marks the Warden's next turn, when Undertow comes, and Rowan is off it.
+  expect(readied.timeline.filter(({ telegraph }) => telegraph)).toEqual([
+    { id: 'drowned-warden-a', telegraph: true, changed: false },
+  ]);
+  expect(readied.timeline.findIndex(({ telegraph }) => telegraph)).toBe(
+    nextTurn(readied, 'drowned-warden-a'),
+  );
+  expect(turns(readied)).not.toContain('rowan');
   await page.screenshot({ path: 'test-results/screenshots/battle-telegraph.png' });
 
   // An Ember Feather can only be used on whoever's down.
   await press(page, 'ArrowDown', 'ArrowDown', 'KeyZ');
   expect((await info(page)).list).toEqual([{ label: 'Ember Feather', detail: '1', enabled: true }]);
   await press(page, 'KeyZ');
-  expect(await info(page)).toMatchObject({ page: 'target', aimed: ['rowan'], banner: 'Rowan' });
+  const reviving = await info(page);
+  expect(reviving).toMatchObject({ page: 'target', aimed: ['rowan'], banner: 'Rowan' });
+  // The preview has him back in line.
+  expect(turns(reviving)).toContain('rowan');
   await press(page, 'KeyZ');
   await page.waitForFunction(() =>
     (window.__game?.inspect('battle')?.popped as string[]).includes('Back up!'),
   );
   // A quarter of Rowan's HP.
   expect(fighter(await info(page), 'rowan').hp).toBe(15);
+  expect(errors).toEqual([]);
+});
+
+test('the timeline previews each choice, highlighting the turns it changes', async ({ page }) => {
+  const errors = await startBattle(page, ['wolf', 'wolf']);
+  const attack = await info(page);
+  await press(page, 'ArrowUp');
+  const guard = await info(page);
+  expect(guard.selected).toBe('Guard');
+  // Guard is quick, so Rowan's next turn comes sooner, and the turns that change light up.
+  expect(nextTurn(guard, 'rowan')).toBeLessThan(nextTurn(attack, 'rowan'));
+  expect(changed(guard)).toContain(nextTurn(guard, 'rowan'));
+  expect(guard.timeline[0]).toEqual({ id: 'rowan', telegraph: false, changed: false });
+  await page.screenshot({ path: 'test-results/screenshots/battle-timeline-preview.png' });
+
+  // Back on Attack, the preview goes back too.
+  await press(page, 'ArrowDown');
+  expect((await info(page)).timeline).toEqual(attack.timeline);
+
+  // Guarding, the timeline moves on, and the next turn of the party's starts it.
+  await press(page, 'ArrowUp', 'KeyZ');
+  const next = await waitForPlayer(page);
+  expect(turns(next)[0]).toBe(next.active);
+  expect(next.timeline).toHaveLength(11);
+  expect(changed(next)).toEqual([]);
+  expect(errors).toEqual([]);
+});
+
+test('Shield Bash shows its target pushed back on the timeline', async ({ page }) => {
+  const errors = await startBattle(page, ['wolf', 'wolf']);
+  // Rowan guards until it's Bram's turn.
+  let battle = await info(page);
+  while (battle.active !== 'bram') {
+    await press(page, 'ArrowUp', 'KeyZ');
+    battle = await waitForPlayer(page);
+  }
+  const before = battle;
+  await press(page, 'ArrowDown', 'KeyZ');
+  const bash = await info(page);
+  expect(bash).toMatchObject({ page: 'skills', selected: 'Shield Bash' });
+  // Aimed at Wolf A to begin with, it pushes the Wolf's turns back.
+  expect(changed(bash)).not.toEqual([]);
+  await press(page, 'KeyZ', 'ArrowRight');
+  const atWolfB = await info(page);
+  expect(atWolfB).toMatchObject({ page: 'target', aimed: ['wolf-b'] });
+  expect(nextTurn(atWolfB, 'wolf-b')).toBeGreaterThan(nextTurn(before, 'wolf-b'));
+  expect(changed(atWolfB)).toContain(nextTurn(atWolfB, 'wolf-b'));
+  await page.screenshot({ path: 'test-results/screenshots/battle-timeline-delay.png' });
+
+  await press(page, 'KeyZ');
+  await page.waitForFunction(() =>
+    (window.__game?.inspect('battle')?.popped as string[]).includes('Delay'),
+  );
+  expect(errors).toEqual([]);
+});
+
+test('the timeline shows a stagger only on a weakness the party knows', async ({ page }) => {
+  const errors = await startBattle(page, ['reef-snail', 'reef-snail'], {
+    backdrop: 'shore',
+    items: { 'earth-bomb': 2 },
+  });
+  // The party doesn't know Reef Snails are weak to Earth, so an Earth Bomb shows no more than
+  // any quick action would: Guard, say.
+  await press(page, 'ArrowUp');
+  const guard = await info(page);
+  await press(page, 'ArrowUp', 'KeyZ');
+  const bomb = await info(page);
+  expect(bomb).toMatchObject({ page: 'items', selected: 'Earth Bomb' });
+  expect(bomb.timeline).toEqual(guard.timeline);
+
+  // Throwing it finds the weakness out, and Reef Snail A's turn is pushed back.
+  await press(page, 'KeyZ', 'KeyZ');
+  const after = await waitForPlayer(page);
+  expect(after.popped.slice(0, 3)).toEqual(['Weak', '60', 'Stagger!']);
+  expect(after.active).toBe('bram');
+  expect(nextTurn(after, 'reef-snail-a')).toBeGreaterThan(nextTurn(after, 'rowan'));
+
+  // Now Bram's Earth Bomb shows Reef Snail B staggered back too. (Snail A has been staggered
+  // since its last turn, so can't be again.)
+  await press(page, 'ArrowUp');
+  const guarding = await info(page);
+  await press(page, 'ArrowUp', 'KeyZ', 'KeyZ', 'ArrowRight');
+  const atSnailB = await info(page);
+  expect(atSnailB).toMatchObject({ page: 'target', aimed: ['reef-snail-b'] });
+  expect(nextTurn(atSnailB, 'reef-snail-b')).toBeGreaterThan(nextTurn(guarding, 'reef-snail-b'));
+  expect(changed(atSnailB)).toContain(nextTurn(atSnailB, 'reef-snail-b'));
+  await page.screenshot({ path: 'test-results/screenshots/battle-timeline-stagger.png' });
   expect(errors).toEqual([]);
 });
 

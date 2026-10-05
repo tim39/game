@@ -1,6 +1,6 @@
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, sep } from 'node:path';
-import type { AssetEntry } from '../src/systems/asset-manifest';
+import { ICON_SIZE, type AssetEntry } from '../src/systems/asset-manifest';
 
 export interface AssetSources {
   /** Logical key → entry, as in src/systems/asset-manifest.ts. */
@@ -19,7 +19,8 @@ const KEBAB_PATH = /^([a-z0-9]+(-[a-z0-9]+)*\/)*[a-z0-9]+(-[a-z0-9]+)*\.[a-z0-9]
  * empty list means everything is in order:
  * - every image key points at a PNG that exists, and every audio key at an Ogg file and an M4A
  *   file that exist; no two keys load the same file;
- * - sprite sheets divide evenly into their frames;
+ * - sprite sheets divide evenly into their frames, and a sheet's icon for the battle timeline is
+ *   inside its frames;
  * - every file in public/assets/ is in the manifest, credited in CREDITS.md, and kebab-case.
  */
 export function checkAssets({ manifest, publicDir, credits }: AssetSources): string[] {
@@ -58,6 +59,19 @@ export function checkAssets({ manifest, publicDir, credits }: AssetSources): str
         `${key}: public/${entry.url} is ${size.width}×${size.height}, which doesn't divide ` +
           `into ${entry.frameWidth}×${entry.frameHeight} frames`,
       );
+    }
+    if (entry.type === 'spritesheet' && entry.icon) {
+      const { x, y } = entry.icon;
+      const fits =
+        [x, y].every((at) => Number.isInteger(at) && at >= 0) &&
+        x + ICON_SIZE <= entry.frameWidth &&
+        y + ICON_SIZE <= entry.frameHeight;
+      if (!fits) {
+        problems.push(
+          `${key}: its ${ICON_SIZE}×${ICON_SIZE} icon at (${x}, ${y}) isn't inside its ` +
+            `${entry.frameWidth}×${entry.frameHeight} frames`,
+        );
+      }
     }
   }
 

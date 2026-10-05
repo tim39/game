@@ -205,6 +205,49 @@ export function aimedAt(menu: BattleMenu): FighterId[] {
 }
 
 /**
+ * The action the timeline previews for what's under the cursor: the one Confirm leads to, aimed
+ * where the cursor is or will start. Nothing yet for Skill and Item, which only open their lists,
+ * or for what can't be used now: the timeline then shows a Normal action.
+ */
+export function previewAction(menu: BattleMenu, battle: BattleState): Action | undefined {
+  const action = previewed(menu, battle);
+  return action !== undefined && checkAction(battle, action) === undefined ? action : undefined;
+}
+
+function previewed(menu: BattleMenu, battle: BattleState): Action | undefined {
+  switch (menu.page) {
+    case 'commands':
+      return previewedCommand(menu, battle);
+    case 'skills':
+    case 'items': {
+      const entry = menu[menu.page][menu.cursor[menu.page]];
+      return entry?.enabled ? aimingOf(aim(menu, battle, entry.command, menu.page)) : undefined;
+    }
+    case 'target':
+      return aimingOf(menu);
+  }
+}
+
+function previewedCommand(menu: BattleMenu, battle: BattleState): Action | undefined {
+  const entry = menu.commands[menu.cursor.commands];
+  if (!entry?.enabled) return undefined;
+  switch (entry.id) {
+    case 'attack':
+      return aimingOf(aim(menu, battle, { type: 'attack' }, 'commands'));
+    case 'skill':
+    case 'item':
+      return undefined;
+    case 'guard':
+      return { type: 'guard' };
+    case 'flee':
+      return { type: 'flee' };
+  }
+}
+
+const aimingOf = ({ aiming }: BattleMenu): Action | undefined =>
+  aiming ? actionOf(aiming) : undefined;
+
+/**
  * What the help line says: what the skill or item under the cursor does, or whom an action is
  * aimed at. Nothing on the command window.
  */

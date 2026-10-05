@@ -71,7 +71,8 @@ export const MAP_FADE_MS = 250;
  * How long the battle screen takes over what it shows, in milliseconds: a party member stepping
  * forward when their turn comes and back after it, lunging at a target, a hit landing, a number or
  * word floating up over someone, the pause after each action, a message in the banner, falling,
- * and fading in and out of the battle. `settings.battleSpeed` speeds them all up.
+ * fading in and out of the battle, and turns sliding along the timeline. `settings.battleSpeed`
+ * speeds them all up.
  */
 export const BATTLE_PACING = {
   step: 160,
@@ -82,6 +83,7 @@ export const BATTLE_PACING = {
   banner: 1000,
   ko: 450,
   fade: 350,
+  slide: 180,
 } as const;
 
 /** Music crossfades this long: the new track fades in as the old one fades out. */

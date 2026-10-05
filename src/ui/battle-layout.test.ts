@@ -7,7 +7,9 @@ import {
   BATTLE_WIDTH,
   enemySpots,
   partySpots,
+  timelineSpot,
 } from './battle-layout';
+import { TIMELINE_TURNS } from './battle-timeline';
 
 const { banner, commands, status } = BATTLE_LAYOUT;
 const counts = (most: number): number[] => Array.from({ length: most }, (_, index) => index + 1);
@@ -22,6 +24,21 @@ describe('the battle layout', () => {
     expect(status.x).toBeGreaterThan(commands.x + commands.width);
     expect(status.x + status.width).toBe(310);
     expect(status).toMatchObject({ y: commands.y, height: commands.height });
+  });
+
+  test('fits the timeline’s tiles across the top, above the banner, the first set apart', () => {
+    const { tile, icon, after, gap } = BATTLE_LAYOUT.timeline;
+    const spots = Array.from({ length: 1 + TIMELINE_TURNS }, (_, index) => timelineSpot(index));
+    expect(tile).toBeGreaterThanOrEqual(icon + 2);
+    for (const { x, y } of spots) {
+      expect(x).toBeGreaterThanOrEqual(banner.x);
+      expect(x + tile).toBeLessThanOrEqual(banner.x + banner.width);
+      expect(y).toBeGreaterThanOrEqual(0);
+      expect(y + tile).toBeLessThan(banner.y);
+    }
+    expect((spots[1]?.x ?? 0) - (spots[0]?.x ?? 0)).toBe(tile + after);
+    expect((spots[2]?.x ?? 0) - (spots[1]?.x ?? 0)).toBe(tile + gap);
+    expect(after).toBeGreaterThan(gap);
   });
 
   test('stands everyone between the banner and the bottom panels, enemies left and party right', () => {

@@ -20,7 +20,16 @@ export interface SpriteSheetAsset {
   readonly url: string;
   readonly frameWidth: number;
   readonly frameHeight: number;
+  /**
+   * For a fighter's sheet whose frames are bigger than an icon: where in the first frame the
+   * `ICON_SIZE` square their icon on the battle timeline is cut from sits, round their face. Left
+   * out, it's across the middle, at their feet.
+   */
+  readonly icon?: { readonly x: number; readonly y: number };
 }
+
+/** A fighter's icon on the battle timeline is a square this big, cut from their sheet. */
+export const ICON_SIZE = 16;
 
 /**
  * A sound, as an Ogg Vorbis file and an AAC (.m4a) one for browsers without Ogg, such as older
@@ -39,11 +48,17 @@ const TILE = 16;
 
 const image = (path: string): ImageAsset => ({ type: 'image', url: `assets/${path}` });
 
-const frames = (path: string, frameWidth: number, frameHeight: number): SpriteSheetAsset => ({
+const frames = (
+  path: string,
+  frameWidth: number,
+  frameHeight: number,
+  icon?: SpriteSheetAsset['icon'],
+): SpriteSheetAsset => ({
   type: 'spritesheet',
   url: `assets/${path}`,
   frameWidth,
   frameHeight,
+  ...(icon ? { icon } : {}),
 });
 
 /** Tilesets and character sheets both use 16×16 frames. */
@@ -108,13 +123,13 @@ export const ASSETS = {
   'object.chest': frames('sprites/treasure-chest.png', 16, 14), // shut, then open
 
   // Enemies in battle, by enemy ID: each a strip of the frames it loops through, facing right,
-  // towards the party. Bosses are bigger.
+  // towards the party. Bosses are bigger, and say where their face is, for the timeline's icon.
   'monster.wolf': frames('monsters/dog-black.png', 18, 17),
   'monster.cave-bat': sheet('monsters/blue-bat.png'),
   'monster.reef-snail': sheet('monsters/mollusc.png'),
   'monster.grotto-octopus': sheet('monsters/octopus-2.png'),
   'monster.drowned-wisp': sheet('monsters/spirit.png'),
-  'monster.drowned-warden': frames('monsters/giant-blue-samurai.png', 96, 48),
+  'monster.drowned-warden': frames('monsters/giant-blue-samurai.png', 96, 48, { x: 40, y: 8 }),
 
   // Battle effects, played once over whoever an action reaches: a hit of each kind and element,
   // healing and helpful statuses, harmful ones, and Guard.
