@@ -55,6 +55,12 @@ export const BATTLE_LAYOUT = {
   banner: { x: BOTTOM.x, y: 24, width: BOTTOM.width, height: 18 } satisfies Box,
   /** The command window, at the bottom left. */
   commands: { ...BOTTOM, width: COMMANDS_WIDTH } satisfies Box,
+  /**
+   * The victory panel, after a battle won: across the bottom, in the command window's and the
+   * status panel's place. A row of stat gains has a column for each, the amount after the label.
+   */
+  victory: BOTTOM,
+  gainColumns: { width: 64, amount: 24 },
   /** The party's HP, MP and statuses, beside it, or a skill or item list in their place. */
   status: {
     x: BOTTOM.x + COMMANDS_WIDTH + GAP,
@@ -87,6 +93,8 @@ export const BATTLE_LAYOUT = {
     name: 34,
     listLabel: LIST_COLUMN - CURSOR - 6 - 14 - 3,
     help: BOTTOM.width - 2 * (FRAME + INSET.x),
+    /** A line of the victory panel. */
+    victory: BOTTOM.width - 2 * (FRAME + INSET.x),
   },
   /** Where enemies stand: spread across the left of the field, round this middle. */
   enemies: { middle: 88, spacing: 32, width: 120, back: 80, front: 100, alone: 92 },

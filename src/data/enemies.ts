@@ -1,11 +1,13 @@
 import type { EnemyDef } from '../core/schema';
 
 /**
- * Every enemy, by ID: its stats, which don't grow, how it takes each element, and what it does on
- * its turn (see Enemy behavior in docs/DESIGN.md). So far, a wolf for the first fights, and a first
- * draft of the Tide Caves and the Drowned Warden, its boss. Stats are starting points, for the
- * simulator and the balance passes to tune (`npm run sim`). Each fights as `monster.<id>` in the
- * asset manifest, and notes which of the pack's monsters that is.
+ * Every enemy, by ID: its stats, which don't grow, how it takes each element, what beating it gives
+ * and what it does on its turn (see Enemy behavior in docs/DESIGN.md). So far, a wolf for the first
+ * fights, and a first draft of the Tide Caves and the Drowned Warden, its boss. Stats are starting
+ * points, for the simulator and the balance passes to tune (`npm run sim`). EXP is a first guess at
+ * the target levels: a battle in the Tide Caves gives about 15, so about 25 of them take the party
+ * from level 1 to 5 by the Warden. Each fights as `monster.<id>` in the asset manifest, and notes
+ * which of the pack's monsters that is.
  */
 export const ENEMIES: Readonly<Record<string, EnemyDef>> = {
   // Prowls outside Saltmere. A pair is a fair fight for Rowan and Bram at level 1. The pack has no
@@ -13,6 +15,9 @@ export const ENEMIES: Readonly<Record<string, EnemyDef>> = {
   wolf: {
     name: 'Wolf',
     stats: { hp: 30, mp: 0, atk: 12, def: 6, mag: 2, res: 4, spd: 12 },
+    exp: 6,
+    gold: 5,
+    drops: [{ item: 'potion', chance: 0.1 }],
     reactions: { fire: 'weak' },
     actions: [
       { type: 'attack', weight: 3 },
@@ -29,12 +34,18 @@ export const ENEMIES: Readonly<Record<string, EnemyDef>> = {
   'cave-bat': {
     name: 'Cave Bat',
     stats: { hp: 30, mp: 0, atk: 10, def: 3, mag: 2, res: 4, spd: 16 },
+    exp: 5,
+    gold: 4,
+    drops: [{ item: 'eye-drops', chance: 0.1 }],
     reactions: { wind: 'weak' },
   },
   // Slow, and hard to crack; it hides in its shell once it's hurt. The pack's Mollusc.
   'reef-snail': {
     name: 'Reef Snail',
     stats: { hp: 62, mp: 0, atk: 12, def: 12, mag: 0, res: 4, spd: 3 },
+    exp: 10,
+    gold: 8,
+    drops: [{ item: 'antidote', chance: 0.1 }],
     reactions: { water: 'resist', earth: 'weak' },
     actions: [
       { type: 'attack', weight: 3 },
@@ -45,6 +56,10 @@ export const ENEMIES: Readonly<Record<string, EnemyDef>> = {
   'grotto-octopus': {
     name: 'Grotto Octopus',
     stats: { hp: 48, mp: 9, atk: 12, def: 6, mag: 8, res: 8, spd: 9 },
+    exp: 9,
+    gold: 7,
+    // The cure for its ink.
+    drops: [{ item: 'eye-drops', chance: 0.15 }],
     reactions: { water: 'absorb', fire: 'weak' },
     actions: [
       { type: 'attack', weight: 2 },
@@ -56,6 +71,9 @@ export const ENEMIES: Readonly<Record<string, EnemyDef>> = {
   'drowned-wisp': {
     name: 'Drowned Wisp',
     stats: { hp: 38, mp: 12, atk: 5, def: 8, mag: 12, res: 12, spd: 11 },
+    exp: 10,
+    gold: 9,
+    drops: [{ item: 'ether', chance: 0.08 }],
     reactions: { light: 'weak', fire: 'weak', water: 'absorb', gloam: 'immune' },
     actions: [
       { type: 'attack', weight: 1 },
@@ -68,6 +86,9 @@ export const ENEMIES: Readonly<Record<string, EnemyDef>> = {
   'drowned-warden': {
     name: 'Drowned Warden',
     stats: { hp: 470, mp: 60, atk: 60, def: 16, mag: 44, res: 14, spd: 8 },
+    exp: 150,
+    gold: 200,
+    drops: [{ item: 'ember-feather', chance: 1 }],
     reactions: { light: 'weak', earth: 'weak', water: 'absorb' },
     boss: true,
     actions: [

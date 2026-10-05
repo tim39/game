@@ -5,6 +5,7 @@ import { BATTLE_LAYOUT, type Box } from './battle-layout';
 import { LIST_COLUMNS, LIST_ROWS, ROOT_COMMANDS, type BattleMenu } from './battle-menu';
 import type { BattleView, FighterView } from './battle-view';
 import { FONT } from './fonts';
+import { lineText, type VictoryPage } from './victory-pages';
 
 /**
  * Colours on the pack's cream panels: ink, as in the dialogue box; faded ink for what can't be
@@ -20,7 +21,7 @@ const GAUGE_LOW = 0xd8463a;
 const HELPFUL = 0x2f7d4f;
 const HARMFUL = 0x8e2f73;
 
-const { frame, inset, lineHeight, cursor: CURSOR, listColumn } = BATTLE_LAYOUT;
+const { frame, inset, lineHeight, cursor: CURSOR, listColumn, gainColumns } = BATTLE_LAYOUT;
 /** How many statuses a party member's line has room for. */
 const TAGS = 2;
 
@@ -54,7 +55,8 @@ interface ListLine {
 
 /**
  * The battle's windows: the banner along the top, the command window, and the party's status, which
- * a skill or item list takes the place of while one is open. Drawn on the battle's own pixels (see
+ * a skill or item list takes the place of while one is open, and the victory panel, which takes the
+ * place of both once the battle is won. Drawn on the battle's own pixels (see
  * src/ui/battle-layout.ts), over the field, in the pack's choice box, like the save menu's slots.
  */
 export class BattlePanels {
@@ -71,6 +73,12 @@ export class BattlePanels {
   private readonly cursor: Phaser.GameObjects.Graphics;
   /** The ▼ in the banner that says Confirm goes on. */
   private readonly promptMark: Phaser.GameObjects.Graphics;
+  private readonly victoryPanel: Phaser.GameObjects.Container;
+  /** Text for the victory panel's pages, made as they need it. */
+  private readonly victoryTexts: Phaser.GameObjects.BitmapText[] = [];
+  /** The ▼ in the victory panel, which takes the place of the banner's while it shows. */
+  private readonly victoryMark: Phaser.GameObjects.Graphics;
+  private victoryPage: VictoryPage | null = null;
 
   constructor(
     private readonly scene: Phaser.Scene,
@@ -79,15 +87,7 @@ export class BattlePanels {
     const { banner, commands, status } = BATTLE_LAYOUT;
     this.bannerPanel = this.panel(banner);
     this.bannerText = this.text(banner.width / 2, banner.height / 2 - 4).setOrigin(0.5, 0);
-    this.promptMark = scene.add.graphics().fillStyle(INK).fillTriangle(0, 0, 5, 0, 2.5, 3);
-    this.promptMark.setPosition(banner.width - frame - 8, banner.height / 2 - 1).setVisible(false);
-    scene.tweens.add({
-      targets: this.promptMark,
-      y: this.promptMark.y + 1.5,
-      duration: 400,
-      yoyo: true,
-      repeat: -1,
-    });
+    this.promptMark = this.downMark(banner.width - frame - 8, banner.height / 2 - 1);
     this.bannerPanel.add([this.bannerText, this.promptMark]).setVisible(false);
 
     this.commandPanel = this.panel(commands);
@@ -113,6 +113,11 @@ export class BattlePanels {
     this.listArrows = scene.add.graphics();
     this.listPanel.add(this.listArrows).setVisible(false);
 
+    const { victory } = BATTLE_LAYOUT;
+    this.victoryPanel = this.panel(victory);
+    this.victoryMark = this.downMark(victory.width - frame - 8, victory.height - frame - 6);
+    this.victoryPanel.add(this.victoryMark).setVisible(false);
+
     // ▶, like the choice box's, over the windows.
     this.cursor = scene.add
       .graphics()
@@ -128,9 +133,56 @@ export class BattlePanels {
     if (text !== null && this.bannerText.text !== text) this.bannerText.setText(text);
   }
 
-  /** Shows or hides the bobbing ▼ in the banner that says Confirm goes on. */
+  /**
+   * Shows or hides the bobbing ▼ that says Confirm goes on: in the victory panel while it shows,
+   * and otherwise in the banner.
+   */
   prompt(visible: boolean): void {
-    this.promptMark.setVisible(visible);
+    const victory = this.victoryPage !== null;
+    this.promptMark.setVisible(visible && !victory);
+    this.victoryMark.setVisible(visible && victory);
+  }
+
+  /**
+   * Shows a page of the victory panel, in the command window's and the status panel's place, or
+   * with null puts it away. Its text is in ink; in a row of stat gains, each stat's name is in
+   * brown, as in the status panel, with what it went up by after it.
+   */
+  showVictory(page: VictoryPage | null): void {
+    this.victoryPage = page;
+    this.victoryPanel.setVisible(page !== null);
+    this.statusPanel.setVisible(page === null);
+    for (const text of this.victoryTexts) text.setVisible(false);
+    if (!page) return;
+    let used = 0;
+    const next = (x: number, y: number, text: string, tint: number): void => {
+      let shown = this.victoryTexts[used];
+      if (!shown) {
+        shown = this.text(0, 0);
+        this.victoryTexts.push(shown);
+        this.victoryPanel.add(shown);
+      }
+      shown.setPosition(x, y).setText(text).setTint(tint).setVisible(true);
+      used++;
+    };
+    const left = frame + inset.x;
+    page.lines.forEach((line, row) => {
+      const y = frame + inset.y + row * lineHeight;
+      if ('text' in line) {
+        next(left, y, line.text, INK);
+        return;
+      }
+      line.gains.forEach(({ label, amount }, column) => {
+        const x = left + column * gainColumns.width;
+        next(x, y, label, BROWN);
+        next(x + gainColumns.amount, y, amount, INK);
+      });
+    });
+  }
+
+  /** The victory panel's lines as shown, for the debug info: none while it's away. */
+  victoryText(): string[] {
+    return this.victoryPage?.lines.map(lineText) ?? [];
   }
 
   /** What the banner says, if it's showing. */
@@ -271,6 +323,14 @@ export class BattlePanels {
     };
     this.statusPanel.add([line.name, line.hpLabel, line.hp, line.mpLabel, line.mp, ...line.tags]);
     return line;
+  }
+
+  /** A ▼ bobbing at a spot in a panel, hidden until `prompt` shows it. */
+  private downMark(x: number, y: number): Phaser.GameObjects.Graphics {
+    const mark = this.scene.add.graphics().fillStyle(INK).fillTriangle(0, 0, 5, 0, 2.5, 3);
+    mark.setPosition(x, y).setVisible(false);
+    this.scene.tweens.add({ targets: mark, y: y + 1.5, duration: 400, yoyo: true, repeat: -1 });
+    return mark;
   }
 
   /** Puts the ▶ before a spot in a panel, level with the middle of the letters. */

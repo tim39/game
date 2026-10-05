@@ -64,6 +64,8 @@ export interface EventContext {
   takeGold(amount: number): void;
   /** Someone joins the party. */
   joinParty(character: string): void;
+  /** Everyone in the party back to their most HP and MP, KO'd or not: a night's rest. */
+  heal(): void;
 }
 
 export type EventScript = (ev: EventContext) => Promise<void>;

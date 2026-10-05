@@ -12,6 +12,7 @@ import {
   joinParty,
   removeGold,
   removeItem,
+  restoreParty,
   setFlag,
   setVar,
   type GameState,
@@ -335,6 +336,9 @@ export async function checkEvents({
               report(`it adds ${character} to the party, which isn't a character`);
             }
             state = joinParty(state, character);
+          },
+          heal: () => {
+            state = restoreParty(state);
           },
         };
 

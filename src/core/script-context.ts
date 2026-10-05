@@ -9,6 +9,7 @@ import {
   hasItem,
   removeGold,
   removeItem,
+  restoreParty,
   setFlag,
   setVar,
   type GameState,
@@ -60,5 +61,6 @@ export function createScriptContext(stage: Stage, store: StateStore, db: GameDb)
     giveGold: (amount) => change((state) => addGold(state, amount)),
     takeGold: (amount) => change((state) => removeGold(state, amount)),
     joinParty: (character) => change((state) => recruit(state, character, db)),
+    heal: () => change(restoreParty),
   };
 }

@@ -1,6 +1,7 @@
 import type { FighterStatus } from '../core/battle/fighter';
 import type { Element } from '../core/battle/terms';
 import type { ChestText } from '../core/chest';
+import type { Stat } from '../core/stats';
 import { itemName } from './items';
 
 /** Player-facing text that isn't dialogue: prompts, hints and system messages. */
@@ -112,7 +113,35 @@ export const BATTLE_TEXT = {
   gotAway: 'The party got away!',
   cantGetAway: "Couldn't get away!",
   victory: 'Victory!',
+  /** The victory panel, after a battle won: what the party gained, then each level-up. */
+  won: {
+    exp: (exp: number) => `Gained ${exp} EXP.`,
+    gold: (gold: number) => `Found ${gold} gold.`,
+    items: (items: readonly string[]) => `Found ${listed(items)}.`,
+    /** An item that dropped more than once. */
+    several: (item: string, count: number) => `${item} x${count}`,
+    levelUp: (who: string, level: number) => `${who} reached level ${level}!`,
+    learned: (skills: readonly string[]) => `Learned ${listed(skills)}!`,
+    /** What a level-up raised a stat by. */
+    gain: (amount: number) => `+${amount}`,
+  },
+  /** Stats' short names. */
+  stats: {
+    hp: 'HP',
+    mp: 'MP',
+    atk: 'ATK',
+    def: 'DEF',
+    mag: 'MAG',
+    res: 'RES',
+    spd: 'SPD',
+  } satisfies Record<Stat, string>,
   defeat: 'The party has fallen...',
   /** Under the result, until Confirm goes on. */
   onwards: { keys: 'Z: go on', touch: 'A: go on' },
 };
+
+/** Things in a list, as said: "Potion", "Potion and Ether", "Potion, Ether and Antidote". */
+function listed(things: readonly string[]): string {
+  const last = things.at(-1) ?? '';
+  return things.length > 1 ? `${things.slice(0, -1).join(', ')} and ${last}` : last;
+}

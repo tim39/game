@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'vitest';
 import type { GameDb } from './db';
+import type { Element } from './battle/terms';
 import type { Equipment } from './equipment';
 import type { ExpCurve } from './levels';
 import type { CharacterDef } from './schema';
@@ -18,11 +19,14 @@ import {
   inParty,
   itemCount,
   joinParty,
+  learnReactions,
   removeGold,
   removeItem,
+  restoreParty,
   setFlag,
   setLocation,
   setVar,
+  setVitals,
   unequip,
   type GameState,
   type NewGame,
@@ -139,6 +143,7 @@ describe('createGameState', () => {
       gold: 50,
       flags: {},
       vars: {},
+      knownReactions: {},
       location: { map: 'test-shore', x: 4, y: 5, facing: 'down' },
       playTimeMs: 0,
     });
@@ -156,6 +161,8 @@ describe('createGameState', () => {
     state = setFlag(state, 'story.beacon-out');
     state = setVar(state, 'saltmere.lamps-lit', 3);
     state = joinParty(state, 'bram');
+    state = setVitals(state, 'bram', { hp: 3, mp: 0 }, { hp: 50, mp: 10 });
+    state = learnReactions(state, { wolf: ['fire'] });
     state = addPlayTime(state, 16.7);
     expect(JSON.parse(JSON.stringify(state))).toEqual(state);
   });
@@ -181,6 +188,9 @@ test('no operation changes the state it is given', () => {
     gainExp(before, 'rowan', 15, CURVE),
     equip(addItem(before, 'iron-sword'), 'rowan', 'iron-sword', DB),
     unequip(joinParty(before, 'bram', { weapon: 'hand-axe' }), 'bram', 'weapon'),
+    setVitals(before, 'rowan', { hp: 1, mp: 0 }, { hp: 50, mp: 10 }),
+    restoreParty(deepFreeze(setVitals(before, 'rowan', { hp: 1, mp: 0 }, { hp: 50, mp: 10 }))),
+    learnReactions(before, { wolf: ['fire'] }),
     setLocation(before, { map: 'test-meadow', x: 1, y: 1, facing: 'up' }),
     addPlayTime(before, 100),
   ];
@@ -451,6 +461,87 @@ describe('equipment', () => {
   });
 });
 
+describe('HP and MP', () => {
+  /** The most HP and MP a member has: their level's and their gear's, which isn't this file's. */
+  const MOST = { hp: 50, mp: 10 };
+
+  test('are kept while a member is down from their most, and at their most they are full', () => {
+    let state = setVitals(start(), 'rowan', { hp: 20, mp: 10 }, MOST);
+    expect(state.members.rowan).toEqual({ level: 1, exp: 0, equipment: {}, hp: 20 });
+    state = setVitals(state, 'rowan', { hp: 50, mp: 0 }, MOST);
+    expect(state.members.rowan).toEqual({ level: 1, exp: 0, equipment: {}, mp: 0 });
+    // Full is kept as nothing, so it stays full when a level or gear raises their most.
+    state = setVitals(state, 'rowan', MOST, MOST);
+    expect(state.members.rowan).toEqual({ level: 1, exp: 0, equipment: {} });
+  });
+
+  test('stay as they are while a member gains EXP or changes gear', () => {
+    let state = joinParty(start(), 'bram', { weapon: 'hand-axe' });
+    state = setVitals(state, 'bram', { hp: 5, mp: 3 }, MOST);
+    expect(gainExp(state, 'bram', 10, CURVE).members.bram).toMatchObject({
+      level: 2,
+      hp: 5,
+      mp: 3,
+    });
+    expect(unequip(state, 'bram', 'weapon').members.bram).toEqual({
+      level: 1,
+      exp: 0,
+      equipment: {},
+      hp: 5,
+      mp: 3,
+    });
+  });
+
+  test('all come back in a rest, and a party that is full already changes nothing', () => {
+    let state = start({ party: ['rowan', 'bram'] });
+    expect(restoreParty(state)).toBe(state);
+    state = setVitals(state, 'rowan', { hp: 0, mp: 10 }, MOST);
+    state = setVitals(state, 'bram', { hp: 50, mp: 2 }, MOST);
+    expect(restoreParty(state).members).toEqual({
+      rowan: { level: 1, exp: 0, equipment: {} },
+      bram: { level: 1, exp: 0, equipment: {} },
+    });
+  });
+
+  test('are whole numbers from 0 to the most, for members of the party', () => {
+    for (const hp of [-1, 51, 2.5, Number.NaN]) {
+      expect(() => setVitals(start(), 'rowan', { hp, mp: 0 }, MOST)).toThrow(RangeError);
+    }
+    expect(() => setVitals(start(), 'rowan', { hp: 0, mp: 11 }, MOST)).toThrow(
+      "rowan can't have 11 MP: from 0 to 10",
+    );
+    expect(() => setVitals(start(), 'bram', MOST, MOST)).toThrow(
+      "bram can't have HP and MP: they aren't in the party",
+    );
+  });
+});
+
+describe('what the party knows of enemies', () => {
+  test('grows as the party learns, in the order of the elements', () => {
+    let state = learnReactions(start(), { wolf: ['wind', 'fire'] });
+    expect(state.knownReactions).toEqual({ wolf: ['fire', 'wind'] });
+    state = learnReactions(state, { wolf: ['earth', 'fire'], 'cave-bat': ['gloam'] });
+    expect(state.knownReactions).toEqual({
+      wolf: ['fire', 'wind', 'earth'],
+      'cave-bat': ['gloam'],
+    });
+  });
+
+  test('changes nothing when the party learns nothing new', () => {
+    const state = learnReactions(start(), { wolf: ['fire'] });
+    expect(learnReactions(state, { wolf: ['fire'] })).toBe(state);
+    expect(learnReactions(state, { wolf: [], 'cave-bat': [] })).toBe(state);
+    expect(learnReactions(state, {})).toBe(state);
+  });
+
+  test('is of elements there are, about enemies with kebab-case IDs', () => {
+    const ice = ['ice'] as unknown as Element[];
+    expect(() => learnReactions(start(), { wolf: ice })).toThrow('"ice", which isn\'t an element');
+    expect(() => learnReactions(start(), { wolf: ['fire', 'fire'] })).toThrow('an element twice');
+    expect(() => learnReactions(start(), { Wolf: ['fire'] })).toThrow("isn't kebab-case");
+  });
+});
+
 describe('the location', () => {
   test('moves the player', () => {
     const state = setLocation(start(), { map: 'test-meadow', x: 0, y: 7, facing: 'right' });
@@ -505,6 +596,8 @@ describe('checkedGameState', () => {
     let state = start({ party: ['rowan', 'bram'], gold: 75, inventory: { potion: 2 } });
     state = setFlag(state, 'chest.saltmere-tamsin-01');
     state = setVar(state, 'saltmere.lamps-lit', -3);
+    state = setVitals(state, 'bram', { hp: 12, mp: 0 }, { hp: 60, mp: 8 });
+    state = learnReactions(state, { wolf: ['fire', 'gloam'] });
     state = addPlayTime(state, 1234.5);
     return JSON.parse(JSON.stringify(state)) as GameState;
   };
@@ -530,11 +623,16 @@ describe('checkedGameState', () => {
       state.cheats = true;
       state.location = { ...full().location, spawn: 'door' };
       state.members = {
+        ...full().members,
         rowan: { level: 1, exp: 0, equipment: {}, mood: 'sunny' },
-        bram: { level: 1, exp: 0, equipment: {} },
       };
     });
     expect(checkedGameState(extra)).toEqual(full());
+  });
+
+  test('puts what the party knows of an enemy in the order of the elements', () => {
+    const unsorted = broken((state) => (state.knownReactions = { wolf: ['gloam', 'fire'] }));
+    expect(checkedGameState(unsorted).knownReactions).toEqual({ wolf: ['fire', 'gloam'] });
   });
 
   test('turns down anything that isn’t a game state', () => {
@@ -592,6 +690,23 @@ describe('checkedGameState', () => {
         (s.members = { ...full().members, bram: { level: 1, exp: 0, equipment: { weapon: 3 } } }),
       "bram's weapon isn't text",
     ],
+    [
+      'negative HP',
+      (s) => (s.members = { ...full().members, bram: { level: 1, exp: 0, equipment: {}, hp: -1 } }),
+      "bram can't have -1 HP",
+    ],
+    [
+      'MP as text',
+      (s) =>
+        (s.members = { ...full().members, bram: { level: 1, exp: 0, equipment: {}, mp: '3' } }),
+      "bram's MP isn't a number",
+    ],
+    [
+      'fractional MP',
+      (s) =>
+        (s.members = { ...full().members, bram: { level: 1, exp: 0, equipment: {}, mp: 1.5 } }),
+      "bram can't have 1.5 MP",
+    ],
     ['a list of items', (s) => (s.inventory = ['potion']), "The inventory isn't an object"],
     ['none of an item', (s) => (s.inventory = { potion: 0 }), 'from 1 up, not 0'],
     [
@@ -612,6 +727,32 @@ describe('checkedGameState', () => {
     ['a var of 0', (s) => (s.vars = { 'saltmere.lamps-lit': 0 }), 'and not 0'],
     ['a fractional var', (s) => (s.vars = { 'saltmere.lamps-lit': 0.5 }), 'whole numbers'],
     ['a var as text', (s) => (s.vars = { 'saltmere.lamps-lit': '3' }), "isn't a number"],
+    [
+      'nothing known of enemies',
+      (s) => delete s.knownReactions,
+      "What the party knows of enemies isn't an object",
+    ],
+    [
+      'an enemy with a bad ID',
+      (s) => (s.knownReactions = { Wolf: ['fire'] }),
+      'Enemy ID "Wolf" isn\'t kebab-case',
+    ],
+    [
+      'reactions that aren’t a list',
+      (s) => (s.knownReactions = { wolf: 'fire' }),
+      "What the party knows of wolf isn't a list",
+    ],
+    [
+      'an element that isn’t text',
+      (s) => (s.knownReactions = { wolf: [3] }),
+      "An element wolf takes isn't text",
+    ],
+    [
+      'an element there isn’t',
+      (s) => (s.knownReactions = { wolf: ['ice'] }),
+      '"ice", which isn\'t an element',
+    ],
+    ['an element twice', (s) => (s.knownReactions = { wolf: ['fire', 'fire'] }), 'twice'],
     ['no location', (s) => delete s.location, "The location isn't an object"],
     [
       'a map with a bad ID',

@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import type { Action } from '../core/battle/actions';
+import { battleAftermath, type Aftermath } from '../core/battle/aftermath';
 import { chooseEnemyAction } from '../core/battle/ai';
 import {
   activeFighter,
@@ -11,13 +12,13 @@ import {
   type Outcome,
 } from '../core/battle/battle';
 import type { BattleEvent } from '../core/battle/events';
-import type { Fighter, FighterId, Side } from '../core/battle/fighter';
+import { isKo, type Fighter, type FighterId, type Side } from '../core/battle/fighter';
 import { DIRECTIONS } from '../core/direction';
 import { compileBackdrop } from '../core/map/backdrop';
 import { Rng } from '../core/rng';
 import { addPlayTime } from '../core/state';
 import { BACKDROPS } from '../data/backdrops';
-import { BATTLE_PACING, BATTLE_TUNING } from '../data/balance';
+import { BATTLE_PACING, BATTLE_TUNING, EXP_CURVE, VICTORY_FADE_MS } from '../data/balance';
 import { DB } from '../data/db';
 import { MAP_CONTENT } from '../data/terrain';
 import { BATTLE_TEXT } from '../data/ui-text';
@@ -62,8 +63,9 @@ import {
   type TimelineChange,
 } from '../ui/battle-timeline';
 import { applyEvent, fighterView, viewOf, type BattleView } from '../ui/battle-view';
-import { FONT } from '../ui/fonts';
+import { FONT, textMeasurer } from '../ui/fonts';
 import { TimelineStrip, type TimelineFigure } from '../ui/timeline-strip';
+import { victoryPages, type VictoryPage } from '../ui/victory-pages';
 
 export const BATTLE_SCENE = 'battle';
 
@@ -84,7 +86,8 @@ export interface BattleStart {
   /**
    * Called once it has ended and the screen has faded out, after the scene has stopped, with how
    * it ended and the battle as it was then: who's standing, with what HP and MP, and what's left of
-   * the party's items.
+   * the party's items. By then, a battle won or fled has left its mark on the game state (see
+   * src/core/battle/aftermath.ts); one lost hasn't.
    */
   readonly onEnd: (result: BattleResult, battle: BattleState) => void;
 }
@@ -206,6 +209,8 @@ export class BattleScene extends Phaser.Scene {
   /** Bumped as the scene starts and stops, so a battle left behind stops where it is. */
   private run = 0;
   private result: BattleResult | null = null;
+  /** What the battle left behind, once it's over: none for a battle lost. */
+  private aftermath: Aftermath | null = null;
   /** The words and numbers that have risen over fighters, the latest last, for the debug info. */
   private popped: string[] = [];
 
@@ -246,6 +251,7 @@ export class BattleScene extends Phaser.Scene {
     this.forward = null;
     this.acting = null;
     this.result = null;
+    this.aftermath = null;
     this.popped = [];
     this.panels.showStatus(this.view, null);
     this.fight(run).catch((error: unknown) => console.error('The battle failed:', error));
@@ -295,6 +301,9 @@ export class BattleScene extends Phaser.Scene {
       list: list.map(({ label, detail, enabled }) => ({ label, detail, enabled })),
       aimed: menu ? aimedAt(menu) : [],
       banner: panels?.bannerShown ?? null,
+      victory: panels?.victoryText() ?? [],
+      rewards: this.aftermath?.rewards ?? null,
+      levelUps: this.aftermath?.levelUps.map(({ id, to }) => ({ id, level: to })) ?? [],
       timeline: this.strip?.debugInfo() ?? [],
       status: panels?.statusText() ?? [],
       popped: this.popped,
@@ -374,18 +383,36 @@ export class BattleScene extends Phaser.Scene {
     await this.wait(BATTLE_PACING.between);
   }
 
-  /** Says how the battle ended, and once the player has seen it, fades out and hands it back. */
+  /**
+   * Says how the battle ended, and once the player has seen it, fades out and hands it back. Won
+   * or fled, what the battle left goes into the game state first; won, the victory panel shows
+   * what the party gained, a page at a time.
+   */
   private async finish(outcome: BattleResult, run: number): Promise<void> {
     const panels = this.panels;
     this.result = outcome;
     // There are no more turns to come.
     this.strip?.hide();
+    if (outcome !== 'defeat') {
+      this.aftermath = battleAftermath(session.state, this.current(), DB, EXP_CURVE, this.rng);
+      session.state = this.aftermath.state;
+    }
     switch (outcome) {
-      case 'victory':
+      case 'victory': {
         panels?.banner(BATTLE_TEXT.victory);
         for (const figure of this.standing('party')) this.cheer(figure);
-        await this.confirm();
+        audio.interruptMusic(null, VICTORY_FADE_MS);
+        audio.playSound('sfx.victory');
+        const pages = this.aftermath ? this.victoryPages(this.aftermath) : [];
+        for (const page of pages) {
+          panels?.showVictory(page);
+          if (page.levelUp) audio.playSound('sfx.level-up');
+          await this.confirm();
+          if (!this.live(run)) return;
+        }
+        if (pages.length === 0) await this.confirm();
         break;
+      }
       case 'defeat':
         panels?.banner(BATTLE_TEXT.defeat);
         await this.confirm();
@@ -399,9 +426,29 @@ export class BattleScene extends Phaser.Scene {
     if (!this.live(run)) return;
     const { onEnd } = this.start ?? {};
     const battle = this.current();
-    this.scene.stop();
+    // Stopped at once: `this.scene.stop()` would wait for the next frame, and stop a battle started
+    // straight after this one too (from the debug hooks, say).
+    this.game.scene.stop(this.scene.key);
     audio.resumeMusic();
     onEnd?.(outcome, battle);
+  }
+
+  /** The victory panel's pages for a battle won, wrapped to fit it. */
+  private victoryPages(aftermath: Aftermath): VictoryPage[] {
+    const nameOf = <T extends { readonly name: string }>(
+      record: Readonly<Record<string, T>>,
+      id: string,
+    ): string => (Object.hasOwn(record, id) ? (record[id]?.name ?? id) : id);
+    return victoryPages(
+      aftermath,
+      {
+        character: (id) => nameOf(DB.characters, id),
+        skill: (id) => nameOf(DB.skills, id),
+        item: (id) => nameOf(DB.items, id),
+      },
+      BATTLE_LAYOUT.room.victory,
+      textMeasurer(this, FONT.body),
+    );
   }
 
   /** Fades the screen in from black, or out to it, at the battle speed. Resolves once it's done. */
@@ -894,12 +941,16 @@ export class BattleScene extends Phaser.Scene {
         if (!home) continue;
         const key = sheetOf(fighter);
         const sprite = this.add.sprite(home.x, home.y, key).setOrigin(0.5, 1);
-        if (side === 'party') sprite.setFrame(BATTLE_POSES.stand);
+        // A party member who comes into the battle KO'd lies there until they're revived.
+        const pose = isKo(fighter) ? BATTLE_POSES.down : BATTLE_POSES.stand;
+        if (side === 'party') sprite.setFrame(pose);
         else sprite.play(this.idleAnim(key));
         const shadow = this.add.image(home.x, home.y, 'sprite.shadow').setDepth(DEPTH.shadows);
         shadow.setScale(Math.max(1, Math.round(Math.min(sprite.width, sprite.height) / 16)), 1);
         const figure = new Figure(fighter.id, side, sprite, shadow, home);
         figure.place(home.x, home.y);
+        // Greyed out, for someone down.
+        this.untint(figure);
         this.figures.set(fighter.id, figure);
       }
     }

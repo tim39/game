@@ -8,6 +8,7 @@ import {
   type GameState,
   type MemberState,
   type NewGame,
+  type Vitals,
 } from './state';
 import { statsAtLevel, withEquipment, type Stats } from './stats';
 
@@ -37,6 +38,23 @@ export function memberStats(state: GameState, id: CharacterId, db: GameDb): Stat
     return def.stats;
   });
   return withEquipment(statsAtLevel(characterOf(db, id).stats, member.level), bonuses);
+}
+
+/**
+ * A member's HP and MP now, as the game state keeps them, and the most they can have: full, unless
+ * it says they're down, and never more than their most (gear that raised it may have come off).
+ */
+export function memberVitals(
+  state: GameState,
+  id: CharacterId,
+  db: GameDb,
+): { readonly now: Vitals; readonly most: Vitals } {
+  const member = memberOf(state, id);
+  const { hp, mp } = memberStats(state, id, db);
+  return {
+    now: { hp: Math.min(member.hp ?? hp, hp), mp: Math.min(member.mp ?? mp, mp) },
+    most: { hp, mp },
+  };
 }
 
 /**

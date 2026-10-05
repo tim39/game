@@ -132,7 +132,11 @@ test('walking the North Road meets wolves, to battle music, and the field carrie
 
   const won = await fightUntilOver(page);
   expect(won.outcome).toBe('victory');
-  await page.keyboard.press('KeyZ');
+  // Confirm goes through the victory panel's pages, however many level-ups there were.
+  for (let shown = 0; shown < 10 && (await activeScenes(page))?.join() !== 'field'; shown++) {
+    await page.keyboard.press('KeyZ');
+    await nextFrames(page);
+  }
   await page.waitForFunction(() => window.__game?.activeScenes().join() === 'field');
   await page.waitForFunction(() => window.__game?.inspect('field')?.fading === false);
   // Back where the battle came, with a fresh countdown, and the field's music carrying on where

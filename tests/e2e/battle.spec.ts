@@ -34,6 +34,7 @@ interface BattleInfo {
   aimed: string[];
   banner: string | null;
   timeline: { id: string; telegraph: boolean; changed: boolean }[];
+  victory: string[];
   status: string[];
   popped: string[];
   fighters: FighterInfo[];
@@ -218,16 +219,23 @@ test('items say what they do, and a Fire Bomb hits a wolf where it’s weak', as
   expect(errors).toEqual([]);
 });
 
-test('a battle won says so, and Confirm goes back to the field', async ({ page }) => {
+test('a battle won says so, and Confirm goes through the victory panel back to the field', async ({
+  page,
+}) => {
   const errors = await startBattle(page, ['wolf', 'wolf']);
   const won = await attackUntilOver(page);
   expect(won).toMatchObject({ outcome: 'victory', result: 'victory', banner: 'Victory!' });
   expect(won.fighters.filter(({ side, hp }) => side === 'enemies' && hp > 0)).toEqual([]);
   // There are no more turns to come.
   expect(won.timeline).toEqual([]);
+  expect(won.victory[0]).toBe('Gained 12 EXP.');
   await page.screenshot({ path: 'test-results/screenshots/battle-victory.png' });
 
-  await press(page, 'KeyZ');
+  // The rewards, then Rowan's level-up and Bram's.
+  for (let shown = 0; shown < 3; shown++) {
+    expect((await waitForPlayer(page)).waiting).toBe(true);
+    await press(page, 'KeyZ');
+  }
   await page.waitForFunction(() => window.__game?.activeScenes().join() === 'field');
   expect(await page.evaluate(() => window.__game?.inspect('battle'))).toEqual({});
   expect(errors).toEqual([]);

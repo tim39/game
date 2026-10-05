@@ -10,6 +10,7 @@ import {
   timelineSpot,
 } from './battle-layout';
 import { TIMELINE_TURNS } from './battle-timeline';
+import { GAINS_PER_ROW, VICTORY_LINES } from './victory-pages';
 
 const { banner, commands, status } = BATTLE_LAYOUT;
 const counts = (most: number): number[] => Array.from({ length: most }, (_, index) => index + 1);
@@ -24,6 +25,17 @@ describe('the battle layout', () => {
     expect(status.x).toBeGreaterThan(commands.x + commands.width);
     expect(status.x + status.width).toBe(310);
     expect(status).toMatchObject({ y: commands.y, height: commands.height });
+  });
+
+  test('puts the victory panel in their place, with room for its lines and a row of gains', () => {
+    const { victory, gainColumns, frame, inset, lineHeight, room } = BATTLE_LAYOUT;
+    expect(victory).toEqual({ x: commands.x, y: commands.y, width: 300, height: commands.height });
+    const lines = (victory.height - 2 * (frame + inset.y) + (lineHeight - 8)) / lineHeight;
+    expect(lines).toBeGreaterThanOrEqual(VICTORY_LINES);
+    expect(GAINS_PER_ROW * gainColumns.width).toBeLessThanOrEqual(room.victory);
+    // "MAG" is the widest label, at 21 pixels, and "+999" more than a level-up gives, at 27.
+    expect(gainColumns.amount).toBeGreaterThanOrEqual(21 + 3);
+    expect(gainColumns.width - gainColumns.amount).toBeGreaterThan(27);
   });
 
   test('fits the timeline’s tiles across the top, above the banner, the first set apart', () => {

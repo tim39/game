@@ -1,8 +1,8 @@
 import { describe, expect, test } from 'vitest';
 import type { GameDb } from './db';
-import { knownSkills, memberStats, recruit, startGame } from './party';
+import { knownSkills, memberStats, memberVitals, recruit, startGame } from './party';
 import type { CharacterDef } from './schema';
-import { addItem, equip, gainExp, setFlag, type NewGame } from './state';
+import { addItem, equip, gainExp, setFlag, setVitals, unequip, type NewGame } from './state';
 
 /** Every stat 10 at level 1 and 39 at level 30: one a level. */
 const EVEN: CharacterDef['stats'] = {
@@ -123,6 +123,37 @@ describe('memberStats', () => {
     expect(() => memberStats(startGame(NEW_GAME, DB), 'liora', DB)).toThrow(
       "liora isn't in the party",
     );
+  });
+});
+
+describe('memberVitals', () => {
+  test('are a member’s most HP and MP, unless the game state says they are down', () => {
+    let state = startGame(NEW_GAME, DB);
+    expect(memberVitals(state, 'bram', DB)).toEqual({
+      now: { hp: 10, mp: 10 },
+      most: { hp: 10, mp: 10 },
+    });
+    state = setVitals(state, 'bram', { hp: 4, mp: 0 }, { hp: 10, mp: 10 });
+    expect(memberVitals(state, 'bram', DB).now).toEqual({ hp: 4, mp: 0 });
+    // A level raises their most, and they're as down as they were.
+    state = gainExp(state, 'bram', 40, CURVE);
+    expect(memberVitals(state, 'bram', DB)).toEqual({
+      now: { hp: 4, mp: 0 },
+      most: { hp: 12, mp: 12 },
+    });
+  });
+
+  test('never come to more than the most', () => {
+    // A vest that adds 4 HP: Rowan has 13 of 14 with it on, and 10 at most without it.
+    const vest = { ...DB.items.vest, stats: { hp: 4 } } as GameDb['items'][string];
+    const hearty: GameDb = { ...DB, items: { ...DB.items, vest } };
+    let state = startGame(NEW_GAME, hearty);
+    state = setVitals(state, 'rowan', { hp: 13, mp: 10 }, { hp: 14, mp: 10 });
+    state = unequip(state, 'rowan', 'armor');
+    expect(memberVitals(state, 'rowan', hearty)).toEqual({
+      now: { hp: 10, mp: 10 },
+      most: { hp: 10, mp: 10 },
+    });
   });
 });
 

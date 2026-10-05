@@ -134,6 +134,14 @@ describe('migrations', () => {
     expect(toEquipment?.({ ...v1State, members: [1] })).toEqual({ ...v1State, members: [1] });
   });
 
+  test('to version 3 keep what the party learns of enemies, and they have learned nothing yet', () => {
+    const [, toKnown] = MIGRATIONS;
+    const v2State: Record<string, unknown> = { ...game() };
+    delete v2State.knownReactions;
+    // Everyone in a version 2 save is at full HP and MP, which is kept as nothing.
+    expect(toKnown?.(v2State)).toEqual(game());
+  });
+
   test('that fail, or give a state that breaks the rules, mean a damaged save', () => {
     const broken: Migration = () => {
       throw new Error('The rats got to it');
@@ -165,6 +173,7 @@ const AFTER_THE_CHEST: Partial<GameState> = {
   gold: 0,
   flags: { 'chest.saltmere-tamsin-01': true },
   vars: {},
+  knownReactions: {},
   location: { map: 'saltmere-tamsin', x: 2, y: 3, facing: 'left' },
 };
 
@@ -173,6 +182,21 @@ const FIXTURE_HOLDS: Readonly<Record<number, Partial<GameState>>> = {
   1: AFTER_THE_CHEST,
   // Rowan starts with a Bronze Sword and Travel Clothes on.
   2: AFTER_THE_CHEST,
+  // Then Rowan beat a Wolf, burning it with a Fire Bomb, and came back 13 HP down, with 6 EXP and
+  // 5 gold, knowing Wolves are weak to fire.
+  3: {
+    ...AFTER_THE_CHEST,
+    members: {
+      rowan: {
+        level: 1,
+        exp: 6,
+        equipment: { weapon: 'bronze-sword', armor: 'travel-clothes' },
+        hp: 47,
+      },
+    },
+    gold: 5,
+    knownReactions: { wolf: ['fire'] },
+  },
 };
 
 describe('a save from every version', () => {

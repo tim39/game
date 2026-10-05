@@ -1,5 +1,5 @@
 import type { GameDb } from '../db';
-import { knownSkills, memberStats } from '../party';
+import { knownSkills, memberStats, memberVitals } from '../party';
 import type { Rng } from '../rng';
 import type { EnemyDef, ItemDef, SkillDef } from '../schema';
 import type { GameState } from '../state';
@@ -79,9 +79,11 @@ export interface BattleState {
 
 /**
  * Starts a battle between the party, as the game state has them, and `setup`'s enemies. Party
- * members fight with their level's stats, their equipment and the skills they know, at full HP and
- * MP. Everyone's first turn comes after their Normal delay times a random number from 0.4 to 1, or
- * straight away for a side that gets the jump. The first turn has started: `active` says whose.
+ * members fight with their level's stats, their equipment and the skills they know, with the HP
+ * and MP they have (any at 0 start KO'd), and the party knows what it has learned of how enemies
+ * take elements. Everyone's first turn comes after their Normal delay times a random number from
+ * 0.4 to 1, or straight away for a side that gets the jump. The first turn has started: `active`
+ * says whose.
  */
 export function startBattle(
   setup: BattleSetup,
@@ -96,7 +98,9 @@ export function startBattle(
   }
   if (state.party.length === 0) throw new RangeError('A battle needs someone in the party');
   const foes = enemyFighters(enemies, db);
-  const fighters = [...state.party.map((id, slot) => partyFighter(state, id, slot, db)), ...foes];
+  const party = state.party.map((id, slot) => partyFighter(state, id, slot, db));
+  if (party.every(isKo)) throw new RangeError('A battle needs someone in the party standing');
+  const fighters = [...party, ...foes];
   const ids = fighters.map((fighter) => fighter.id);
   const twice = ids.find((id, index) => ids.indexOf(id) !== index);
   if (twice !== undefined) throw new RangeError(`Two fighters would both be ${twice}`);
@@ -106,6 +110,8 @@ export function startBattle(
   const [min, max] = tuning.startCt;
   const ready = fighters.map((fighter) => {
     const roll = rng.range(min, max);
+    // Anyone KO'd already stays off the timeline until they're revived.
+    if (isKo(fighter)) return fighter;
     const ct = fighter.side === jump ? 0 : Math.round(normalDelay(fighter, tuning) * roll);
     return { ...fighter, ct };
   });
@@ -114,7 +120,7 @@ export function startBattle(
     active: null,
     outcome: 'ongoing',
     inventory: state.inventory,
-    known: {},
+    known: state.knownReactions,
     boss: foes.some((foe) => foe.boss),
     turn: 0,
     rules: { tuning, skills: db.skills, items: db.items, enemies: db.enemies },
@@ -970,6 +976,7 @@ function hitElementOf(battle: BattleState, action: Action, actor: Fighter): Elem
 
 function partyFighter(state: GameState, id: string, slot: number, db: GameDb): Fighter {
   const stats = memberStats(state, id, db);
+  const { now } = memberVitals(state, id, db);
   const character = ownOf(db.characters, id);
   if (!character) throw new RangeError(`There's no character called ${id}`);
   const weapon = ownOf(state.members, id)?.equipment.weapon;
@@ -981,8 +988,8 @@ function partyFighter(state: GameState, id: string, slot: number, db: GameDb): F
     name: character.name,
     slot,
     stats,
-    hp: stats.hp,
-    mp: stats.mp,
+    hp: now.hp,
+    mp: now.mp,
     ct: 0,
     statuses: {},
     staggered: false,

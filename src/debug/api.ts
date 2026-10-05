@@ -1,6 +1,6 @@
 import type { Direction } from '../core/direction';
 import type { EncounterRate } from '../core/encounters';
-import type { GameState } from '../core/state';
+import type { GameState, Vitals } from '../core/state';
 import type { AudioInfo } from '../systems/audio';
 
 /**
@@ -30,6 +30,11 @@ export interface DebugApi {
   give(item: string, count?: number): void;
   /** Has a character join the party, at level 1 in the gear they start with. */
   join(character: string): void;
+  /**
+   * A party member's HP and MP, and the most they can have. With `set`, first sets how much of
+   * either they have, as a battle might leave them: 0 HP is KO'd.
+   */
+  vitals(character: string, set?: Partial<Vitals>): { now: Vitals; most: Vitals };
   /** Runs an event script on the field, as if something had set it off. Throws if one is running. */
   run(script: string): void;
   /** The music playing and fading, and the latest sound effects. */

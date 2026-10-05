@@ -145,6 +145,9 @@ describe('checkContent', () => {
       wolf: {
         name: 'Wolf',
         stats: { hp: 30, mp: 0, atk: 12, def: 6, mag: 2, res: 4, spd: 12 },
+        exp: 6,
+        gold: 5,
+        drops: [{ item: 'potion', chance: 0.1 }],
         reactions: { fire: 'weak', water: 'normal', gloam: 'absorb' },
         actions: [
           { type: 'attack', weight: 3 },
@@ -156,6 +159,8 @@ describe('checkContent', () => {
       warden: {
         name: 'Drowned Warden',
         stats: { hp: 400, mp: 40, atk: 20, def: 15, mag: 10, res: 12, spd: 9 },
+        exp: 100,
+        gold: 0,
         boss: true,
         actions: [{ type: 'attack' }],
         phases: [
@@ -493,14 +498,24 @@ describe('checkContent', () => {
           wolf: {
             ...wolf,
             stats: { ...wolf.stats, hp: 0, spd: 2.5 },
+            exp: -1,
+            gold: 1.5,
+            drops: [
+              { item: 'potion', chance: 0 },
+              { item: 'potion', chance: 1.5 },
+            ],
             reactions: { fire: 'weakness', ice: 'weak' },
           },
-          rat: { name: 'Rat', stats: { hp: 5, atk: 3 }, boss: 'yes' },
+          rat: { name: 'Rat', stats: { hp: 5, atk: 3 }, exp: 1, gold: 1, drops: [], boss: 'yes' },
         },
       }),
     ).toEqual([
       'Enemy wolf: stats.hp should be at least 1, not 0',
       'Enemy wolf: stats.spd should be a whole number, not 2.5',
+      'Enemy wolf: exp should be at least 0, not -1',
+      'Enemy wolf: gold should be a whole number, not 1.5',
+      'Enemy wolf: drops[0].chance should be more than 0, not 0',
+      'Enemy wolf: drops[1].chance should be at most 1, not 1.5',
       'Enemy wolf: reactions.fire should be one of "weak", "normal", "resist", "immune", ' +
         '"absorb", not "weakness"',
       "Enemy wolf: reactions has a field it shouldn't: ice",
@@ -509,6 +524,7 @@ describe('checkContent', () => {
       'Enemy rat: stats.mag is missing',
       'Enemy rat: stats.res is missing',
       'Enemy rat: stats.spd is missing',
+      'Enemy rat: drops is empty',
       'Enemy rat: boss should be true or false, not "yes"',
     ]);
   });
@@ -819,6 +835,9 @@ describe('checkEnemies', () => {
       wolf: {
         name: 'Wolf',
         stats: { hp: 30, mp: 0, atk: 12, def: 6, mag: 2, res: 4, spd: 12 },
+        exp: 6,
+        gold: 5,
+        drops: [{ item: 'potion', chance: 0.1 }],
         actions: [
           { type: 'attack', target: 'lowest-hp' },
           { type: 'skill', skill: 'bite', target: 'healer' },
@@ -831,6 +850,16 @@ describe('checkEnemies', () => {
       bite: skill('Bite', 'one-enemy'),
       howl: skill('Howl', 'all-enemies'),
       mend: skill('Mend', 'one-ally'),
+    },
+    items: {
+      potion: {
+        name: 'Potion',
+        description: 'Restores HP.',
+        kind: 'consumable',
+        price: 25,
+        target: 'one-ally',
+        effects: [{ type: 'restore', hp: 50 }],
+      },
     },
     manifest: {
       'monster.wolf': { type: 'spritesheet', url: 'wolf.png', frameWidth: 16, frameHeight: 16 },
@@ -878,8 +907,21 @@ describe('checkEnemies', () => {
     ]);
   });
 
+  test('reports drops that aren’t items', () => {
+    const wolf = SOURCES.enemies.wolf!;
+    const drops = [
+      { item: 'potion', chance: 0.1 },
+      { item: 'hi-potion', chance: 0.05 },
+    ];
+    expect(checkEnemies({ ...SOURCES, enemies: { wolf: { ...wolf, drops } } })).toEqual([
+      "Enemy wolf: drops[1] is hi-potion, which isn't an item",
+    ]);
+  });
+
   test('the real enemies check out', () => {
-    expect(checkEnemies({ enemies: ENEMIES, skills: SKILLS, manifest: ASSETS })).toEqual([]);
+    expect(
+      checkEnemies({ enemies: ENEMIES, skills: SKILLS, items: ITEMS, manifest: ASSETS }),
+    ).toEqual([]);
   });
 });
 

@@ -450,6 +450,18 @@ const EnemySchema = z.strictObject({
     res: z.int().min(0),
     spd: z.int().min(0),
   }),
+  /** EXP that beating it gives each member of the party, KO'd or not. */
+  exp: z.int().min(0),
+  /** Gold that beating it gives the party. */
+  gold: z.int().min(0),
+  /**
+   * Items it can leave behind once it's beaten, each rolled for on its own: an item, by ID, and
+   * the chance of one, above 0 and at most 1.
+   */
+  drops: z
+    .array(z.strictObject({ item: IdSchema, chance: z.number().gt(0).max(1) }))
+    .min(1)
+    .optional(),
   /** How it takes each element it doesn't take normally. */
   reactions: z.partialRecord(ElementSchema, z.enum(REACTIONS)).optional(),
   /**

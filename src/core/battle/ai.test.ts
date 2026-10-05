@@ -26,6 +26,8 @@ import type { Status, TargetRule } from './terms';
 const FOE: EnemyDef = {
   name: 'Foe',
   stats: { hp: 100, mp: 20, atk: 10, def: 5, mag: 5, res: 5, spd: 10 },
+  exp: 0,
+  gold: 0,
 };
 
 /** A battle against foes that act as `foe` says: in an ambush, so the first goes first. */

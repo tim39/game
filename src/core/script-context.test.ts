@@ -2,7 +2,7 @@ import { describe, expect, test } from 'vitest';
 import type { GameDb } from './db';
 import { defineEvent, type EventScript } from './events';
 import { createScriptContext, type Stage } from './script-context';
-import { createGameState, type GameState } from './state';
+import { createGameState, setVitals, type GameState } from './state';
 
 const START = createGameState({
   location: { map: 'test-shore', x: 4, y: 5, facing: 'down' },
@@ -118,6 +118,20 @@ describe('the game state verbs', () => {
       party: ['rowan', 'bram'],
       members: { bram: { level: 1, exp: 0, equipment: { weapon: 'hand-axe' } } },
     });
+  });
+
+  test('heal everyone in the party back to their most HP and MP, KO’d or not', async () => {
+    const hurt = setVitals(START, 'rowan', { hp: 0, mp: 3 }, { hp: 50, mp: 10 });
+    const rest = defineEvent((ev) => {
+      ev.heal();
+      return Promise.resolve();
+    });
+    expect((await run(rest, hurt)).state.members.rowan).toEqual({
+      level: 1,
+      exp: 0,
+      equipment: {},
+    });
+    expect((await run(rest)).state).toBe(START);
   });
 
   test('turn down what the game state does, which fails the script', async () => {

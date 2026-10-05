@@ -51,6 +51,18 @@ export const kid = defineEvent(async (ev) => {
   );
 });
 
+// Rowan's bed, in Tamsin's house: a rest puts the party back on their feet. Until there are inns
+// (M5), it's the only way to.
+export const rowansBed = defineEvent(async (ev) => {
+  await ev.say('sign', "Rowan's bed, still unmade. A rest would do the party good.");
+  if ((await ev.choice(['Rest a while', 'Not now'])) !== 0) return;
+  await ev.fadeOut();
+  ev.heal();
+  await ev.wait(800);
+  await ev.fadeIn();
+  await ev.say('sign', 'Rested, and ready to go again.');
+});
+
 export const lighthouseSign = defineEvent(async (ev) => {
   await ev.say('sign', 'THE LIGHTHOUSE. The Tide Beacon burns here. Keep the flame.');
 });

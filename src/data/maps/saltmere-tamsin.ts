@@ -1,8 +1,8 @@
 import { defineMap } from '../../core/map/types';
 
 /**
- * Tamsin's house in Saltmere, where Rowan lives: two beds, a table, the oven, shelves, and a chest
- * with a Potion in it. A draft.
+ * Tamsin's house in Saltmere, where Rowan lives: two beds, Rowan's to rest in, a table, the oven,
+ * shelves, and a chest with a Potion in it. A draft.
  */
 export default defineMap({
   id: 'saltmere-tamsin',
@@ -22,8 +22,9 @@ export default defineMap({
   objects: [
     { type: 'prefab', prefab: 'door', at: [5, 7], to: { map: 'saltmere', spawn: 'tamsin' } },
     { type: 'spawn', id: 'door', at: [5, 6], facing: 'up' },
-    // Rowan's bed and Tamsin's, then shelves and the oven along the back wall.
-    { type: 'prefab', prefab: 'bed', at: [1, 1] },
+    // Rowan's bed, where the party can rest, and Tamsin's; then shelves and the oven along the
+    // back wall.
+    { type: 'prefab', prefab: 'bed', at: [1, 1], script: 'saltmere/rowans-bed' },
     { type: 'prefab', prefab: 'bed-green', at: [3, 1] },
     { type: 'prefab', prefab: 'bookshelf', at: [5, 0] },
     { type: 'prefab', prefab: 'shelf', at: [6, 0] },

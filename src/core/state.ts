@@ -1,3 +1,4 @@
+import { ELEMENTS, type Element } from './battle/terms';
 import type { GameDb } from './db';
 import { DIRECTIONS, isDirection, type Direction } from './direction';
 import { SLOTS, canEquip, slotOf, type Equipment, type Slot } from './equipment';
@@ -27,18 +28,37 @@ export interface GameState {
   readonly flags: Readonly<Record<string, true>>;
   /** Story counters, like `saltmere.lamps-lit`. Any that aren't listed are 0. */
   readonly vars: Readonly<Record<string, number>>;
+  /**
+   * What the party has learned of each kind of enemy, by its ID: the elements they know how it
+   * takes, in the order of ELEMENTS. Battles start out knowing them (see Elements and Stagger in
+   * docs/DESIGN.md).
+   */
+  readonly knownReactions: Readonly<Record<string, readonly Element[]>>;
   readonly location: PlayerLocation;
   /** How long this game has been played, in milliseconds. */
   readonly playTimeMs: number;
 }
 
-/** How far a party member has come, and what they have on. M4 adds HP and MP, for battles. */
+/** How far a party member has come, what they have on, and how they are. */
 export interface MemberState {
   readonly level: number;
   /** All the EXP they've earned. */
   readonly exp: number;
   /** What's in their weapon, armor and accessory slots. Equipping takes it from the inventory. */
   readonly equipment: Equipment;
+  /**
+   * The HP and MP they have left, while they're down from their most; without one, they're full
+   * of it. Their most comes from their level and equipment (`memberStats` in src/core/party.ts),
+   * which `memberVitals` there holds these to.
+   */
+  readonly hp?: number;
+  readonly mp?: number;
+}
+
+/** HP and MP, as much as someone has, or the most they can. */
+export interface Vitals {
+  readonly hp: number;
+  readonly mp: number;
 }
 
 /** Where the player stands: a cell on a map, facing one way. */
@@ -69,6 +89,7 @@ export function createGameState(start: NewGame): GameState {
     gold: 0,
     flags: {},
     vars: {},
+    knownReactions: {},
     location: checkedLocation(start.location),
     playTimeMs: 0,
   };
@@ -208,6 +229,54 @@ export function unequip(state: GameState, id: CharacterId, slot: Slot): GameStat
   return withMember(addItem(state, old), id, { ...member, equipment });
 }
 
+/**
+ * Sets how much HP and MP a member has, out of `most`, the most they can: as a battle left them,
+ * say. One at its most is kept as full, so it stays full when their most goes up.
+ */
+export function setVitals(state: GameState, id: CharacterId, now: Vitals, most: Vitals): GameState {
+  const member = memberOf(state, id, 'have HP and MP');
+  const hp = checkedVital(id, 'HP', now.hp, most.hp);
+  const mp = checkedVital(id, 'MP', now.mp, most.mp);
+  return withMember(state, id, {
+    ...atFull(member),
+    ...(hp < most.hp ? { hp } : {}),
+    ...(mp < most.mp ? { mp } : {}),
+  });
+}
+
+/** Everyone in the party back to their most HP and MP: a night's rest, or a Light Shrine. */
+export function restoreParty(state: GameState): GameState {
+  if (Object.values(state.members).every((member) => !('hp' in member) && !('mp' in member))) {
+    return state;
+  }
+  return {
+    ...state,
+    members: Object.fromEntries(
+      Object.entries(state.members).map(([id, member]) => [id, atFull(member)]),
+    ),
+  };
+}
+
+/** A member at their most HP and MP: as they are, without any kept. */
+const atFull = ({ level, exp, equipment }: MemberState): MemberState => ({ level, exp, equipment });
+
+/**
+ * The party learns how kinds of enemies take elements, by the enemies' IDs: as a battle taught
+ * them. What they knew already they still know.
+ */
+export function learnReactions(
+  state: GameState,
+  learned: Readonly<Record<string, readonly Element[]>>,
+): GameState {
+  let knownReactions = state.knownReactions;
+  for (const [kind, elements] of Object.entries(learned)) {
+    const known = own(knownReactions, checkedId('Enemy', kind)) ?? [];
+    const all = checkedElements(kind, [...known, ...elements.filter((e) => !known.includes(e))]);
+    if (all.length > known.length) knownReactions = { ...knownReactions, [kind]: all };
+  }
+  return knownReactions === state.knownReactions ? state : { ...state, knownReactions };
+}
+
 /** Moves the player to another map, another cell, or just to face another way. */
 export function setLocation(state: GameState, location: PlayerLocation): GameState {
   const { map, x, y, facing } = location;
@@ -264,6 +333,19 @@ export function checkedGameState(json: unknown): GameState {
       }
       return [checkedName('Var', name), value];
     }),
+    knownReactions: recordOf(
+      state.knownReactions,
+      'What the party knows of enemies',
+      (kind, json) => [
+        checkedId('Enemy', kind),
+        checkedElements(
+          kind,
+          listOf(json, `What the party knows of ${kind}`).map((element) =>
+            textOf(element, `An element ${kind} takes`),
+          ),
+        ),
+      ],
+    ),
     location: checkedLocation(locationOf(state.location)),
     playTimeMs: checkedPlayTime(numberOf(state.playTimeMs, 'Play time')),
   };
@@ -328,6 +410,29 @@ function checkedLocation({ map, x, y, facing }: PlayerLocation): PlayerLocation 
   return { map, x, y, facing };
 }
 
+/** HP or MP someone has: a whole number, from none to the most they can have. */
+function checkedVital(id: string, what: string, amount: number, most: number): number {
+  if (!Number.isSafeInteger(amount) || amount < 0 || amount > most) {
+    throw new RangeError(`${id} can't have ${amount} ${what}: from 0 to ${most}`);
+  }
+  return amount;
+}
+
+/** Elements there are, each once, put in the order of ELEMENTS. */
+function checkedElements(kind: string, elements: readonly string[]): Element[] {
+  for (const element of elements) {
+    if (!(ELEMENTS as readonly string[]).includes(element)) {
+      throw new RangeError(
+        `What the party knows of ${kind} has "${element}", which isn't an element`,
+      );
+    }
+  }
+  if (new Set(elements).size < elements.length) {
+    throw new RangeError(`What the party knows of ${kind} has an element twice`);
+  }
+  return ELEMENTS.filter((element) => elements.includes(element));
+}
+
 function checkedPlayTime(ms: number): number {
   if (!(ms >= 0 && Number.isFinite(ms))) throw new RangeError(`Play time can't be ${ms} ms`);
   return ms;
@@ -347,7 +452,13 @@ function checkedMember(id: string, json: unknown): MemberState {
     slot,
     textOf(item, `${id}'s ${slot}`),
   ]);
-  return { level, exp, equipment: checkedEquipment(id, worn) };
+  // HP and MP are kept only while they're down; their most is the content's to say.
+  const vital = (what: 'hp' | 'mp'): { hp?: number; mp?: number } => {
+    if (member[what] === undefined) return {};
+    const amount = numberOf(member[what], `${id}'s ${what.toUpperCase()}`);
+    return { [what]: checkedVital(id, what.toUpperCase(), amount, Number.MAX_SAFE_INTEGER) };
+  };
+  return { level, exp, equipment: checkedEquipment(id, worn), ...vital('hp'), ...vital('mp') };
 }
 
 /** A copy of what someone has on, checked: items by their IDs, in slots there are. */

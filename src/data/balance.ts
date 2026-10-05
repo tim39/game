@@ -102,6 +102,9 @@ export const BATTLE_PACING = {
 /** Music crossfades this long: the new track fades in as the old one fades out. */
 export const MUSIC_FADE_MS = 1000;
 
+/** Once a battle is won, its music fades out this fast, as the victory jingle plays. */
+export const VICTORY_FADE_MS = 250;
+
 /**
  * A sound effect asked for again within this long of the last time plays only once, so a cursor
  * moving fast through a menu doesn't stack its clicks.

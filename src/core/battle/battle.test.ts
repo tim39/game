@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest';
 import { startGame } from '../party';
 import { Rng } from '../rng';
-import { addItem, equip, type GameState } from '../state';
+import { addItem, equip, learnReactions, setVitals, type GameState } from '../state';
 import type { Action } from './actions';
 import {
   MAX_ENEMIES,
@@ -153,6 +153,38 @@ describe('startBattle', () => {
     });
     expect(battle(['wolf']).boss).toBe(false);
     expect(battle(['wolf', 'warden']).boss).toBe(true);
+  });
+
+  test('gives the party the HP and MP they have, and leaves anyone at 0 KO’d', () => {
+    let game = setVitals(gameWith(), 'rowan', { hp: 40, mp: 5 }, { hp: 100, mp: 20 });
+    game = setVitals(game, 'bram', { hp: 0, mp: 10 }, { hp: 150, mp: 10 });
+    const fight = battle(['wolf'], { game });
+    expect(of(fight, 'rowan')).toMatchObject({ stats: { hp: 100, mp: 20 }, hp: 40, mp: 5 });
+    expect(of(fight, 'bram')).toMatchObject({ hp: 0, mp: 10, ct: 0 });
+    expect(of(fight, 'liora')).toMatchObject({ hp: 80, mp: 50 });
+    // Bram waits to be revived, off the timeline, and the others' first turns come as ever.
+    expect(previewTurnOrder(fight, undefined, 4)).not.toContain('bram');
+    expect(cts(fight)).toEqual({ rowan: 5, bram: 0, liora: 11, 'wolf-a': 0 });
+    const first = battle(['wolf'], { game, start: 'preemptive' });
+    expect(targetChoices(first, { type: 'item', item: 'feather' })).toEqual(['bram']);
+    const all = setVitals(
+      setVitals(game, 'rowan', { hp: 0, mp: 0 }, { hp: 100, mp: 20 }),
+      'liora',
+      { hp: 0, mp: 0 },
+      { hp: 80, mp: 50 },
+    );
+    expect(() => battle(['wolf'], { game: all })).toThrow(
+      'A battle needs someone in the party standing',
+    );
+  });
+
+  test('knows what the party has learned of how enemies take elements', () => {
+    const game = learnReactions(gameWith(), { wolf: ['fire'] });
+    const fight = battle(['wolf'], { game, start: 'preemptive' });
+    expect(fight.known).toEqual({ wolf: ['fire'] });
+    // So the preview shows Fire staggering the Wolf from the first turn.
+    const fire = skill('fire', 'wolf-a');
+    expect(previewTurnOrder(fight, fire)).not.toEqual(previewTurnOrder(fight));
   });
 
   test('starts the first turn: the lowest CT goes, and that much time passes for everyone', () => {

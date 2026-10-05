@@ -165,6 +165,9 @@ export const DB: GameDb = {
     wolf: {
       name: 'Wolf',
       stats: { hp: 60, mp: 10, atk: 12, def: 6, mag: 4, res: 4, spd: 12 },
+      exp: 6,
+      gold: 5,
+      drops: [{ item: 'potion', chance: 0.5 }],
       reactions: { fire: 'weak', water: 'resist', earth: 'immune', gloam: 'absorb' },
       actions: [
         { type: 'attack', weight: 3 },
@@ -175,10 +178,18 @@ export const DB: GameDb = {
     slime: {
       name: 'Slime',
       stats: { hp: 40, mp: 0, atk: 8, def: 4, mag: 0, res: 4, spd: 2 },
+      exp: 3,
+      gold: 2,
     },
     warden: {
       name: 'Drowned Warden',
       stats: { hp: 500, mp: 50, atk: 25, def: 15, mag: 10, res: 12, spd: 10 },
+      exp: 100,
+      gold: 150,
+      drops: [
+        { item: 'feather', chance: 1 },
+        { item: 'ether', chance: 1 },
+      ],
       reactions: { fire: 'weak' },
       boss: true,
       // Every third turn it telegraphs a Crush; below half its HP, it calls the tide as well.

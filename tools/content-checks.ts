@@ -311,18 +311,24 @@ export function checkCharacters({
 export interface EnemySources {
   readonly enemies: Readonly<Record<string, EnemyDef>>;
   readonly skills: Readonly<Record<string, SkillDef>>;
+  readonly items: Readonly<Record<string, ItemDef>>;
   /** The asset manifest, which has each enemy's look in battle as `monster.<id>`. */
   readonly manifest: Readonly<Record<string, AssetEntry>>;
 }
 
 /**
- * Checks each enemy against the skills and the asset manifest. Returns one line per problem: it has
- * a sprite sheet to fight as, the skills it uses exist, in every phase, and an action with a rule
- * for picking its target is aimed at one fighter.
+ * Checks each enemy against the skills, the items and the asset manifest. Returns one line per
+ * problem: it has a sprite sheet to fight as, the skills it uses exist, in every phase, an action
+ * with a rule for picking its target is aimed at one fighter, and the items it drops exist.
  */
-export function checkEnemies({ enemies, skills, manifest }: EnemySources): string[] {
+export function checkEnemies({ enemies, skills, items, manifest }: EnemySources): string[] {
   const problems: string[] = [];
   for (const [id, enemy] of Object.entries(enemies)) {
+    for (const [index, { item }] of (enemy.drops ?? []).entries()) {
+      if (!Object.hasOwn(items, item)) {
+        problems.push(`Enemy ${id}: drops[${index}] is ${item}, which isn't an item`);
+      }
+    }
     const sprite = `monster.${id}`;
     const entry = Object.hasOwn(manifest, sprite) ? manifest[sprite] : undefined;
     if (entry?.type !== 'spritesheet') {

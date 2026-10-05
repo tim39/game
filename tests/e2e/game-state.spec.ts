@@ -87,6 +87,7 @@ test('New Game starts afresh: Rowan alone at Tamsin’s door, in their starting 
     gold: 0,
     flags: {},
     vars: {},
+    knownReactions: {},
     location: NEW_GAME.location,
   });
   expect(playTimeMs).toBeGreaterThan(0);

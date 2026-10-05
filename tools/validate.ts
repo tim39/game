@@ -112,7 +112,7 @@ const problems = [
     items: ITEMS,
     maxLevel: EXP_CURVE.maxLevel,
   }),
-  ...checkEnemies({ enemies: ENEMIES, skills: SKILLS, manifest: ASSETS }),
+  ...checkEnemies({ enemies: ENEMIES, skills: SKILLS, items: ITEMS, manifest: ASSETS }),
   ...checkEncounters({ encounters: ENCOUNTERS, enemies: ENEMIES }),
   ...checkMapEncounters({ maps: MAPS, encounters: ENCOUNTERS, backdrops: BACKDROPS }),
   ...checkAreas({
@@ -179,7 +179,7 @@ console.log(
 );
 console.log(
   'Enemies: each has a sprite to fight as, every skill they use exists, only actions aimed at ' +
-    'one fighter pick a target, and ' +
+    'one fighter pick a target, every item they drop exists, and ' +
     'every enemy an encounter table names exists. The areas the simulator plays name a party, ' +
     'gear, items, an encounter table and a boss that exist, at levels there are. ' +
     'Every name and description is in characters the font has, and fits the battle screen.',

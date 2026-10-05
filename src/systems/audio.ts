@@ -78,17 +78,18 @@ class AudioManager {
 
   /**
    * Plays a battle's music, `bgm.*`, at once: the music playing pauses where it is, until
-   * `resumeMusic`. Asked for again before then, it just changes the battle's track.
+   * `resumeMusic`. Asked for again before then, it changes the battle's track, crossfading over
+   * `fadeMs`, or with null fades it out, as a battle won gives way to its fanfare.
    */
-  interruptMusic(key: string): void {
-    checkKey(key, 'bgm.');
+  interruptMusic(key: string | null, fadeMs = 0): void {
+    if (key !== null) checkKey(key, 'bgm.');
     if (!this.interrupted) {
       for (const sound of this.tracks.values()) sound.pause();
       this.interrupted = { mix: this.mix, tracks: this.tracks };
       this.tracks = new Map();
       this.mix = SILENCE;
     }
-    this.mix = crossfadeTo(this.mix, key, 0);
+    this.mix = crossfadeTo(this.mix, key, fadeMs);
     this.sync();
   }
 

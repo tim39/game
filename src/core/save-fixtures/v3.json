@@ -1,0 +1,40 @@
+{
+  "version": 3,
+  "savedAt": "2026-10-05T17:11:37.880Z",
+  "state": {
+    "party": [
+      "rowan"
+    ],
+    "members": {
+      "rowan": {
+        "level": 1,
+        "exp": 6,
+        "equipment": {
+          "weapon": "bronze-sword",
+          "armor": "travel-clothes"
+        },
+        "hp": 47
+      }
+    },
+    "inventory": {
+      "potion": 1
+    },
+    "gold": 5,
+    "flags": {
+      "chest.saltmere-tamsin-01": true
+    },
+    "vars": {},
+    "knownReactions": {
+      "wolf": [
+        "fire"
+      ]
+    },
+    "location": {
+      "map": "saltmere-tamsin",
+      "x": 2,
+      "y": 3,
+      "facing": "left"
+    },
+    "playTimeMs": 3916.5
+  }
+}

@@ -44,10 +44,17 @@ const giveEquipment: Migration = (state) => {
 };
 
 /**
+ * Version 3 kept members' HP and MP, while they're down, and what the party has learned of how
+ * enemies take elements. A version 2 save has everyone at full, which needs nothing, and has
+ * learned nothing yet.
+ */
+const keepWhatsKnown: Migration = (state) => ({ ...state, knownReactions: {} });
+
+/**
  * Every migration, oldest first. A change to GameState's shape adds one, with a test, and that
  * bumps SAVE_VERSION; add a save of the new version to src/core/save-fixtures/ as well.
  */
-export const MIGRATIONS: readonly Migration[] = [giveEquipment];
+export const MIGRATIONS: readonly Migration[] = [giveEquipment, keepWhatsKnown];
 
 /** The version saves are written in. Every migration adds one. */
 export const SAVE_VERSION = MIGRATIONS.length + 1;

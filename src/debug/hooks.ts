@@ -1,7 +1,7 @@
 import type Phaser from 'phaser';
 import { ENCOUNTER_RATES } from '../core/encounters';
-import { recruit } from '../core/party';
-import { addItem, inParty, setFlag } from '../core/state';
+import { memberVitals, recruit } from '../core/party';
+import { addItem, inParty, setFlag, setVitals } from '../core/state';
 import { BACKDROPS } from '../data/backdrops';
 import { AREAS } from '../data/balance';
 import { CHARACTERS } from '../data/characters';
@@ -111,6 +111,11 @@ export function installDebugHooks(game: Phaser.Game): void {
     },
     join: (character) => {
       session.state = recruit(session.state, character, DB);
+    },
+    vitals: (character, set = {}) => {
+      const { now, most } = memberVitals(session.state, character, DB);
+      session.state = setVitals(session.state, character, { ...now, ...set }, most);
+      return memberVitals(session.state, character, DB);
     },
     run: (script) => {
       if (!game.scene.isActive('field')) throw new Error(`Can't run ${script}: the field isn't up`);
