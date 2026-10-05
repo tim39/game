@@ -2,8 +2,9 @@ import { describe, expect, test } from 'vitest';
 import type { MapContent, MapDef } from '../src/core/map/types';
 import type { SkillDef } from '../src/core/schema';
 import type { NewGame } from '../src/core/state';
-import { EXP_CURVE } from '../src/data/balance';
+import { AREAS, EXP_CURVE } from '../src/data/balance';
 import { CHARACTERS } from '../src/data/characters';
+import { ENCOUNTERS } from '../src/data/encounters';
 import { ENEMIES } from '../src/data/enemies';
 import { EVENTS } from '../src/data/events';
 import { ITEMS } from '../src/data/items';
@@ -13,10 +14,13 @@ import { SKILLS } from '../src/data/skills';
 import { SPEAKERS } from '../src/data/speakers';
 import { MAP_CONTENT, PREFABS, TERRAINS } from '../src/data/terrain';
 import {
+  checkAreas,
   checkCharacters,
   checkContent,
+  checkEncounters,
   checkEnemies,
   checkNewGame,
+  type AreaSources,
   type CharacterSources,
   type ContentSources,
   type EnemySources,
@@ -155,6 +159,9 @@ describe('checkContent', () => {
           { below: 0.3, actions: [{ type: 'attack', when: { every: 2 }, target: 'healer' }] },
         ],
       },
+    },
+    encounters: {
+      cave: { groups: [{ enemies: ['wolf', 'wolf'], weight: 2 }, { enemies: ['wolf'] }] },
     },
     speakers: { ada: { name: 'Ada', portrait: 'portrait.ada' }, sign: { name: '' } },
     terrains: {
@@ -539,6 +546,22 @@ describe('checkContent', () => {
     ]);
   });
 
+  test('reports encounter tables with no groups, groups too big, or weights below 1', () => {
+    expect(
+      check({
+        encounters: {
+          empty: { groups: [] },
+          crowd: { groups: [{ enemies: Array(7).fill('wolf') }, { enemies: [], weight: -1 }] },
+        },
+      }),
+    ).toEqual([
+      'Encounter table empty: groups is empty',
+      'Encounter table crowd: groups[0].enemies should have at most 6 entries, not 7',
+      'Encounter table crowd: groups[1].enemies is empty',
+      'Encounter table crowd: groups[1].weight should be more than 0, not -1',
+    ]);
+  });
+
   test('reports a collection that is not a record', () => {
     expect(check({ items: [] })).toEqual(['Items should be an object, not a list']);
   });
@@ -551,6 +574,7 @@ describe('checkContent', () => {
         skills: SKILLS,
         items: ITEMS,
         enemies: ENEMIES,
+        encounters: ENCOUNTERS,
         speakers: SPEAKERS,
         terrains: TERRAINS,
         prefabs: PREFABS,
@@ -798,5 +822,87 @@ describe('checkEnemies', () => {
 
   test('the real enemies check out', () => {
     expect(checkEnemies({ enemies: ENEMIES, skills: SKILLS })).toEqual([]);
+  });
+});
+
+describe('checkEncounters', () => {
+  test('reports enemies there are none of', () => {
+    expect(
+      checkEncounters({
+        encounters: {
+          cave: { groups: [{ enemies: ['bat', 'bat', 'crab'] }, { enemies: ['bat', 'yeti'] }] },
+        },
+        enemies: { bat: {} },
+      }),
+    ).toEqual([
+      "Encounter table cave: groups[0] has crab, which isn't an enemy",
+      "Encounter table cave: groups[1] has yeti, which isn't an enemy",
+    ]);
+  });
+
+  test('the real encounter tables check out', () => {
+    expect(checkEncounters({ encounters: ENCOUNTERS, enemies: ENEMIES })).toEqual([]);
+  });
+});
+
+describe('checkAreas', () => {
+  const SOURCES: AreaSources = {
+    areas: AREAS,
+    characters: CHARACTERS,
+    items: ITEMS,
+    enemies: ENEMIES,
+    encounters: ENCOUNTERS,
+    maxLevel: EXP_CURVE.maxLevel,
+  };
+
+  test('the real areas check out', () => {
+    expect(checkAreas(SOURCES)).toEqual([]);
+  });
+
+  test('reports a party, encounter table, boss, items and gear that don’t exist or don’t fit', () => {
+    expect(
+      checkAreas({
+        ...SOURCES,
+        areas: {
+          cave: {
+            name: 'the cave',
+            party: ['rowan', 'bram', 'nobody'],
+            encounters: 'nowhere',
+            boss: ['kraken'],
+            arrival: { level: 1, items: { potion: 1, ambrosia: 2 } },
+            atBoss: {
+              level: 5,
+              gear: { rowan: ['iron-sword', 'hand-axe', 'excalibur'], liora: ['oak-staff'] },
+              items: {},
+            },
+          },
+        },
+      }),
+    ).toEqual([
+      "Area cave: nobody is in its party, but isn't a character",
+      "Area cave: its encounter table, nowhere, doesn't exist",
+      "Area cave: its boss, kraken, isn't an enemy",
+      "Area cave: arrival carries ambrosia, which isn't an item",
+      "Area cave: atBoss gives rowan hand-axe, which they can't equip",
+      "Area cave: atBoss gives rowan excalibur, which isn't an item",
+      "Area cave: atBoss gives gear to liora, who isn't in its party",
+    ]);
+  });
+
+  test('reports levels there aren’t, and a party that loses levels on the way to the boss', () => {
+    const area = SOURCES.areas['tide-caves']!;
+    expect(
+      checkAreas({
+        ...SOURCES,
+        maxLevel: 10,
+        areas: {
+          cave: { ...area, arrival: { level: 11, items: {} }, atBoss: { level: 2.5, items: {} } },
+        },
+      }),
+    ).toEqual([
+      'Area cave: arrival.level is 11, but levels go from 1 to 10',
+      'Area cave: atBoss.level is 2.5, but levels go from 1 to 10',
+      'Area cave: the party is a lower level at the boss than on arrival',
+    ]);
   });
 });

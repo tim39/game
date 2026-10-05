@@ -4,7 +4,7 @@ import type { NpcTuning } from '../core/npc';
 import type { BuffMultipliers } from '../core/stats';
 import type { WalkSpeeds } from '../core/walker';
 
-/** Tuning numbers. Encounter rates join these in M4. */
+/** Tuning numbers, and what the simulator plays each area with. Encounter rates join these in M4. */
 
 /**
  * The EXP curve: reaching level L takes 12 × (L − 1)^2.5 EXP in all, rounded, up to level 30.
@@ -87,3 +87,58 @@ export const NPC_TUNING: NpcTuning = { stepMs: 360, pauseMs: [1500, 4000], lookM
  * three seconds. Confirm shows the rest at once. The Options screen (M5) will offer other speeds.
  */
 export const TEXT_SPEED = 50;
+
+/** The party at a point in an area: their level, the gear they wear, and the items they carry. */
+export interface PartyCheckpoint {
+  readonly level: number;
+  /** Gear each member has on in place of what they started with, by character. */
+  readonly gear?: Readonly<Record<string, readonly string[]>>;
+  readonly items: Readonly<Record<string, number>>;
+}
+
+/**
+ * An area, as the simulator plays it (`npm run sim`, see Levels in docs/DESIGN.md): who's in the
+ * party, its encounter table and its boss, and the party as they arrive and as they reach the boss,
+ * at the area's target levels. Its battles are played at the first, and its boss at the second.
+ */
+export interface AreaBalance {
+  readonly name: string;
+  readonly party: readonly string[];
+  /** Its encounter table, in src/data/encounters.ts. */
+  readonly encounters: string;
+  /** The boss's group of enemies. */
+  readonly boss: readonly string[];
+  readonly arrival: PartyCheckpoint;
+  readonly atBoss: PartyCheckpoint;
+}
+
+/** Every area the simulator plays, in the order the game reaches them. */
+export const AREAS: Readonly<Record<string, AreaBalance>> = {
+  'tide-caves': {
+    name: 'the Tide Caves',
+    party: ['rowan', 'bram'],
+    encounters: 'tide-caves',
+    boss: ['drowned-warden'],
+    // On arrival, in the gear they started in, with a couple of Potions.
+    arrival: { level: 1, items: { potion: 2 } },
+    // At the Warden, Rowan has the Iron Sword from one of the caves' chests.
+    atBoss: { level: 5, gear: { rowan: ['iron-sword'] }, items: { potion: 4 } },
+  },
+};
+
+/** What the simulator holds each area to (see Levels in docs/DESIGN.md). */
+export interface SimTargets {
+  /** Normal battles are won at least this share of the time, in this many rounds. */
+  readonly battles: { readonly won: number; readonly rounds: readonly [min: number, max: number] };
+  /** The boss is beaten this share of the time. */
+  readonly boss: { readonly won: readonly [min: number, max: number] };
+}
+
+/**
+ * At an area's target level, a party run by simple AI wins its normal battles more than 95% of the
+ * time in 3 to 6 rounds, and beats its boss 60% to 85% of the time.
+ */
+export const SIM_TARGETS: SimTargets = {
+  battles: { won: 0.95, rounds: [3, 6] },
+  boss: { won: [0.6, 0.85] },
+};

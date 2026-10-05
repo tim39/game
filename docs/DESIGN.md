@@ -223,7 +223,9 @@ Their stats follow their roles at every level: Bram has the most HP and DEF and 
 | Ember Caldera | 16 → 20 |
 | The Hollow Below | 23 → 28 |
 
-**Simulator targets** (`npm run sim`): at an area's target level, a party run by simple AI should win that area's normal encounters more than 95% of the time in 3–6 rounds, and beat its boss 60–85% of the time.
+**Simulator targets** (`npm run sim`): at an area's target level, a party run by simple AI should win that area's normal encounters more than 95% of the time in 3–6 rounds, and beat its boss 60–85% of the time. A round is a turn for each party member, so with two in the party six rounds is twelve of their turns. The normal encounters are played with the party as it arrives in the area and the boss with the party as it reaches it, each time at the level, in the gear and with the items `balance.ts` expects it to have by then.
+
+The simulator's party plays as a sensible but unadventurous player would. It gets a fallen ally back up; heals an ally below half their HP; Guards when it's below 70% HP and an enemy has telegraphed an attack at it, or at the whole party; hits a weakness the party knows of with a skill; uses a skill that hits every enemy when there are three or more; and otherwise attacks the enemy with the least HP. It keeps back the MP its healing takes, never flees, and leaves bombs, buffs and statuses alone, so a player who uses them has an easier time of it.
 
 ## Items and economy
 

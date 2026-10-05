@@ -2,8 +2,9 @@
 // and exits non-zero on any problem (see Content data in docs/TECH.md).
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { EXP_CURVE } from '../src/data/balance';
+import { AREAS, EXP_CURVE } from '../src/data/balance';
 import { CHARACTERS } from '../src/data/characters';
+import { ENCOUNTERS } from '../src/data/encounters';
 import { ENEMIES } from '../src/data/enemies';
 import { EVENTS } from '../src/data/events';
 import { ITEMS } from '../src/data/items';
@@ -15,7 +16,14 @@ import { MAP_CONTENT, PREFABS, TERRAINS } from '../src/data/terrain';
 import { CHEST_TEXT } from '../src/data/ui-text';
 import { ASSETS } from '../src/systems/asset-manifest';
 import { checkAssets, pngSize } from './asset-checks';
-import { checkCharacters, checkContent, checkEnemies, checkNewGame } from './content-checks';
+import {
+  checkAreas,
+  checkCharacters,
+  checkContent,
+  checkEncounters,
+  checkEnemies,
+  checkNewGame,
+} from './content-checks';
 import { checkEvents } from './event-checks';
 import { measureBodyFont } from './font-metrics';
 import { checkMapNames, checkMaps, checkReachable } from './map-checks';
@@ -42,6 +50,7 @@ const content = {
   skills: SKILLS,
   items: ITEMS,
   enemies: ENEMIES,
+  encounters: ENCOUNTERS,
   speakers: SPEAKERS,
   terrains: TERRAINS,
   prefabs: PREFABS,
@@ -99,6 +108,15 @@ const problems = [
     maxLevel: EXP_CURVE.maxLevel,
   }),
   ...checkEnemies({ enemies: ENEMIES, skills: SKILLS }),
+  ...checkEncounters({ encounters: ENCOUNTERS, enemies: ENEMIES }),
+  ...checkAreas({
+    areas: AREAS,
+    characters: CHARACTERS,
+    items: ITEMS,
+    enemies: ENEMIES,
+    encounters: ENCOUNTERS,
+    maxLevel: EXP_CURVE.maxLevel,
+  }),
   ...checkText(
     { characters: CHARACTERS, skills: SKILLS, items: ITEMS, enemies: ENEMIES, speakers: SPEAKERS },
     font,
@@ -117,6 +135,7 @@ const chests = Object.values(MAPS).flatMap((map) =>
 console.log(
   `Content: ${some(size(CHARACTERS), 'character')}, ${some(size(SKILLS), 'skill')}, ` +
     `${some(size(ITEMS), 'item')}, ${some(size(ENEMIES), 'enemy', 'enemies')}, ` +
+    `${some(size(ENCOUNTERS), 'encounter table')}, ` +
     `${some(size(SPEAKERS), 'speaker')}, ` +
     `${some(size(TERRAINS), 'terrain')}, ${some(size(PREFABS), 'prefab')}, ` +
     `${some(maps, 'map')}, ${some(size(EVENTS), 'event script')} and the new game all match ` +
@@ -145,6 +164,8 @@ console.log(
     'exist, at levels there are.',
 );
 console.log(
-  'Enemies: every skill they use exists, and only actions aimed at one fighter pick a target. ' +
+  'Enemies: every skill they use exists, only actions aimed at one fighter pick a target, and ' +
+    'every enemy an encounter table names exists. The areas the simulator plays name a party, ' +
+    'gear, items, an encounter table and a boss that exist, at levels there are. ' +
     'Every name and description is in characters the font has.',
 );

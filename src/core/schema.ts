@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { MAX_ENEMIES } from './battle/battle';
 import { ELEMENTS, RANKS, REACTIONS, STATUSES, TARGETS, TARGET_RULES } from './battle/terms';
 import { DIRECTIONS } from './direction';
 import { ARMOR_TYPES, SLOTS, WEAPON_TYPES } from './equipment';
@@ -454,6 +455,22 @@ const EnemySchema = z.strictObject({
 });
 export type EnemyDef = ContentOf<typeof EnemySchema>;
 
+/**
+ * An encounter table: the groups of enemies an area's random battles are against, each as likely
+ * as its weight (1 if not given) against the others.
+ */
+const EncounterTableSchema = z.strictObject({
+  groups: z
+    .array(
+      z.strictObject({
+        enemies: z.array(IdSchema).min(1).max(MAX_ENEMIES),
+        weight: WeightSchema.optional(),
+      }),
+    )
+    .min(1),
+});
+export type EncounterTable = ContentOf<typeof EncounterTableSchema>;
+
 // Everything else.
 
 /** Who speaks in the dialogue box: the name in its tab, and a portrait if they have one. */
@@ -491,6 +508,7 @@ export const CONTENT_SCHEMAS = {
   skills: z.record(IdSchema, SkillSchema),
   items: z.record(IdSchema, ItemSchema),
   enemies: z.record(IdSchema, EnemySchema),
+  encounters: z.record(IdSchema, EncounterTableSchema),
   speakers: z.record(IdSchema, SpeakerSchema),
   terrains: z.record(IdSchema, TerrainSchema),
   prefabs: z.record(IdSchema, PrefabSchema),

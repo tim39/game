@@ -3,7 +3,7 @@ import type { SkillDef } from '../core/schema';
 /**
  * Every skill, by ID. Who learns which, and when, is in src/data/characters.ts, and which enemies
  * use which in src/data/enemies.ts. So far, Act 1's: Rowan's and Bram's, what Liora knows when she
- * joins, and the wolf's.
+ * joins, and the enemies'.
  */
 export const SKILLS: Readonly<Record<string, SkillDef>> = {
   // Rowan: the sword, and a spark from each Beacon.
@@ -114,5 +114,61 @@ export const SKILLS: Readonly<Record<string, SkillDef>> = {
     rank: 'quick',
     target: 'self',
     effects: [{ type: 'status', status: 'atk-up' }],
+  },
+  'shell-up': {
+    name: 'Shell Up',
+    description: 'Draws back into its shell. DEF Up.',
+    kind: 'support',
+    mp: 0,
+    rank: 'quick',
+    target: 'self',
+    effects: [{ type: 'status', status: 'def-up' }],
+  },
+  squeeze: {
+    name: 'Squeeze',
+    description: 'Wraps its arms round, and squeezes.',
+    kind: 'physical',
+    power: 1.3,
+    mp: 0,
+    rank: 'normal',
+    target: 'one-enemy',
+  },
+  ink: {
+    name: 'Ink',
+    description: 'A squirt of ink in the eyes. Blinds, sometimes.',
+    kind: 'support',
+    mp: 3,
+    rank: 'normal',
+    target: 'one-enemy',
+    effects: [{ type: 'status', status: 'blind', chance: 0.6 }],
+  },
+  'mist-touch': {
+    name: 'Mist Touch',
+    description: 'A cold touch of the Gloam.',
+    kind: 'magical',
+    element: 'gloam',
+    power: 1.2,
+    mp: 3,
+    rank: 'normal',
+    target: 'one-enemy',
+  },
+  'tide-cleave': {
+    name: 'Tide Cleave',
+    description: 'A blow heavy with seawater.',
+    kind: 'physical',
+    power: 1.6,
+    mp: 0,
+    rank: 'normal',
+    target: 'one-enemy',
+  },
+  undertow: {
+    name: 'Undertow',
+    description: 'The sea surges up and drags at everyone.',
+    kind: 'magical',
+    element: 'water',
+    power: 1.8,
+    mp: 8,
+    rank: 'slow',
+    target: 'all-enemies',
   },
 };

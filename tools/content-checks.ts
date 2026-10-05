@@ -5,12 +5,14 @@ import type { MapContent, MapDef } from '../src/core/map/types';
 import {
   CONTENT_SCHEMAS,
   type CharacterDef,
+  type EncounterTable,
   type EnemyActionDef,
   type EnemyDef,
   type ItemDef,
   type SkillDef,
 } from '../src/core/schema';
 import type { NewGame } from '../src/core/state';
+import type { AreaBalance } from '../src/data/balance';
 
 type Kind = keyof typeof CONTENT_SCHEMAS;
 
@@ -23,6 +25,7 @@ const NAMES: { readonly [K in Kind]: string } = {
   skills: 'Skill',
   items: 'Item',
   enemies: 'Enemy',
+  encounters: 'Encounter table',
   speakers: 'Speaker',
   terrains: 'Terrain',
   prefabs: 'Prefab',
@@ -338,6 +341,102 @@ export function checkEnemies({ enemies, skills }: EnemySources): string[] {
           problems.push(`${where} picks a target for ${skill.name}, which isn't aimed at one`);
         }
       }
+    }
+  }
+  return problems;
+}
+
+/** Checks that every enemy an encounter table's groups name exists. One line per problem. */
+export function checkEncounters({
+  encounters,
+  enemies,
+}: {
+  readonly encounters: Readonly<Record<string, EncounterTable>>;
+  readonly enemies: Readonly<Record<string, unknown>>;
+}): string[] {
+  return Object.entries(encounters).flatMap(([id, table]) =>
+    table.groups.flatMap((group, index) =>
+      [...new Set(group.enemies)]
+        .filter((enemy) => !Object.hasOwn(enemies, enemy))
+        .map(
+          (enemy) => `Encounter table ${id}: groups[${index}] has ${enemy}, which isn't an enemy`,
+        ),
+    ),
+  );
+}
+
+export interface AreaSources {
+  readonly areas: Readonly<Record<string, AreaBalance>>;
+  readonly characters: Readonly<Record<string, CharacterDef>>;
+  readonly items: Readonly<Record<string, ItemDef>>;
+  readonly enemies: Readonly<Record<string, unknown>>;
+  readonly encounters: Readonly<Record<string, unknown>>;
+  /** The last level there is, EXP_CURVE.maxLevel in src/data/balance.ts. */
+  readonly maxLevel: number;
+}
+
+/**
+ * Checks the areas the simulator plays (AREAS in src/data/balance.ts) against the content. One
+ * line per problem: their party, gear, items, encounter table and boss exist, the gear fits its
+ * wearer, and their levels are levels there are, the boss's no lower than the arrival's.
+ */
+export function checkAreas({
+  areas,
+  characters,
+  items,
+  enemies,
+  encounters,
+  maxLevel,
+}: AreaSources): string[] {
+  const problems: string[] = [];
+  for (const [id, area] of Object.entries(areas)) {
+    const owner = `Area ${id}`;
+    for (const member of area.party) {
+      if (!Object.hasOwn(characters, member)) {
+        problems.push(`${owner}: ${member} is in its party, but isn't a character`);
+      }
+    }
+    if (!Object.hasOwn(encounters, area.encounters)) {
+      problems.push(`${owner}: its encounter table, ${area.encounters}, doesn't exist`);
+    }
+    for (const enemy of area.boss) {
+      if (!Object.hasOwn(enemies, enemy))
+        problems.push(`${owner}: its boss, ${enemy}, isn't an enemy`);
+    }
+    for (const [when, checkpoint] of [
+      ['arrival', area.arrival],
+      ['atBoss', area.atBoss],
+    ] as const) {
+      if (
+        !Number.isSafeInteger(checkpoint.level) ||
+        checkpoint.level < 1 ||
+        checkpoint.level > maxLevel
+      ) {
+        problems.push(
+          `${owner}: ${when}.level is ${checkpoint.level}, but levels go from 1 to ${maxLevel}`,
+        );
+      }
+      for (const item of Object.keys(checkpoint.items)) {
+        if (!Object.hasOwn(items, item))
+          problems.push(`${owner}: ${when} carries ${item}, which isn't an item`);
+      }
+      for (const [member, gear] of Object.entries(checkpoint.gear ?? {})) {
+        const character = Object.hasOwn(characters, member) ? characters[member] : undefined;
+        if (!area.party.includes(member) || !character) {
+          problems.push(`${owner}: ${when} gives gear to ${member}, who isn't in its party`);
+          continue;
+        }
+        for (const item of gear) {
+          const def = Object.hasOwn(items, item) ? items[item] : undefined;
+          if (!def) problems.push(`${owner}: ${when} gives ${member} ${item}, which isn't an item`);
+          else if (!canEquip(character, def)) {
+            problems.push(`${owner}: ${when} gives ${member} ${item}, which they can't equip`);
+          }
+        }
+      }
+    }
+    if (area.atBoss.level < area.arrival.level) {
+      problems.push(`${owner}: the party is a lower level at the boss than on arrival`);
     }
   }
   return problems;

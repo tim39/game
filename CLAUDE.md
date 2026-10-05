@@ -25,7 +25,7 @@ It's vibe coded. The owner directs and playtests; Claude writes nearly all of th
 
 ## Commands
 
-Keep the names stable. Scripts whose tooling hasn't landed yet run `tools/not-yet.mjs`, which prints `SKIPPED` and exits 0: `sim`, until M3. When you build one of those tools, swap its script over and stop calling the stand-in.
+Keep the names stable.
 
 | Command | What it does |
 |---|---|
@@ -37,7 +37,7 @@ Keep the names stable. Scripts whose tooling hasn't landed yet run `tools/not-ye
 | `npm run format` | Prettier rewrite + ESLint autofix |
 | `npm test` | Vitest unit tests |
 | `npm run validate` | Checks game data: every collection against its Zod schema first; then that every asset manifest key points at a real, credited file, that every map compiles, its name fits the save menu and it can be reached from the start, that every event script runs and every line of dialogue fits its box, and that everything content names exists |
-| `npm run sim` | Headless battle simulator; prints a balance report |
+| `npm run sim` | Headless battle simulator; prints a balance report, or with `-- --log wolf,wolf` one battle turn by turn |
 | `npm run test:e2e` | Playwright smoke tests + screenshots |
 | `npm run fetch-assets` | Downloads the raw asset packs into `assets-src/` (see Assets in TECH.md) |
 | `npm run check` | typecheck + lint + test + validate. Run it before every push |

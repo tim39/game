@@ -15,6 +15,7 @@ import {
 import type { BattleEvent } from './events';
 import { isKo, type Side } from './fighter';
 import { DB, TUNING, gameWith } from './fixtures';
+import { choosePartyAction } from './party-ai';
 import type { BattleTuning } from './tuning';
 
 // Hundreds of battles, played by picking at random from everything the fighter whose turn it is
@@ -112,13 +113,14 @@ const asPreviewed = (events: readonly BattleEvent[]): boolean =>
   );
 
 /**
- * Plays battles from seeds, the party picking at random from what they could do, and the enemies
- * too, or as their AI says. Returns what went wrong, how many battles ended, and how many turns
- * the preview was bound to be right about.
+ * Plays battles from seeds, each side picking at random from what it could do, or doing as its AI
+ * says. Returns what went wrong, how many battles ended, and how many turns the preview was bound
+ * to be right about.
  */
 function playBattles(
   battles: number,
   enemiesBy: 'chance' | 'ai',
+  partyBy: 'chance' | 'ai' = 'chance',
 ): { problems: string[]; ended: number; previewed: number } {
   const problems: string[] = [];
   let ended = 0;
@@ -135,11 +137,17 @@ function playBattles(
     );
     for (let step = 0; step < 2000 && battle.active !== null; step++) {
       const say = (problem: string) => `${seed}, turn ${battle.turn}: ${problem}`;
-      const ai = enemiesBy === 'ai' && activeFighter(battle).side === 'enemies';
-      const action = ai ? chooseEnemyAction(battle, picks) : picks.pick(choices(battle));
+      const side = activeFighter(battle).side;
+      const ai = (side === 'enemies' ? enemiesBy : partyBy) === 'ai';
+      const action = !ai
+        ? picks.pick(choices(battle))
+        : side === 'enemies'
+          ? chooseEnemyAction(battle, picks)
+          : choosePartyAction(battle);
       const wrong = checkAction(battle, action);
       if (wrong !== undefined) {
-        problems.push(say(`the AI chose ${JSON.stringify(action)}: ${wrong}`));
+        const whose = side === 'party' ? 'party’s' : 'enemies’';
+        problems.push(say(`the ${whose} AI chose ${JSON.stringify(action)}: ${wrong}`));
         break;
       }
       const preview = previewTurnOrder(battle, action);
@@ -170,6 +178,13 @@ test('battles played at random keep the rules, end, and go as the preview shows'
 
 test('battles against enemies that follow their AI do too, and the AI only does what it can', () => {
   const { problems, ended, previewed } = playBattles(250, 'ai');
+  expect(problems.slice(0, 10)).toEqual([]);
+  expect(ended).toBe(250);
+  expect(previewed).toBeGreaterThan(2500);
+});
+
+test('battles between the party’s AI and the enemies’ do too', () => {
+  const { problems, ended, previewed } = playBattles(250, 'ai', 'ai');
   expect(problems.slice(0, 10)).toEqual([]);
   expect(ended).toBe(250);
   expect(previewed).toBeGreaterThan(2500);

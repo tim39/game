@@ -67,7 +67,7 @@ Start a session and say **"next task"**, or name one. Claude takes the first unc
 - [x] Act 1 data: Rowan's, Bram's and Liora's skills, items and equipment; inventory and equip operations, with tests.
 - [x] CTB engine: turn order, ranks, preview, damage, elements and Stagger, statuses, KO, victory and defeat, fleeing. Thoroughly tested.
 - [x] Enemy AI (weighted actions, conditions, targeting), boss phases and telegraphs.
-- [ ] `balance.ts`, the party AI and `npm run sim`.
+- [x] `balance.ts`, the party AI and `npm run sim`.
 
 ★ **Checkpoint:** `npm run sim` prints a balance report for the Tide Caves, and you can read a turn-by-turn log of Rowan and Bram fighting wolves.
 

@@ -17,7 +17,7 @@
     "format": "prettier --write . && eslint --fix .",
     "test": "vitest run",
     "validate": "tsx tools/validate.ts",
-    "sim": "node tools/not-yet.mjs sim \"M3 (battle simulator)\"",
+    "sim": "tsx tools/sim.ts",
     "test:e2e": "playwright test",
     "fetch-assets": "tsx tools/fetch-assets.ts",
     "check": "npm run typecheck && npm run lint && npm test && npm run validate"
