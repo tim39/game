@@ -1,10 +1,11 @@
 import type { BattleTuning } from '../core/battle/tuning';
+import type { EncounterTuning } from '../core/encounters';
 import type { ExpCurve } from '../core/levels';
 import type { NpcTuning } from '../core/npc';
 import type { BuffMultipliers } from '../core/stats';
 import type { WalkSpeeds } from '../core/walker';
 
-/** Tuning numbers, and what the simulator plays each area with. Encounter rates join these in M4. */
+/** Tuning numbers, and what the simulator plays each area with. */
 
 /**
  * The EXP curve: reaching level L takes 12 × (L − 1)^2.5 EXP in all, rounded, up to level 30.
@@ -59,6 +60,18 @@ export const BATTLE_TUNING: BattleTuning = {
   },
   bossSlow: 0.5,
   flee: { base: 0.5, perSpd: 0.02, min: 0.2, max: 0.95 },
+};
+
+/**
+ * Random battles (see Encounters in docs/DESIGN.md): 24 to 40 steps apart at the Normal rate, half
+ * as often at Low and twice as often at High; 8% start with a preemptive strike, and 4% with an
+ * ambush.
+ */
+export const ENCOUNTER_TUNING: EncounterTuning = {
+  steps: [24, 40],
+  rates: { off: 0, low: 0.5, normal: 1, high: 2 },
+  preemptive: 0.08,
+  ambush: 0.04,
 };
 
 /** How long the player takes to cross one tile, walking and running. */

@@ -1,3 +1,5 @@
+import type { EncounterRate } from '../core/encounters';
+
 /**
  * The player's preferences. The Options screen (M5) will let them change these and keep them in
  * localStorage under `fifth-flame:settings`; until then they keep the defaults set at boot.
@@ -14,6 +16,11 @@ export interface Settings {
    * will offer 1×, 2× and 3×; the debug menu and `window.__game` 4×.
    */
   battleSpeed: number;
+  /**
+   * How often random battles come: Off, Low (half as often), Normal or High (twice as often). The
+   * Options screen will offer it; until then, the debug menu and `window.__game`.
+   */
+  encounterRate: EncounterRate;
 }
 
 export const settings: Settings = {
@@ -21,4 +28,5 @@ export const settings: Settings = {
   musicVolume: 0.6,
   soundVolume: 0.8,
   battleSpeed: 1,
+  encounterRate: 'normal',
 };

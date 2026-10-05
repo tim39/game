@@ -443,6 +443,12 @@ test('an npc keeps its script', () => {
   expect(compiled.npcs[0]?.script).toBe('hello');
 });
 
+test('a map keeps its random battles, if it has any', () => {
+  const encounters = { table: 'wolves', backdrop: 'meadow' };
+  expect(compileMap({ ...map('..'), encounters }, CONTENT).encounters).toEqual(encounters);
+  expect(compile('..').encounters).toBeNull();
+});
+
 describe('chests', () => {
   const chest = (x: number, y: number, flag = 'chest.test-01'): MapObject => ({
     type: 'chest',

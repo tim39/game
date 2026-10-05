@@ -21,6 +21,7 @@ import {
   checkContent,
   checkEncounters,
   checkEnemies,
+  checkMapEncounters,
   checkNewGame,
   type AreaSources,
   type CharacterSources,
@@ -48,6 +49,7 @@ describe('checkContent', () => {
       { type: 'chest', at: [2, 2], flag: 'chest.town-02', gold: 30 },
     ],
     edges: { east: { map: 'town', spawn: 'start' } },
+    encounters: { table: 'wolves', backdrop: 'field' },
   };
 
   const ROWAN = {
@@ -571,6 +573,20 @@ describe('checkContent', () => {
     ]);
   });
 
+  test('reports random battles on a map without a table or backdrop, or with more', () => {
+    expect(
+      check({
+        maps: {
+          town: { ...TOWN, encounters: { table: 'Wolves', music: 'bgm.fight' } },
+        },
+      }),
+    ).toEqual([
+      'Map town: encounters.table "Wolves" isn\'t kebab-case, like tide-caves-b1',
+      'Map town: encounters.backdrop is missing',
+      "Map town: encounters has a field it shouldn't: music",
+    ]);
+  });
+
   test('reports backdrops with something on them besides prefabs', () => {
     const field = VALID.backdrops.field;
     expect(
@@ -864,6 +880,39 @@ describe('checkEnemies', () => {
 
   test('the real enemies check out', () => {
     expect(checkEnemies({ enemies: ENEMIES, skills: SKILLS, manifest: ASSETS })).toEqual([]);
+  });
+});
+
+describe('checkMapEncounters', () => {
+  const map = (id: string, encounters?: MapDef['encounters']): MapDef => ({
+    id,
+    name: id,
+    terrain: '.',
+    legend: { '.': 'grass' },
+    ...(encounters ? { encounters } : {}),
+  });
+
+  test('reports encounter tables and backdrops there are none of', () => {
+    expect(
+      checkMapEncounters({
+        maps: {
+          road: map('road', { table: 'wolves', backdrop: 'meadow' }),
+          town: map('town'),
+          moor: map('moor', { table: 'bogs', backdrop: 'swamp' }),
+        },
+        encounters: { wolves: {} },
+        backdrops: { meadow: {} },
+      }),
+    ).toEqual([
+      "Map moor: its encounter table, bogs, isn't an encounter table",
+      "Map moor: its backdrop, swamp, isn't a battle backdrop",
+    ]);
+  });
+
+  test('the real maps’ random battles check out', () => {
+    expect(
+      checkMapEncounters({ maps: MAPS, encounters: ENCOUNTERS, backdrops: BACKDROPS }),
+    ).toEqual([]);
   });
 });
 

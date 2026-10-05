@@ -1,4 +1,5 @@
 import type { Direction } from '../core/direction';
+import type { EncounterRate } from '../core/encounters';
 import type { GameState } from '../core/state';
 import type { AudioInfo } from '../systems/audio';
 
@@ -40,6 +41,21 @@ export interface DebugApi {
   battle(enemies: readonly string[], options?: DebugBattleOptions): void;
   /** How fast battles play out: 1 is normal, 4 is the debug menu's fast. */
   battleSpeed(speed: number): void;
+  /**
+   * Random battles: sets the Encounter rate option; the countdown to the next battle, in steps at
+   * the Normal rate (so 1 brings one on the next step); and the seed they're drawn from, which
+   * also starts a fresh countdown. Each is left as it is if not given. Returns how they stand.
+   */
+  encounters(options?: DebugEncounterOptions): {
+    readonly rate: EncounterRate;
+    readonly countdown: number;
+  };
+}
+
+export interface DebugEncounterOptions {
+  readonly rate?: EncounterRate;
+  readonly countdown?: number;
+  readonly seed?: number | string;
 }
 
 export interface DebugBattleOptions {

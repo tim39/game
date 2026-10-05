@@ -206,6 +206,8 @@ const MapSchema = z.strictObject({
   legend: z.record(z.string().length(1), IdSchema),
   objects: z.array(MapObjectSchema).optional(),
   edges: z.partialRecord(z.enum(SIDES), WarpTargetSchema).optional(),
+  /** An encounter table, and a backdrop. */
+  encounters: z.strictObject({ table: IdSchema, backdrop: IdSchema }).optional(),
 });
 
 // Battle: what skills and items do (see src/core/battle/terms.ts).

@@ -4,10 +4,17 @@ import { LAYERS, type CompiledMap, type LayerName } from '../core/map/compile';
 export const TILE = 16;
 
 /**
- * Field depths: the map's layers, with characters between the base and overhead layers, and the
- * debug collision view over everything.
+ * Field depths: the map's layers, with characters between the base and overhead layers, the debug
+ * collision view over them, and over everything, the way into a battle.
  */
-export const DEPTH = { ground: 0, base: 1, characters: 2, overhead: 3, debug: 4 } as const;
+export const DEPTH = {
+  ground: 0,
+  base: 1,
+  characters: 2,
+  overhead: 3,
+  debug: 4,
+  transition: 5,
+} as const;
 
 /**
  * Draws a compiled map as one tilemap layer per map layer. Each tile sheet the map uses becomes a

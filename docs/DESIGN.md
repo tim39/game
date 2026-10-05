@@ -50,9 +50,10 @@ Town (story, shops, inn) → overworld → dungeon (explore, fight, treasure, a 
 
 ## Encounters
 
-- Random encounters happen on dungeon floors and dangerous overworld terrain. Steps until the next one: random 24–40, scaled by the **Encounter rate** option: Off, Low (half as often), Normal, High (twice as often). Off is a legitimate way to play for the story.
-- Each area has an encounter table of weighted enemy groups. Bosses and mini-bosses are visible, fixed encounters.
-- 8% chance of a **preemptive strike** (the party acts first) and 4% of an **ambush** (enemies act first).
+- Random encounters happen on dungeon floors and dangerous overworld terrain. Steps until the next one: random 24–40, scaled by the **Encounter rate** option: Off, Low (half as often), Normal, High (twice as often). Off is a legitimate way to play for the story. The count carries on across maps and battles (changing the rate keeps the steps already taken), and starts afresh after each battle; it isn't saved, so loading a game starts it afresh too. Stepping onto a way out or a cell that runs a script doesn't count.
+- Each area has an encounter table of weighted enemy groups, and a backdrop its battles are fought in front of. Bosses and mini-bosses are visible, fixed encounters. So far there's the North Road out of Saltmere, where wolves prowl: one at a time twice as often as a pair.
+- 8% chance of a **preemptive strike** (the party acts first) and 4% of an **ambush** (enemies act first); the battle says which as it starts.
+- **Going into battle:** the walk stops on the step that brings it, the battle music starts, the screen flashes and breaks up into black, and the battle fades in. Afterwards the field fades back in where the player stood, and its music carries on from where it was. Until the Game Over screen exists, a lost battle goes back to the title screen.
 - **Flee** is a command on any party member's turn. Chance = 50% + 2% × (average party SPD − average enemy SPD), clamped to 20–95%, counting only those still standing. A failed attempt uses up the turn, as a Normal action. You can't flee from bosses.
 
 ## Battle system

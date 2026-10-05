@@ -164,6 +164,16 @@ export type MapObject =
 export const SIDES = ['north', 'south', 'east', 'west'] as const;
 export type Side = (typeof SIDES)[number];
 
+/**
+ * A map's random battles (see Encounters in docs/DESIGN.md): the encounter table they're drawn
+ * from, in src/data/encounters.ts, and the backdrop they're fought in front of, in
+ * src/data/backdrops.ts.
+ */
+export interface MapEncounters {
+  readonly table: string;
+  readonly backdrop: string;
+}
+
 export interface MapDef {
   /** Kebab-case, like `saltmere` or `tide-caves-b1`. */
   readonly id: string;
@@ -184,6 +194,8 @@ export interface MapDef {
   readonly objects?: readonly MapObject[];
   /** Walking off an edge leads here. Without an entry, that edge is a wall. */
   readonly edges?: Readonly<Partial<Record<Side, WarpTarget>>>;
+  /** Random battles while walking about the map. Without them, there are none. */
+  readonly encounters?: MapEncounters;
 }
 
 /** The terrains and prefabs maps are built from. Passed in, so tests can use small fixtures. */

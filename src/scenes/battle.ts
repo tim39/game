@@ -22,6 +22,7 @@ import { DB } from '../data/db';
 import { MAP_CONTENT } from '../data/terrain';
 import { BATTLE_TEXT } from '../data/ui-text';
 import { ASSETS, type AssetEntry } from '../systems/asset-manifest';
+import { audio } from '../systems/audio';
 import { BATTLE_POSES } from '../systems/character-frames';
 import { input } from '../systems/input/game-input';
 import { session } from '../systems/session';
@@ -65,6 +66,9 @@ import { FONT } from '../ui/fonts';
 import { TimelineStrip, type TimelineFigure } from '../ui/timeline-strip';
 
 export const BATTLE_SCENE = 'battle';
+
+/** What battles are fought to: it pauses whatever was playing, which carries on afterwards. */
+export const BATTLE_MUSIC = 'bgm.battle';
 
 /** How a battle ended: won, lost, or got away from. */
 export type BattleResult = Exclude<Outcome, 'ongoing'>;
@@ -217,8 +221,10 @@ export class BattleScene extends Phaser.Scene {
       this.menu = null;
       this.battle = undefined;
       this.anims.globalTimeScale = 1;
+      audio.resumeMusic();
     });
     this.start = start;
+    audio.interruptMusic(BATTLE_MUSIC);
     this.cameras.main.setZoom(BATTLE_SCALE).centerOn(BATTLE_WIDTH / 2, BATTLE_HEIGHT / 2);
     this.drawBackdrop(start.backdrop);
 
@@ -315,6 +321,13 @@ export class BattleScene extends Phaser.Scene {
   private async fight(run: number): Promise<void> {
     let battle = this.current();
     await this.fade('in');
+    // Who got the jump says so first.
+    const jump = this.start?.setup.start;
+    if (jump !== undefined && this.live(run)) {
+      this.panels?.banner(BATTLE_TEXT[jump]);
+      await this.wait(BATTLE_PACING.banner);
+      this.panels?.banner(null);
+    }
     if (battle.active) await this.turnStarts(battle.active);
     while (battle.outcome === 'ongoing' && this.live(run)) {
       const actor = activeFighter(battle);
@@ -387,6 +400,7 @@ export class BattleScene extends Phaser.Scene {
     const { onEnd } = this.start ?? {};
     const battle = this.current();
     this.scene.stop();
+    audio.resumeMusic();
     onEnd?.(outcome, battle);
   }
 

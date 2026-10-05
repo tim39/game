@@ -376,6 +376,33 @@ export function checkEncounters({
   );
 }
 
+/**
+ * Checks that every map with random battles names an encounter table and a backdrop that exist.
+ * One line per problem.
+ */
+export function checkMapEncounters({
+  maps,
+  encounters,
+  backdrops,
+}: {
+  readonly maps: Readonly<Record<string, MapDef>>;
+  readonly encounters: Readonly<Record<string, unknown>>;
+  readonly backdrops: Readonly<Record<string, unknown>>;
+}): string[] {
+  return Object.values(maps).flatMap((map) => {
+    if (!map.encounters) return [];
+    const { table, backdrop } = map.encounters;
+    return [
+      ...(Object.hasOwn(encounters, table)
+        ? []
+        : [`Map ${map.id}: its encounter table, ${table}, isn't an encounter table`]),
+      ...(Object.hasOwn(backdrops, backdrop)
+        ? []
+        : [`Map ${map.id}: its backdrop, ${backdrop}, isn't a battle backdrop`]),
+    ];
+  });
+}
+
 export interface AreaSources {
   readonly areas: Readonly<Record<string, AreaBalance>>;
   readonly characters: Readonly<Record<string, CharacterDef>>;

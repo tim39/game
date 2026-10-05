@@ -40,6 +40,19 @@ export function crossfadeTo(mix: MusicMix, key: string | null, fadeMs: number): 
   return { current: key, tracks };
 }
 
+/**
+ * The mix coming back after a battle's music: the tracks it paused, from nothing, each fading back
+ * up over `fadeMs` to where it was going. One that was on its way out is gone.
+ */
+export function resumed(mix: MusicMix, fadeMs: number): MusicMix {
+  return {
+    ...mix,
+    tracks: mix.tracks
+      .filter((track) => track.target === 1)
+      .map((track): MixTrack => ({ ...track, level: 0, fadeMs })),
+  };
+}
+
 /** Moves every track's level `dtMs` further towards its target, and drops the ones faded out. */
 export function stepMix(mix: MusicMix, dtMs: number): MusicMix {
   const tracks = mix.tracks

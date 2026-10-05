@@ -77,7 +77,7 @@ Start a session and say **"next task"**, or name one. Claude takes the first unc
 
 - [x] BattleScene: layout, backdrop, sprites, command/skill/item/target menus, and animation of every `BattleEvent` (lunges, flashes, numbers, particles).
 - [x] The timeline strip, with a live preview as you browse commands and targets.
-- [ ] Encounters: step counter, area tables, transition effect, preemptive strikes and ambushes, battle music, the Encounter rate option.
+- [x] Encounters: step counter, area tables, transition effect, preemptive strikes and ambushes, battle music, the Encounter rate option.
 - [ ] Rewards: EXP, level-ups with stat gains and new skills, gold, drops.
 - [ ] Game Over with Retry battle, Load save and Title.
 - [ ] Debug: start any battle, set levels, give gear, 4× battle speed.

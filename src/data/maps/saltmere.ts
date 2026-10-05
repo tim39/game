@@ -3,8 +3,8 @@ import { defineMap } from '../../core/map/types';
 /**
  * Saltmere, the fishing village where the game begins (see STORY.md). A draft: the houses around
  * the square with its Kindling pyre, the lamps Rowan lights, the dock, and the lighthouse out on its
- * point. Tamsin's house and the fisher's cottage can be entered. The road north leads nowhere until
- * the overworld exists.
+ * point. Tamsin's house and the fisher's cottage can be entered. The road north leads out to the
+ * North Road.
  */
 export default defineMap({
   id: 'saltmere',
@@ -96,6 +96,7 @@ export default defineMap({
 
     // A signpost where the road north leaves the village.
     { type: 'prefab', prefab: 'sign', at: [22, 2], script: 'saltmere/road-sign' },
+    { type: 'spawn', id: 'north-road', at: [20, 2], facing: 'down' },
 
     // Villagers, busy with the Kindling.
     {
@@ -126,4 +127,5 @@ export default defineMap({
     { type: 'npc', id: 'walker', sprite: 'villager-4', at: [31, 7], facing: 'left', wander: 2 },
     { type: 'npc', id: 'stroller', sprite: 'villager-5', at: [8, 18], facing: 'right', wander: 2 },
   ],
+  edges: { north: { map: 'north-road', spawn: 'south' } },
 });

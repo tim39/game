@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { MUSIC_FADE_MS, SOUND_REPEAT_MS } from '../data/balance';
 import { ASSETS, type AssetEntry } from './asset-manifest';
-import { SILENCE, crossfadeTo, stepMix, type MusicMix } from './music-mix';
+import { SILENCE, crossfadeTo, resumed, stepMix, type MusicMix } from './music-mix';
 import { settings } from './settings';
 
 /** A sound as Phaser plays it, with whichever audio the browser has: Web Audio, HTML5 or none. */
@@ -28,6 +28,8 @@ export interface AudioInfo {
   }[];
   /** How many times a track has started from the top: music that plays on doesn't count again. */
   readonly starts: number;
+  /** The tracks a battle's music has paused, to carry on where they were once it's over. */
+  readonly paused: readonly string[];
   /** The latest sound effects played, oldest first. */
   readonly sounds: readonly string[];
 }
@@ -43,7 +45,9 @@ class AudioManager {
   private game?: Phaser.Game;
   private mix: MusicMix = SILENCE;
   /** The sound playing each track in the mix. */
-  private readonly tracks = new Map<string, Sound>();
+  private tracks = new Map<string, Sound>();
+  /** The music a battle's has interrupted: the mix as it was, and its sounds, paused. */
+  private interrupted: { mix: MusicMix; tracks: Map<string, Sound> } | null = null;
   /** When each sound effect last played, in the game's time. */
   private readonly lastPlayed = new Map<string, number>();
   private readonly played: string[] = [];
@@ -63,7 +67,46 @@ class AudioManager {
    */
   playMusic(key: string | null, fadeMs = MUSIC_FADE_MS): void {
     if (key !== null) checkKey(key, 'bgm.');
+    // During a battle, it's the music the battle's will give way to that changes.
+    if (this.interrupted) {
+      this.interrupted.mix = crossfadeTo(this.interrupted.mix, key, fadeMs);
+      return;
+    }
     this.mix = crossfadeTo(this.mix, key, fadeMs);
+    this.sync();
+  }
+
+  /**
+   * Plays a battle's music, `bgm.*`, at once: the music playing pauses where it is, until
+   * `resumeMusic`. Asked for again before then, it just changes the battle's track.
+   */
+  interruptMusic(key: string): void {
+    checkKey(key, 'bgm.');
+    if (!this.interrupted) {
+      for (const sound of this.tracks.values()) sound.pause();
+      this.interrupted = { mix: this.mix, tracks: this.tracks };
+      this.tracks = new Map();
+      this.mix = SILENCE;
+    }
+    this.mix = crossfadeTo(this.mix, key, 0);
+    this.sync();
+  }
+
+  /**
+   * Once a battle is over, its music stops, and what it paused fades back in from where it was.
+   * Without a battle's music playing, it does nothing.
+   */
+  resumeMusic(): void {
+    const { interrupted } = this;
+    if (!interrupted) return;
+    this.interrupted = null;
+    for (const sound of this.tracks.values()) {
+      sound.stop();
+      sound.destroy();
+    }
+    this.tracks = interrupted.tracks;
+    for (const sound of this.tracks.values()) sound.resume();
+    this.mix = resumed(interrupted.mix, MUSIC_FADE_MS);
     this.sync();
   }
 
@@ -95,6 +138,7 @@ class AudioManager {
         volume: this.tracks.get(key)?.volume ?? 0,
       })),
       starts: this.starts,
+      paused: [...(this.interrupted?.tracks.keys() ?? [])],
       sounds: [...this.played],
     };
   }

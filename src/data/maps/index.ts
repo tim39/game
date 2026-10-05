@@ -1,5 +1,6 @@
 import { recordById } from '../../core/ids';
 import type { MapDef } from '../../core/map/types';
+import northRoad from './north-road';
 import saltmere from './saltmere';
 import saltmereCottage from './saltmere-cottage';
 import saltmereLighthouse from './saltmere-lighthouse';
@@ -20,6 +21,7 @@ export const MAPS: Readonly<Record<string, MapDef>> = recordById(
     saltmereCottage,
     saltmereLighthouse,
     saltmereLighthouseTop,
+    northRoad,
     testShore,
     testHouse,
     testCellar,

@@ -109,6 +109,7 @@ test('the backtick opens the menu over the field, which waits until it closes', 
     ['Join the party', null],
     ['Noclip', false],
     ['Show collision', false],
+    ['Encounter rate', null],
     ['Export a save', null],
     ['Import a save', null],
   ]);

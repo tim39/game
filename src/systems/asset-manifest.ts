@@ -153,6 +153,7 @@ export const ASSETS = {
   // Music, which loops (see Draft soundtrack in DESIGN.md), and sound effects.
   'bgm.title': sound('bgm/intro'),
   'bgm.saltmere': sound('bgm/calm-village'),
+  'bgm.battle': sound('bgm/fight'),
   'sfx.chest': sound('sfx/secret-2'),
 } as const satisfies Record<string, AssetEntry>;
 

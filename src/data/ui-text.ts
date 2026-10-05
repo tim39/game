@@ -101,6 +101,8 @@ export const BATTLE_TEXT = {
     gloam: 'Gloam',
   } satisfies Record<Element, string>,
   /** The banner at the top, as things happen. */
+  preemptive: 'Preemptive strike!',
+  ambush: 'Ambush!',
   readies: (who: string, skill: string, target?: string) =>
     target === undefined ? `${who} readies ${skill}!` : `${who} readies ${skill} at ${target}!`,
   weakTo: (who: string, elements: readonly string[]) =>

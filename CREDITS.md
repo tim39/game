@@ -68,5 +68,6 @@ By **Pixel-boy** and **AAA**: https://pixel-boy.itch.io/ninja-adventure-asset-pa
 | `public/assets/tiles/boat.png` | A fishing boat | `Backgrounds/Vehicles/Boat.png` | None |
 | `public/assets/bgm/intro.ogg`, `public/assets/bgm/intro.m4a` | Title music | `Audio/Musics/38 - Intro.ogg` | Turned up 1.1 dB, to −20 LUFS like the other tracks; re-encoded as Ogg Vorbis (quality 4) and AAC (128 kbps) |
 | `public/assets/bgm/calm-village.ogg`, `public/assets/bgm/calm-village.m4a` | Saltmere's music | `Audio/Musics/33 - Calm Village.ogg` | Turned down 1.3 dB, to −20 LUFS; re-encoded as Ogg Vorbis (quality 4) and AAC (128 kbps) |
+| `public/assets/bgm/fight.ogg`, `public/assets/bgm/fight.m4a` | Battle music | `Audio/Musics/17 - Fight.ogg` | Turned up 2.5 dB, to −20 LUFS; re-encoded as Ogg Vorbis (quality 4) and AAC (128 kbps) |
 | `public/assets/sfx/secret-2.ogg`, `public/assets/sfx/secret-2.m4a` | A chest opening | `Audio/Jingles/Secret2.wav` | Encoded as Ogg Vorbis (quality 4) and AAC (128 kbps) |
 | `public/assets/tiles/lighthouse.png` | Saltmere's lighthouse | `Backgrounds/Tilesets/TilesetDesert.png`, the domed tower (columns 3–5, rows 0–4) | Cut out; the dome recoloured from greens to the pack's reds, and the two windows lit in its yellows |

@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { chestScript } from '../core/chest';
 import { DIRECTIONS, STEP, directionTowards, isDirection, type Direction } from '../core/direction';
+import { battleDue, countStep, encounterCountdown, rollEncounter } from '../core/encounters';
 import { PLAYER, type EventContext, type EventScript } from '../core/events';
 import {
   autoTrigger,
@@ -33,8 +34,9 @@ import {
   type Walker,
   type WalkWorld,
 } from '../core/walker';
-import { FIELD_SPEEDS, MAP_FADE_MS, NPC_TUNING } from '../data/balance';
+import { ENCOUNTER_TUNING, FIELD_SPEEDS, MAP_FADE_MS, NPC_TUNING } from '../data/balance';
 import { DB } from '../data/db';
+import { ENCOUNTERS } from '../data/encounters';
 import { EVENTS } from '../data/events';
 import { MAPS } from '../data/maps';
 import { SPEAKERS } from '../data/speakers';
@@ -45,13 +47,16 @@ import { cameraBounds } from '../systems/camera';
 import { characterFrame, sheetRows } from '../systems/character-frames';
 import { CollisionView } from '../systems/collision-view';
 import { debugSwitches } from '../systems/debug-switches';
+import { encounters } from '../systems/encounters';
 import { input } from '../systems/input/game-input';
 import { saveSlots } from '../systems/saves';
 import { session } from '../systems/session';
 import { settings } from '../systems/settings';
 import { DEPTH, TILE, createTilemap } from '../systems/tilemap';
+import { playBattleTransition } from '../ui/battle-transition';
 import type { DialogueLine } from '../ui/dialogue-box';
 import { MAX_CHOICES } from '../ui/dialogue-layout';
+import { BATTLE_MUSIC, BATTLE_SCENE, type BattleResult, type BattleStart } from './battle';
 import type { DialogueRequest } from './dialogue';
 import { SAVE_MENU_SCENE, type SaveMenuStart } from './save-menu';
 
@@ -152,6 +157,12 @@ export class FieldScene extends Phaser.Scene {
   private stoppedAt = 0;
   /** Marks which cells block the way, while the debug switch for it is on. */
   private collisionView?: CollisionView;
+  /** A random battle is on its way, or under way: until it's over, the field stands still. */
+  private encountering = false;
+  /** The screen is breaking up into a battle, which hasn't started yet. */
+  private transitioning = false;
+  /** What covers the field as a battle starts, until it's over. */
+  private curtain?: Phaser.GameObjects.Graphics;
 
   constructor() {
     super('field');
@@ -189,8 +200,12 @@ export class FieldScene extends Phaser.Scene {
         debugSwitches.noclip
           ? isOutOfBounds(map, x, y)
           : isBlocked(map, x, y) || this.npcAt(x, y) !== undefined,
-      // A walk stops at a way out, and at a touch, which runs its script.
-      stopsAt: (x, y) => exitAt(map, x, y) !== null || touchAt(map, x, y, session.state) !== null,
+      // A walk stops at a way out, at a touch, which runs its script, and where a battle comes.
+      stopsAt: (x, y) =>
+        exitAt(map, x, y) !== null ||
+        touchAt(map, x, y, session.state) !== null ||
+        (this.countsTowardsBattle(map, x, y) &&
+          battleDue(encounters.countdown, settings.encounterRate, ENCOUNTER_TUNING)),
     };
 
     const at = 'spawn' in start ? spawnOn(map, start.spawn) : start;
@@ -202,8 +217,16 @@ export class FieldScene extends Phaser.Scene {
     // Arriving doesn't count as stopping on a touch.
     this.stoppedAt = this.walker.steps;
     this.autosRun = new Set();
-    // The last map's view went with it.
+    // The last map's view went with it, and so did any battle on the way.
     this.collisionView = undefined;
+    this.encountering = false;
+    this.transitioning = false;
+    this.curtain = undefined;
+    // Left as a battle comes (a debug warp, say), the battle's music gives way to what it paused.
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      if (this.transitioning) audio.resumeMusic();
+      this.transitioning = false;
+    });
     const player = this.figure(PLAYER_SPRITE);
     this.player = player;
     this.drawFigures();
@@ -240,6 +263,8 @@ export class FieldScene extends Phaser.Scene {
     // Play time is real time. Phaser smooths `delta`, and holds it to 1/60 s while the window
     // isn't focused, so it counts the time that really passed instead.
     session.state = addPlayTime(session.state, Math.min(this.game.loop.rawDelta, MAX_FRAME_MS));
+    // As a battle comes, everyone stands still.
+    if (this.encountering) return;
 
     // Confirm while standing still talks to whoever is in front, or examines what's there.
     if (!this.leaving && !this.script && !this.walker.step && input.pressed('confirm')) {
@@ -279,6 +304,19 @@ export class FieldScene extends Phaser.Scene {
     // The step into a way out can be off the map, so until they arrive somewhere new, the player
     // is still where they last stood.
     if (!this.leaving) this.trackLocation(map);
+    // Each step onto open ground where there are random battles counts down to the next one.
+    if (!this.leaving && arrived(before, this.walker)) {
+      const { x, y } = arrivedAt(this.walker);
+      if (this.countsTowardsBattle(map, x, y)) {
+        const rate = settings.encounterRate;
+        encounters.countdown = countStep(encounters.countdown, rate, ENCOUNTER_TUNING);
+        if (encounters.countdown <= 0 && !this.walker.step) {
+          this.encounter(map);
+          this.drawFigures();
+          return;
+        }
+      }
+    }
     // Stopping somewhere new, on a touch, runs its script.
     if (!this.leaving && !this.walker.step && this.walker.steps !== this.stoppedAt) {
       this.stoppedAt = this.walker.steps;
@@ -343,6 +381,9 @@ export class FieldScene extends Phaser.Scene {
       fading: camera.fadeEffect.isRunning,
       noclip: debugSwitches.noclip,
       collision: this.collisionView?.marked ?? null,
+      encounters: map.encounters,
+      countdown: encounters.countdown,
+      encountering: this.encountering,
       x: walker.x,
       y: walker.y,
       facing: walker.facing,
@@ -380,6 +421,73 @@ export class FieldScene extends Phaser.Scene {
   private figure(key: string): Figure {
     const sprite = this.add.sprite(0, 0, key);
     return { sprite, rows: sheetRows(this.textures.get(key).getFrameNames().length) };
+  }
+
+  /**
+   * Whether stepping onto (x, y) counts towards the next random battle: on a map that has them,
+   * but not on a way out or a touch, which have their own business.
+   */
+  private countsTowardsBattle(map: CompiledMap, x: number, y: number): boolean {
+    return (
+      map.encounters !== null &&
+      exitAt(map, x, y) === null &&
+      touchAt(map, x, y, session.state) === null
+    );
+  }
+
+  /**
+   * A random battle from the map's encounter table, with a fresh countdown to the next: the battle
+   * music starts, the screen breaks up into black, and the battle starts over the field, which
+   * sleeps until it's over.
+   */
+  private encounter(map: CompiledMap): void {
+    const area = map.encounters;
+    const table =
+      area && Object.hasOwn(ENCOUNTERS, area.table) ? ENCOUNTERS[area.table] : undefined;
+    if (!area || !table) return;
+    const setup = rollEncounter(table, encounters.rng, ENCOUNTER_TUNING);
+    encounters.countdown = encounterCountdown(encounters.rng, ENCOUNTER_TUNING);
+    const seed = encounters.rng.nextUint32();
+    this.encountering = true;
+    this.transitioning = true;
+    this.buffered = null;
+    this.menuPending = false;
+    audio.interruptMusic(BATTLE_MUSIC);
+    void playBattleTransition(this, DEPTH.transition).then((curtain) => {
+      // The field may have started over meanwhile: a debug warp, say.
+      if (this.map !== map) {
+        curtain.destroy();
+        return;
+      }
+      this.transitioning = false;
+      this.curtain = curtain;
+      this.scene.launch(BATTLE_SCENE, {
+        setup,
+        backdrop: area.backdrop,
+        seed,
+        onEnd: (result) => this.afterBattle(result),
+      } satisfies BattleStart);
+      this.scene.sleep();
+    });
+  }
+
+  /**
+   * Once a battle is over, the field wakes and fades back in where it was. Lost, it's back to the
+   * title screen, until the Game Over screen (M4).
+   */
+  private afterBattle(result: BattleResult): void {
+    if (result === 'defeat') {
+      this.scene.start('title');
+      return;
+    }
+    this.events.once(Phaser.Scenes.Events.WAKE, () => {
+      this.curtain?.destroy();
+      this.curtain = undefined;
+      this.encountering = false;
+      this.lastDirection = null;
+      this.cameras.main.fadeIn(MAP_FADE_MS, 0, 0, 0);
+    });
+    this.scene.wake();
   }
 
   /** Saves the game as it is in the autosave slot, which every map change does. */
@@ -694,6 +802,16 @@ export class FieldScene extends Phaser.Scene {
     this.collisionView?.update(this.npcs.map(({ npc }) => npc.walker));
   }
 }
+
+/** Whether a walker has finished a step since it was `before`. */
+const arrived = (before: Walker, after: Walker): boolean => finished(after) > finished(before);
+
+/** How many steps a walker has finished: those started, less one under way. */
+const finished = (walker: Walker): number => walker.steps - (walker.step ? 1 : 0);
+
+/** Where a walker last arrived: where they stand, or the cell a step under way is leaving. */
+const arrivedAt = (walker: Walker): { x: number; y: number } =>
+  walker.step ? { x: walker.step.fromX, y: walker.step.fromY } : { x: walker.x, y: walker.y };
 
 /** A chest's frame: open once its flag is set. */
 const chestFrame = (chest: ChestPlacement): number =>

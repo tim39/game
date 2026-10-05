@@ -1,3 +1,4 @@
+import { ENCOUNTER_RATES, type EncounterRate } from '../core/encounters';
 import type { MapDef, SpawnObject } from '../core/map/types';
 import type { DebugSwitches } from '../systems/debug-switches';
 import type { SaveSlot } from '../systems/saves';
@@ -7,6 +8,8 @@ import type { DebugItem, DebugPage } from './debug-menu';
 export interface DebugMenuContext {
   readonly maps: Readonly<Record<string, MapDef>>;
   readonly switches: DebugSwitches;
+  /** The Encounter rate option, which the debug menu sets until the Options screen exists. */
+  readonly settings: { encounterRate: EncounterRate };
   /** Puts the player on `map` at one of its spawns. */
   warp(map: string, spawn: string): void;
   /** The battles there are to start (see `debugBattles`). */
@@ -40,9 +43,12 @@ export interface DebugSlot {
   readonly empty: boolean;
 }
 
-/** The debug menu's first page: warping, the switches, and exporting and importing saves. */
+/**
+ * The debug menu's first page: warping, battles, joining the party, the switches, the encounter
+ * rate, and exporting and importing saves.
+ */
 export function debugRootPage(context: DebugMenuContext): DebugPage {
-  const { switches } = context;
+  const { switches, settings } = context;
   const toggle = (label: string, name: keyof DebugSwitches): DebugItem => ({
     label,
     on: switches[name],
@@ -58,11 +64,28 @@ export function debugRootPage(context: DebugMenuContext): DebugPage {
       { label: 'Join the party', choose: () => joinPage(context) },
       toggle('Noclip', 'noclip'),
       toggle('Show collision', 'showCollision'),
+      {
+        label: 'Encounter rate',
+        detail: RATE_NAMES[settings.encounterRate],
+        // Off, Low, Normal, High, and round again.
+        choose: () => {
+          const next =
+            (ENCOUNTER_RATES.indexOf(settings.encounterRate) + 1) % ENCOUNTER_RATES.length;
+          settings.encounterRate = ENCOUNTER_RATES[next] ?? 'normal';
+        },
+      },
       { label: 'Export a save', choose: () => exportPage(context) },
       { label: 'Import a save', choose: () => importPage(context) },
     ],
   };
 }
+
+const RATE_NAMES: Readonly<Record<EncounterRate, string>> = {
+  off: 'Off',
+  low: 'Low',
+  normal: 'Normal',
+  high: 'High',
+};
 
 /** A battle the debug menu can start. */
 export interface DebugBattle {

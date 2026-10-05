@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { SILENCE, crossfadeTo, stepMix, type MusicMix } from './music-mix';
+import { SILENCE, crossfadeTo, resumed, stepMix, type MusicMix } from './music-mix';
 
 /** Each track as "key level→target", for readable expectations. */
 const levels = (mix: MusicMix): string[] =>
@@ -53,5 +53,24 @@ describe('crossfadeTo and stepMix', () => {
     const town = stepMix(crossfadeTo(SILENCE, 'town', 1000), 1000);
     const later = stepMix(town, 16);
     expect(later.tracks[0]).toBe(town.tracks[0]);
+  });
+});
+
+describe('resumed', () => {
+  test('brings the music a battle paused back from nothing, fading up to where it was going', () => {
+    const town = stepMix(crossfadeTo(SILENCE, 'town', 1000), 1000);
+    const back = resumed(town, 500);
+    expect(back.current).toBe('town');
+    expect(levels(back)).toEqual(['town 0→1']);
+    expect(levels(stepMix(back, 250))).toEqual(['town 0.5→1']);
+  });
+
+  test('leaves out a track that was fading out, and keeps silence silent', () => {
+    const crossfading = stepMix(
+      crossfadeTo(stepMix(crossfadeTo(SILENCE, 'town', 1000), 1000), 'caves', 1000),
+      400,
+    );
+    expect(levels(resumed(crossfading, 500))).toEqual(['caves 0→1']);
+    expect(resumed(SILENCE, 500)).toEqual(SILENCE);
   });
 });

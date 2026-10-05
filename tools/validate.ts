@@ -24,6 +24,7 @@ import {
   checkContent,
   checkEncounters,
   checkEnemies,
+  checkMapEncounters,
   checkNewGame,
 } from './content-checks';
 import { checkEvents } from './event-checks';
@@ -113,6 +114,7 @@ const problems = [
   }),
   ...checkEnemies({ enemies: ENEMIES, skills: SKILLS, manifest: ASSETS }),
   ...checkEncounters({ encounters: ENCOUNTERS, enemies: ENEMIES }),
+  ...checkMapEncounters({ maps: MAPS, encounters: ENCOUNTERS, backdrops: BACKDROPS }),
   ...checkAreas({
     areas: AREAS,
     characters: CHARACTERS,
@@ -156,7 +158,8 @@ console.log(
 );
 console.log(
   `Maps: ${maps === 1 ? 'the 1 map compiles' : `all ${maps} maps compile`}, and every tile ` +
-    'their terrains and prefabs use exists; every way out leads somewhere; their music exists; ' +
+    'their terrains and prefabs use exists; every way out leads somewhere; their music, ' +
+    'encounter tables and battle backdrops exist; ' +
     'no two chests share a flag; their names fit the save menu; and every map but the test maps ' +
     `can be reached from ${NEW_GAME.location.map}, where a new game starts. Every battle ` +
     'backdrop compiles, and fills the screen.',

@@ -1,4 +1,5 @@
 import type Phaser from 'phaser';
+import { ENCOUNTER_RATES } from '../core/encounters';
 import { recruit } from '../core/party';
 import { addItem, inParty, setFlag } from '../core/state';
 import { BACKDROPS } from '../data/backdrops';
@@ -13,6 +14,7 @@ import type { FieldScene, FieldStart } from '../scenes/field';
 import { ASSETS } from '../systems/asset-manifest';
 import { audio } from '../systems/audio';
 import { debugSwitches } from '../systems/debug-switches';
+import { encounters, reseedEncounters } from '../systems/encounters';
 import { input } from '../systems/input/game-input';
 import { saveSlots } from '../systems/saves';
 import { session } from '../systems/session';
@@ -61,6 +63,7 @@ export function installDebugHooks(game: Phaser.Game): void {
   installDebugMenu(game, {
     maps: MAPS,
     switches: debugSwitches,
+    settings,
     warp: (map, spawn) => startScene('field', { map, spawn } satisfies FieldStart),
     battles: debugBattles({
       enemies: ENEMIES,
@@ -118,6 +121,18 @@ export function installDebugHooks(game: Phaser.Game): void {
     battleSpeed: (speed) => {
       if (!(speed > 0)) throw new RangeError(`${speed} isn't a battle speed`);
       settings.battleSpeed = speed;
+    },
+    encounters: ({ rate, countdown, seed } = {}) => {
+      if (rate !== undefined && !ENCOUNTER_RATES.includes(rate)) {
+        throw new RangeError(`${String(rate)} isn't an encounter rate`);
+      }
+      if (countdown !== undefined && !(countdown >= 0)) {
+        throw new RangeError(`${countdown} isn't a countdown`);
+      }
+      if (seed !== undefined) reseedEncounters(seed);
+      if (rate !== undefined) settings.encounterRate = rate;
+      if (countdown !== undefined) encounters.countdown = countdown;
+      return { rate: settings.encounterRate, countdown: encounters.countdown };
     },
   };
   window.__game = api;

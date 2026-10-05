@@ -1,6 +1,7 @@
 import { expect, test } from 'vitest';
 import { defineMap, type MapDef } from '../core/map/types';
 import { MAPS } from '../data/maps';
+import type { EncounterRate } from '../core/encounters';
 import type { DebugSwitches } from '../systems/debug-switches';
 import type { SaveSlot } from '../systems/saves';
 import { DebugMenu } from './debug-menu';
@@ -41,6 +42,7 @@ const BATTLES: readonly DebugBattle[] = [
 
 function setUp(maps: Record<string, MapDef>) {
   const switches: DebugSwitches = { noclip: false, showCollision: false };
+  const settings = { encounterRate: 'normal' as const satisfies EncounterRate as EncounterRate };
   const warps: [string, string][] = [];
   const battles: DebugBattle[] = [];
   const party = ['rowan'];
@@ -50,6 +52,7 @@ function setUp(maps: Record<string, MapDef>) {
   const context: DebugMenuContext = {
     maps,
     switches,
+    settings,
     warp: (map, spawn) => void warps.push([map, spawn]),
     battles: BATTLES,
     battle: (battle) => void battles.push(battle),
@@ -70,7 +73,7 @@ function setUp(maps: Record<string, MapDef>) {
     notify: (notice) => menu.notify(notice),
   };
   const menu = new DebugMenu(debugRootPage(context), 10);
-  return { menu, switches, warps, battles, party, exported, importing };
+  return { menu, switches, settings, warps, battles, party, exported, importing };
 }
 
 const lines = (menu: DebugMenu) =>
@@ -90,6 +93,7 @@ test('the first page warps, and flips noclip and the collision view', () => {
     { label: 'Join the party', detail: undefined, on: undefined, enabled: true },
     { label: 'Noclip', detail: undefined, on: false, enabled: true },
     { label: 'Show collision', detail: undefined, on: false, enabled: true },
+    { label: 'Encounter rate', detail: 'Normal', on: undefined, enabled: true },
     { label: 'Export a save', detail: undefined, on: undefined, enabled: true },
     { label: 'Import a save', detail: undefined, on: undefined, enabled: true },
   ]);
@@ -104,6 +108,17 @@ test('the first page warps, and flips noclip and the collision view', () => {
   menu.choose();
   expect(switches).toEqual({ noclip: true, showCollision: true });
   expect(lines(menu)[4]?.on).toBe(true);
+});
+
+test('the encounter rate goes round Off, Low, Normal and High', () => {
+  const { menu, settings } = setUp({});
+  menu.move(5);
+  const rates: string[] = [];
+  for (let press = 0; press < 4; press++) {
+    menu.choose();
+    rates.push(`${settings.encounterRate} ${lines(menu)[5]?.detail ?? ''}`);
+  }
+  expect(rates).toEqual(['high High', 'off Off', 'low Low', 'normal Normal']);
 });
 
 test('warping picks a map, then one of its spawns', () => {
@@ -151,7 +166,7 @@ test('every real map can be warped to', () => {
 
 test('a slot with something in it can be exported, and says it was', () => {
   const { menu, exported } = setUp({});
-  menu.move(5);
+  menu.move(6);
   menu.choose();
   expect(menu.view().title).toBe('Export');
   expect(lines(menu).map(({ label, detail, enabled }) => [label, detail, enabled])).toEqual([
@@ -174,7 +189,7 @@ test('a slot with something in it can be exported, and says it was', () => {
 
 test('a save file can be imported into any slot, and says how that went once it has', () => {
   const { menu, importing } = setUp({});
-  menu.move(6);
+  menu.move(7);
   menu.choose();
   expect(menu.view().title).toBe('Import into');
   expect(lines(menu).map(({ label, enabled }) => [label, enabled])).toEqual([

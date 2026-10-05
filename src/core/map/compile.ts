@@ -11,6 +11,7 @@ import type {
   GridPoint,
   MapContent,
   MapDef,
+  MapEncounters,
   PrefabDef,
   Side,
   TerrainDef,
@@ -70,6 +71,8 @@ export interface CompiledMap {
   readonly autos: readonly Trigger[];
   /** Treasure chests, in the order the map lists them. Their cells are solid. */
   readonly chests: readonly ChestPlacement[];
+  /** Its random battles, if it has any. */
+  readonly encounters: MapEncounters | null;
 }
 
 /** The edge a cell just off the map is past, or null for a cell on the map. */
@@ -461,5 +464,6 @@ export function compileMap(def: MapDef, content: MapContent): CompiledMap {
     enters,
     autos,
     chests,
+    encounters: def.encounters ?? null,
   };
 }
