@@ -105,6 +105,8 @@ test('the backtick opens the menu over the field, which waits until it closes', 
   expect(opened).toMatchObject({ title: 'Debug', cursor: 0, selected: 'Warp to a map' });
   expect(opened.items.map(({ label, on }) => [label, on])).toEqual([
     ['Warp to a map', null],
+    ['Start a battle', null],
+    ['Join the party', null],
     ['Noclip', false],
     ['Show collision', false],
     ['Export a save', null],

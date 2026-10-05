@@ -4,7 +4,7 @@ import { input } from '../systems/input/game-input';
 import { touchMode } from '../systems/input/touch-controls';
 import { FONT } from '../ui/fonts';
 import { DebugMenu, type DebugPage } from './debug-menu';
-import { debugRootPage, type DebugMenuContext } from './debug-pages';
+import { debugRootPage, type DebugBattle, type DebugMenuContext } from './debug-pages';
 
 export const DEBUG_MENU = 'debug-menu';
 
@@ -201,11 +201,16 @@ export function installDebugMenu(
     game.events.once(Phaser.Core.Events.STEP, fn);
   };
 
-  // Warping stops every scene, the menu and whatever it paused among them.
+  // Warping and starting a battle stop every scene, the menu and whatever it paused among them.
   const warp = (map: string, spawn: string): void =>
     nextFrame(() => {
       paused = [];
       context.warp(map, spawn);
+    });
+  const battle = (chosen: DebugBattle): void =>
+    nextFrame(() => {
+      paused = [];
+      context.battle(chosen);
     });
   const open = (): void => {
     // There's nothing to draw with until the fonts have loaded.
@@ -215,7 +220,7 @@ export function installDebugMenu(
     const notify = (notice: string): void =>
       (game.scene.getScene(DEBUG_MENU) as DebugMenuScene).notify(notice);
     game.scene.start(DEBUG_MENU, {
-      root: debugRootPage({ ...context, warp, notify }),
+      root: debugRootPage({ ...context, warp, battle, notify }),
       close: () => nextFrame(close),
     } satisfies DebugMenuStart);
   };

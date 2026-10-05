@@ -67,6 +67,23 @@ export const FIELD_SPEEDS: WalkSpeeds = { walkMs: 240, runMs: 120 };
 /** Going between maps fades to black and back, this long each way. */
 export const MAP_FADE_MS = 250;
 
+/**
+ * How long the battle screen takes over what it shows, in milliseconds: a party member stepping
+ * forward when their turn comes and back after it, lunging at a target, a hit landing, a number or
+ * word floating up over someone, the pause after each action, a message in the banner, falling,
+ * and fading in and out of the battle. `settings.battleSpeed` speeds them all up.
+ */
+export const BATTLE_PACING = {
+  step: 160,
+  lunge: 140,
+  hit: 280,
+  pop: 800,
+  between: 220,
+  banner: 1000,
+  ko: 450,
+  fade: 350,
+} as const;
+
 /** Music crossfades this long: the new track fades in as the old one fades out. */
 export const MUSIC_FADE_MS = 1000;
 

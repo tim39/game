@@ -9,6 +9,16 @@ export interface Settings {
   musicVolume: number;
   /** How loud sound effects play, from 0 (off) to 1. */
   soundVolume: number;
+  /**
+   * How fast battles play out, as a multiple of `BATTLE_PACING`: 1 is normal. The Options screen
+   * will offer 1×, 2× and 3×; the debug menu and `window.__game` 4×.
+   */
+  battleSpeed: number;
 }
 
-export const settings: Settings = { alwaysRun: false, musicVolume: 0.6, soundVolume: 0.8 };
+export const settings: Settings = {
+  alwaysRun: false,
+  musicVolume: 0.6,
+  soundVolume: 0.8,
+  battleSpeed: 1,
+};

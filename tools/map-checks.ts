@@ -1,5 +1,7 @@
+import { compileBackdrop } from '../src/core/map/backdrop';
 import { compileMap, type CompiledMap } from '../src/core/map/compile';
 import type { GridPoint, MapContent, MapDef, WarpTarget } from '../src/core/map/types';
+import type { BackdropDef } from '../src/core/schema';
 import type { AssetEntry } from '../src/systems/asset-manifest';
 import { SAVE_MENU } from '../src/ui/save-menu-layout';
 import type { MeasuredFont } from './font-metrics';
@@ -197,5 +199,23 @@ export function checkMapNames(
     const width = font.width(map.name);
     if (width <= SAVE_MENU.placeWidth) return [];
     return [`${name} is ${width} pixels wide; the save menu has room for ${SAVE_MENU.placeWidth}`];
+  });
+}
+
+/**
+ * Checks that every battle backdrop compiles, and fills the screen. Returns one line per problem.
+ * The tiles their terrains and prefabs use are checked with the maps'.
+ */
+export function checkBackdrops(
+  backdrops: Readonly<Record<string, BackdropDef>>,
+  content: MapContent,
+): string[] {
+  return Object.entries(backdrops).flatMap(([id, backdrop]) => {
+    try {
+      compileBackdrop(id, backdrop, content);
+      return [];
+    } catch (error) {
+      return [error instanceof Error ? error.message : String(error)];
+    }
   });
 }

@@ -1,6 +1,6 @@
 import { expect, test } from 'vitest';
 import { standingWalker, updateWalker, type Walker } from '../core/walker';
-import { characterFrame, sheetRows } from './character-frames';
+import { BATTLE_POSES, characterFrame, sheetRows } from './character-frames';
 
 const SPEEDS = { walkMs: 200, runMs: 100 };
 const open = { isBlocked: (): boolean => false };
@@ -35,4 +35,16 @@ test('a short sheet cycles through its two rows', () => {
 test('sheetRows counts rows of four frames', () => {
   expect(sheetRows(28)).toBe(7);
   expect(sheetRows(8)).toBe(2);
+});
+
+test('battle poses face left at the enemies, and running away faces right', () => {
+  expect(BATTLE_POSES).toEqual({
+    stand: 2,
+    walk: [2, 6, 10, 14],
+    strike: 18,
+    leap: 22,
+    use: 25,
+    down: 24,
+    run: [3, 7, 11, 15],
+  });
 });

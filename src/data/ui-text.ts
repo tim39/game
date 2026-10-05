@@ -1,3 +1,5 @@
+import type { FighterStatus } from '../core/battle/fighter';
+import type { Element } from '../core/battle/terms';
 import type { ChestText } from '../core/chest';
 import { itemName } from './items';
 
@@ -41,4 +43,74 @@ export const CHEST_TEXT: ChestText = {
   found: (contents) =>
     'gold' in contents ? `Found ${contents.gold} gold!` : `Found ${itemName(contents.item)}!`,
   empty: 'The chest is empty.',
+};
+
+/**
+ * The battle screen's words: the commands, what pops up over the fighters as things happen, the
+ * names and short tags of statuses, and what the banner at the top says.
+ */
+export const BATTLE_TEXT = {
+  commands: { attack: 'Attack', skill: 'Skill', item: 'Item', guard: 'Guard', flee: 'Flee' },
+  /** Labels in the party's status panel. */
+  hp: 'HP',
+  mp: 'MP',
+  /** The help line while choosing a target, for an action on a whole side. */
+  allEnemies: 'All enemies',
+  allAllies: 'The whole party',
+  /** Over a fighter, as things happen to them. */
+  pop: {
+    miss: 'Miss',
+    critical: 'Critical!',
+    stagger: 'Stagger!',
+    delay: 'Delay',
+    weak: 'Weak',
+    resist: 'Resist',
+    immune: 'Immune',
+    absorb: 'Absorb',
+    resisted: 'Resisted',
+    asleep: 'Zzz',
+    revived: 'Back up!',
+    mp: (amount: number) => `${amount} MP`,
+  },
+  /** Each status's name, as it pops up when given, and a short tag for the party's status panel. */
+  statuses: {
+    poison: { name: 'Poison', tag: 'Psn' },
+    regen: { name: 'Regen', tag: 'Rgn' },
+    sleep: { name: 'Sleep', tag: 'Slp' },
+    silence: { name: 'Silence', tag: 'Sil' },
+    blind: { name: 'Blind', tag: 'Bld' },
+    haste: { name: 'Haste', tag: 'Hst' },
+    slow: { name: 'Slow', tag: 'Slw' },
+    'atk-up': { name: 'ATK Up', tag: 'Atk+' },
+    'atk-down': { name: 'ATK Down', tag: 'Atk-' },
+    'def-up': { name: 'DEF Up', tag: 'Def+' },
+    'def-down': { name: 'DEF Down', tag: 'Def-' },
+    'mag-up': { name: 'MAG Up', tag: 'Mag+' },
+    'mag-down': { name: 'MAG Down', tag: 'Mag-' },
+    'res-up': { name: 'RES Up', tag: 'Res+' },
+    'res-down': { name: 'RES Down', tag: 'Res-' },
+    provoke: { name: 'Provoke', tag: 'Prv' },
+    guard: { name: 'Guard', tag: 'Grd' },
+  } satisfies Record<FighterStatus, { name: string; tag: string }>,
+  elements: {
+    fire: 'Fire',
+    water: 'Water',
+    wind: 'Wind',
+    earth: 'Earth',
+    light: 'Light',
+    gloam: 'Gloam',
+  } satisfies Record<Element, string>,
+  /** The banner at the top, as things happen. */
+  readies: (who: string, skill: string, target?: string) =>
+    target === undefined ? `${who} readies ${skill}!` : `${who} readies ${skill} at ${target}!`,
+  weakTo: (who: string, elements: readonly string[]) =>
+    elements.length > 0
+      ? `${who} is weak to ${elements.join(' and ')}.`
+      : `${who} has no weakness.`,
+  gotAway: 'The party got away!',
+  cantGetAway: "Couldn't get away!",
+  victory: 'Victory!',
+  defeat: 'The party has fallen...',
+  /** Under the result, until Confirm goes on. */
+  onwards: { keys: 'Z: go on', touch: 'A: go on' },
 };

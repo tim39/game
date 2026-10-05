@@ -67,10 +67,10 @@ Side view: enemies on the left, the party on the right, the timeline across the 
 │                                                Liora         │
 │                                            Cass              │
 ├────────────────┬─────────────────────────────────────────────┤
-│ ▶ Attack       │ Rowan   HP 112/130   MP 18/24               │
-│   Skill        │ Bram    HP 201/201   MP  6/10               │
-│   Item         │ Liora   HP  74/ 90   MP 31/40               │
-│   Guard  Flee  │ Cass    HP  88/ 95   MP 12/20               │
+│ ▶ Attack       │ Rowan   HP 112/130   MP 18   Atk+           │
+│   Skill        │ Bram    HP 201/201   MP  6                  │
+│   Item         │ Liora   HP  74/ 90   MP 31   Psn            │
+│   Guard  Flee  │ Cass    HP  88/ 95   MP 12                  │
 └────────────────┴─────────────────────────────────────────────┘
 ```
 
@@ -247,7 +247,7 @@ The simulator's party plays as a sensible but unadventurous player would. It get
 - **Equip:** stat comparison with up and down arrows.
 - **Shop:** Buy and Sell with quantities, showing who can equip each item and how it changes their stats.
 - **Inn:** "Rest for N gold?" → fade out, heal, morning jingle.
-- **Battle:** as shown above, plus a target cursor, damage numbers, status icons, the timeline preview and a victory panel.
+- **Battle:** as shown above: the party's HP with a gauge, the MP they have left and up to two status tags; the command window only on a party member's turn, as they step forward. Skill and Item open their lists in the status panel's place. A banner under the timeline says what the skill or item under the cursor does, whom an action is aimed at (a ▼ marks them too), and what's being done. Numbers and words rise over whoever's hit (Miss, Critical!, Weak, Stagger!, a status's name), and a ! hangs over an enemy that has telegraphed. Winning or losing says so and waits for Confirm. Plus the timeline preview, and a victory panel.
 - **Game Over:** Retry battle, Load save, Title.
 - **Options:** text speed, battle speed (1×, 2×, 3×), encounter rate, always run, music and sound volume, screen shake on/off, reduce flashing.
 

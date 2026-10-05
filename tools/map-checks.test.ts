@@ -6,6 +6,7 @@ import type { MapContent, MapDef } from '../src/core/map/types';
 import { CHARACTERS } from '../src/data/characters';
 import { EVENTS } from '../src/data/events';
 import { ITEMS } from '../src/data/items';
+import { BACKDROPS } from '../src/data/backdrops';
 import { MAPS } from '../src/data/maps';
 import { NEW_GAME } from '../src/data/new-game';
 import { SPEAKERS } from '../src/data/speakers';
@@ -15,7 +16,7 @@ import { ASSETS, type AssetEntry } from '../src/systems/asset-manifest';
 import { pngSize } from './asset-checks';
 import { checkEvents } from './event-checks';
 import { measureBodyFont, type MeasuredFont } from './font-metrics';
-import { checkMapNames, checkMaps, checkReachable } from './map-checks';
+import { checkBackdrops, checkMapNames, checkMaps, checkReachable } from './map-checks';
 
 const MANIFEST: Record<string, AssetEntry> = {
   'tiles.grass': { type: 'spritesheet', url: 'grass.png', frameWidth: 16, frameHeight: 16 },
@@ -262,5 +263,30 @@ describe('map names', () => {
       ),
     );
     expect(checkMapNames(MAPS, font)).toEqual([]);
+  });
+});
+
+describe('backdrops', () => {
+  const grass = (width: number, height: number): string =>
+    Array<string>(height).fill('.'.repeat(width)).join('\n');
+
+  test('compile, and fill the screen', () => {
+    expect(
+      checkBackdrops(
+        {
+          meadow: { terrain: grass(20, 12), legend: { '.': 'grass' } },
+          strip: { terrain: grass(20, 3), legend: { '.': 'grass' } },
+          lost: { terrain: grass(20, 12), legend: { '.': 'moss' } },
+        },
+        content({}),
+      ),
+    ).toEqual([
+      "Backdrop strip: it's 20×3 cells, not 20×12, the screen's size",
+      'Backdrop lost: its legend uses "moss", which isn\'t a terrain',
+    ]);
+  });
+
+  test('the real backdrops check out', () => {
+    expect(checkBackdrops(BACKDROPS, MAP_CONTENT)).toEqual([]);
   });
 });

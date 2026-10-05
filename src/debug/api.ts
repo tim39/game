@@ -27,10 +27,28 @@ export interface DebugApi {
   setFlag(flag: string, on?: boolean): void;
   /** Gives the party `count` of an item (1 if left out). */
   give(item: string, count?: number): void;
+  /** Has a character join the party, at level 1 in the gear they start with. */
+  join(character: string): void;
   /** Runs an event script on the field, as if something had set it off. Throws if one is running. */
   run(script: string): void;
   /** The music playing and fading, and the latest sound effects. */
   audio(): AudioInfo;
+  /**
+   * Stops every running scene and starts a battle against `enemies`, left to right, with the party
+   * as the game has it. Once it's over, the field starts where the game says the player is.
+   */
+  battle(enemies: readonly string[], options?: DebugBattleOptions): void;
+  /** How fast battles play out: 1 is normal, 4 is the debug menu's fast. */
+  battleSpeed(speed: number): void;
+}
+
+export interface DebugBattleOptions {
+  /** What it's fought in front of: `meadow` if left out. */
+  readonly backdrop?: string;
+  /** Where its luck comes from, for a battle that plays the same every time; the clock if left out. */
+  readonly seed?: number | string;
+  /** A preemptive strike lets the party act first; an ambush, the enemies. */
+  readonly start?: 'preemptive' | 'ambush';
 }
 
 declare global {

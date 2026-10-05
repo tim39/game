@@ -297,8 +297,8 @@ export function activeFighter(battle: BattleState): Fighter {
 
 // Actions: what they're aimed at, how long they take, and whether they can be taken.
 
-/** What a command is aimed at. */
-function aimOf(battle: BattleState, command: Command): Target {
+/** What a command is aimed at: its user, one or all on either side. */
+export function aimOf(battle: BattleState, command: Command): Target {
   switch (command.type) {
     case 'attack':
       return 'one-enemy';
@@ -374,8 +374,11 @@ const revives = (battle: BattleState, command: Command): boolean =>
 const targetOf = (action: Action): FighterId | undefined =>
   'target' in action ? action.target : undefined;
 
-/** The fighters an action works on, as it's aimed. */
-function targetsOf(battle: BattleState, action: Action): FighterId[] {
+/**
+ * The fighters an action of the fighter whose turn it is would work on, as it's aimed: its target,
+ * its user, or everyone on a side it could work on.
+ */
+export function targetsOf(battle: BattleState, action: Action): FighterId[] {
   const actor = activeFighter(battle);
   switch (aimOf(battle, action)) {
     case 'self':

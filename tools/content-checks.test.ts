@@ -2,6 +2,7 @@ import { describe, expect, test } from 'vitest';
 import type { MapContent, MapDef } from '../src/core/map/types';
 import type { SkillDef } from '../src/core/schema';
 import type { NewGame } from '../src/core/state';
+import { BACKDROPS } from '../src/data/backdrops';
 import { AREAS, EXP_CURVE } from '../src/data/balance';
 import { CHARACTERS } from '../src/data/characters';
 import { ENCOUNTERS } from '../src/data/encounters';
@@ -13,6 +14,7 @@ import { NEW_GAME } from '../src/data/new-game';
 import { SKILLS } from '../src/data/skills';
 import { SPEAKERS } from '../src/data/speakers';
 import { MAP_CONTENT, PREFABS, TERRAINS } from '../src/data/terrain';
+import { ASSETS } from '../src/systems/asset-manifest';
 import {
   checkAreas,
   checkCharacters,
@@ -191,6 +193,13 @@ describe('checkContent', () => {
       door: { sheet: 'tiles.grass', origin: [2, 0], layout: ['D'] },
     },
     maps: { town: TOWN },
+    backdrops: {
+      field: {
+        terrain: '..\n..',
+        legend: { '.': 'grass' },
+        objects: [{ type: 'prefab', prefab: 'oak', at: [0, 0] }],
+      },
+    },
     events: { 'town/ada': async () => {} },
     newGame: {
       location: { map: 'town', x: 2, y: 0, facing: 'down' },
@@ -562,6 +571,21 @@ describe('checkContent', () => {
     ]);
   });
 
+  test('reports backdrops with something on them besides prefabs', () => {
+    const field = VALID.backdrops.field;
+    expect(
+      check({
+        backdrops: {
+          field: { ...field, objects: [{ type: 'spawn', id: 'start', at: [0, 0], facing: 'up' }] },
+        },
+      }),
+    ).toEqual([
+      'Backdrop field: objects[0].type should be "prefab", not "spawn"',
+      'Backdrop field: objects[0].prefab is missing',
+      "Backdrop field: objects[0] has fields it shouldn't: id, facing",
+    ]);
+  });
+
   test('reports a collection that is not a record', () => {
     expect(check({ items: [] })).toEqual(['Items should be an object, not a list']);
   });
@@ -579,6 +603,7 @@ describe('checkContent', () => {
         terrains: TERRAINS,
         prefabs: PREFABS,
         maps: MAPS,
+        backdrops: BACKDROPS,
         events: EVENTS,
         newGame: NEW_GAME,
       }),
@@ -791,10 +816,27 @@ describe('checkEnemies', () => {
       howl: skill('Howl', 'all-enemies'),
       mend: skill('Mend', 'one-ally'),
     },
+    manifest: {
+      'monster.wolf': { type: 'spritesheet', url: 'wolf.png', frameWidth: 16, frameHeight: 16 },
+    },
   };
 
   test('passes enemies whose skills exist, aimed as they pick their targets', () => {
     expect(checkEnemies(SOURCES)).toEqual([]);
+  });
+
+  test('reports an enemy with no sprite sheet to fight as', () => {
+    const wolf = SOURCES.enemies.wolf!;
+    expect(
+      checkEnemies({
+        ...SOURCES,
+        enemies: { wolf, bat: { ...wolf, name: 'Bat' }, crab: { ...wolf, name: 'Crab' } },
+        manifest: { ...SOURCES.manifest, 'monster.crab': { type: 'image', url: 'crab.png' } },
+      }),
+    ).toEqual([
+      'Enemy bat: has no sprite sheet to fight as, monster.bat in the asset manifest',
+      'Enemy crab: has no sprite sheet to fight as, monster.crab in the asset manifest',
+    ]);
   });
 
   test('reports skills that don’t exist, and target rules for skills not aimed at one', () => {
@@ -821,7 +863,7 @@ describe('checkEnemies', () => {
   });
 
   test('the real enemies check out', () => {
-    expect(checkEnemies({ enemies: ENEMIES, skills: SKILLS })).toEqual([]);
+    expect(checkEnemies({ enemies: ENEMIES, skills: SKILLS, manifest: ASSETS })).toEqual([]);
   });
 });
 

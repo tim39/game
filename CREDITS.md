@@ -34,6 +34,23 @@ By **Pixel-boy** and **AAA**: https://pixel-boy.itch.io/ninja-adventure-asset-pa
 | `public/assets/sprites/child.png` | Villagers | `Actor/Character/Child/SpriteSheet.png` | None |
 | `public/assets/sprites/shadow.png` | Shadow under characters | `Actor/Character/Shadow.png` | None |
 | `public/assets/sprites/treasure-chest.png` | Treasure chests, shut and open | `Items/Treasure/BigTreasureChest.png` | None |
+| `public/assets/monsters/dog-black.png` | The Wolf in battle (the pack has no wolf) | `Actor/Animal/DogBlack/SpriteSheet.png` | None |
+| `public/assets/monsters/blue-bat.png` | The Cave Bat in battle | `Actor/Monster/BlueBat/SpriteSheet.png` | Just the column facing right, its four frames put side by side in one strip |
+| `public/assets/monsters/mollusc.png` | The Reef Snail in battle | `Actor/Monster/Mollusc/Mollusc.png` | Just the column facing right, its four frames put side by side in one strip |
+| `public/assets/monsters/octopus-2.png` | The Grotto Octopus in battle | `Actor/Monster/Octopus2/SpriteSheet.png` | Just the column facing right, its four frames put side by side in one strip |
+| `public/assets/monsters/spirit.png` | The Drowned Wisp in battle | `Actor/Monster/Spirit/SpriteSheet.png` | Just the column facing right, its four frames put side by side in one strip |
+| `public/assets/monsters/giant-blue-samurai.png` | The Drowned Warden in battle | `Actor/Boss/GiantBlueSamurai/Idle.png` | None |
+| `public/assets/vfx/cut.png` | The party's physical hits | `FX/Attack/Cut/SpriteSheet.png` | None |
+| `public/assets/vfx/claw.png` | Enemies' physical hits | `FX/Attack/Claw/SpriteSheet.png` | None |
+| `public/assets/vfx/flam.png` | Fire hits | `FX/Elemental/Flam/SpriteSheet.png` | None |
+| `public/assets/vfx/water.png` | Water hits | `FX/Elemental/Water/SpriteSheet.png` | None |
+| `public/assets/vfx/spirit.png` | Wind hits, tinted green (the pack has no wind effect) | `FX/Magic/Spirit/SpriteSheet.png` | None |
+| `public/assets/vfx/rock.png` | Earth hits | `FX/Elemental/Rock/SpriteSheet.png` | None |
+| `public/assets/vfx/circle-spark.png` | Light hits | `FX/Magic/Circle/SpriteSheetSpark.png` | None |
+| `public/assets/vfx/smoke.png` | Gloam hits, tinted violet; the party fleeing | `FX/Smoke/Smoke/SpriteSheet.png` | None |
+| `public/assets/vfx/spark.png` | Healing, reviving and helpful statuses | `FX/Magic/Spark/SpriteSheet.png` | None |
+| `public/assets/vfx/aura.png` | Harmful statuses | `FX/Magic/Aura/SpriteSheet.png` | None |
+| `public/assets/vfx/shield-blue.png` | Guard | `FX/Magic/Shield/SpriteSheetBlue.png` | None |
 | `public/assets/tiles/floor.png` | Ground: grass, sand, dirt paths | `Backgrounds/Tilesets/TilesetFloor.png` | Cropped a blank 1 px row off the bottom (417 to 416 px tall), so it divides into 16 px tiles |
 | `public/assets/tiles/water.png` | Sea, shorelines, docks | `Backgrounds/Tilesets/TilesetWater.png` | None |
 | `public/assets/tiles/nature.png` | Trees, bushes, rocks, flowers | `Backgrounds/Tilesets/TilesetNature.png` | None |

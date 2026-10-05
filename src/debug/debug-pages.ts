@@ -9,6 +9,14 @@ export interface DebugMenuContext {
   readonly switches: DebugSwitches;
   /** Puts the player on `map` at one of its spawns. */
   warp(map: string, spawn: string): void;
+  /** The battles there are to start (see `debugBattles`). */
+  readonly battles: readonly DebugBattle[];
+  /** Starts a battle, with the party as it is, which goes back to the field once it's over. */
+  battle(battle: DebugBattle): void;
+  /** Who could join the party: everyone with a sprite to fight as, and whether they're in it. */
+  recruits(): readonly { readonly id: string; readonly name: string; readonly joined: boolean }[];
+  /** Has someone join the party, at level 1 in the gear they start with. */
+  join(id: string): void;
   readonly saves: DebugSaves;
   /** Says something at the bottom of the menu: how an export or an import went. */
   notify(notice: string): void;
@@ -46,11 +54,92 @@ export function debugRootPage(context: DebugMenuContext): DebugPage {
     title: 'Debug',
     items: () => [
       { label: 'Warp to a map', choose: () => warpPage(context) },
+      { label: 'Start a battle', choose: () => battlePage(context) },
+      { label: 'Join the party', choose: () => joinPage(context) },
       toggle('Noclip', 'noclip'),
       toggle('Show collision', 'showCollision'),
       { label: 'Export a save', choose: () => exportPage(context) },
       { label: 'Import a save', choose: () => importPage(context) },
     ],
+  };
+}
+
+/** A battle the debug menu can start. */
+export interface DebugBattle {
+  /** Whom it's against, as the menu lists them: `Cave Bat x3`. */
+  readonly label: string;
+  /** Where they're met: an encounter table's ID, `boss`, or `pair`. */
+  readonly detail: string;
+  readonly enemies: readonly string[];
+  /** What it's fought in front of. */
+  readonly backdrop: string;
+}
+
+/** Where a debug battle's enemies come from, and what to fight them in front of. */
+export interface DebugBattleSources {
+  readonly enemies: Readonly<Record<string, { readonly name: string; readonly boss?: boolean }>>;
+  readonly encounters: Readonly<
+    Record<string, { readonly groups: readonly { readonly enemies: readonly string[] }[] }>
+  >;
+  /** Each area's boss, and the encounter table of the area it's met in (src/data/balance.ts). */
+  readonly bosses: readonly { readonly enemies: readonly string[]; readonly table: string }[];
+  /** The backdrop for an encounter table's battles, or for any other. */
+  readonly backdrop: (table?: string) => string;
+}
+
+/**
+ * The battles the debug menu offers: every group of every encounter table, each area's boss, and
+ * each other enemy in a pair, as wolves come.
+ */
+export function debugBattles(sources: DebugBattleSources): DebugBattle[] {
+  const { enemies, encounters, bosses, backdrop } = sources;
+  const label = (group: readonly string[]): string => {
+    const counts = new Map<string, number>();
+    for (const id of group) counts.set(id, (counts.get(id) ?? 0) + 1);
+    return [...counts]
+      .map(([id, count]) => `${enemies[id]?.name ?? id}${count > 1 ? ` x${count}` : ''}`)
+      .join(', ');
+  };
+  const battle = (group: readonly string[], detail: string, table?: string): DebugBattle => ({
+    label: label(group),
+    detail,
+    enemies: group,
+    backdrop: backdrop(table),
+  });
+  return [
+    ...Object.entries(encounters).flatMap(([table, { groups }]) =>
+      groups.map((group) => battle(group.enemies, table, table)),
+    ),
+    ...bosses.map(({ enemies: group, table }) => battle(group, 'boss', table)),
+    ...Object.entries(enemies)
+      .filter(([, enemy]) => !enemy.boss)
+      .map(([id]) => battle([id, id], 'pair')),
+  ];
+}
+
+/** Everyone who could join the party; those in it already can't be chosen. */
+function joinPage(context: DebugMenuContext): DebugPage {
+  return {
+    title: 'Join the party',
+    items: () =>
+      context.recruits().map(({ id, name, joined }) => ({
+        label: name,
+        detail: joined ? 'in the party' : id,
+        choose: joined ? undefined : () => context.join(id),
+      })),
+  };
+}
+
+/** Every battle there is to start. */
+function battlePage(context: DebugMenuContext): DebugPage {
+  return {
+    title: 'Start a battle',
+    items: () =>
+      context.battles.map((battle) => ({
+        label: battle.label,
+        detail: battle.detail,
+        choose: () => context.battle(battle),
+      })),
   };
 }
 

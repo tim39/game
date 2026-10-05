@@ -2,6 +2,7 @@
 // and exits non-zero on any problem (see Content data in docs/TECH.md).
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { BACKDROPS } from '../src/data/backdrops';
 import { AREAS, EXP_CURVE } from '../src/data/balance';
 import { CHARACTERS } from '../src/data/characters';
 import { ENCOUNTERS } from '../src/data/encounters';
@@ -15,6 +16,7 @@ import { SPEAKERS } from '../src/data/speakers';
 import { MAP_CONTENT, PREFABS, TERRAINS } from '../src/data/terrain';
 import { CHEST_TEXT } from '../src/data/ui-text';
 import { ASSETS } from '../src/systems/asset-manifest';
+import { BATTLE_LAYOUT } from '../src/ui/battle-layout';
 import { checkAssets, pngSize } from './asset-checks';
 import {
   checkAreas,
@@ -26,8 +28,8 @@ import {
 } from './content-checks';
 import { checkEvents } from './event-checks';
 import { measureBodyFont } from './font-metrics';
-import { checkMapNames, checkMaps, checkReachable } from './map-checks';
-import { checkText } from './text-checks';
+import { checkBackdrops, checkMapNames, checkMaps, checkReachable } from './map-checks';
+import { checkBattleText, checkText } from './text-checks';
 
 const ROOT = join(import.meta.dirname, '..');
 const PUBLIC = join(ROOT, 'public');
@@ -55,6 +57,7 @@ const content = {
   terrains: TERRAINS,
   prefabs: PREFABS,
   maps: MAPS,
+  backdrops: BACKDROPS,
   events: EVENTS,
   newGame: NEW_GAME,
 };
@@ -91,6 +94,7 @@ const problems = [
       }
     },
   }),
+  ...checkBackdrops(BACKDROPS, MAP_CONTENT),
   ...events.problems,
   ...checkMapNames(MAPS, font),
   ...checkNewGame({
@@ -107,7 +111,7 @@ const problems = [
     items: ITEMS,
     maxLevel: EXP_CURVE.maxLevel,
   }),
-  ...checkEnemies({ enemies: ENEMIES, skills: SKILLS }),
+  ...checkEnemies({ enemies: ENEMIES, skills: SKILLS, manifest: ASSETS }),
   ...checkEncounters({ encounters: ENCOUNTERS, enemies: ENEMIES }),
   ...checkAreas({
     areas: AREAS,
@@ -120,6 +124,11 @@ const problems = [
   ...checkText(
     { characters: CHARACTERS, skills: SKILLS, items: ITEMS, enemies: ENEMIES, speakers: SPEAKERS },
     font,
+  ),
+  ...checkBattleText(
+    { characters: CHARACTERS, skills: SKILLS, items: ITEMS },
+    font,
+    BATTLE_LAYOUT.room,
   ),
 ];
 if (problems.length > 0) fail(problems);
@@ -138,7 +147,8 @@ console.log(
     `${some(size(ENCOUNTERS), 'encounter table')}, ` +
     `${some(size(SPEAKERS), 'speaker')}, ` +
     `${some(size(TERRAINS), 'terrain')}, ${some(size(PREFABS), 'prefab')}, ` +
-    `${some(maps, 'map')}, ${some(size(EVENTS), 'event script')} and the new game all match ` +
+    `${some(maps, 'map')}, ${some(size(BACKDROPS), 'backdrop')}, ` +
+    `${some(size(EVENTS), 'event script')} and the new game all match ` +
     'their schemas.',
 );
 console.log(
@@ -148,7 +158,8 @@ console.log(
   `Maps: ${maps === 1 ? 'the 1 map compiles' : `all ${maps} maps compile`}, and every tile ` +
     'their terrains and prefabs use exists; every way out leads somewhere; their music exists; ' +
     'no two chests share a flag; their names fit the save menu; and every map but the test maps ' +
-    `can be reached from ${NEW_GAME.location.map}, where a new game starts.`,
+    `can be reached from ${NEW_GAME.location.map}, where a new game starts. Every battle ` +
+    'backdrop compiles, and fills the screen.',
 );
 console.log(
   `Events: all ${size(EVENTS)} event scripts and ${some(chests, 'chest')} run down every path ` +
@@ -164,8 +175,9 @@ console.log(
     'exist, at levels there are.',
 );
 console.log(
-  'Enemies: every skill they use exists, only actions aimed at one fighter pick a target, and ' +
+  'Enemies: each has a sprite to fight as, every skill they use exists, only actions aimed at ' +
+    'one fighter pick a target, and ' +
     'every enemy an encounter table names exists. The areas the simulator plays name a party, ' +
     'gear, items, an encounter table and a boss that exist, at levels there are. ' +
-    'Every name and description is in characters the font has.',
+    'Every name and description is in characters the font has, and fits the battle screen.',
 );

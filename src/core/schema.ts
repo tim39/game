@@ -183,6 +183,20 @@ const MapObjectSchema = z.discriminatedUnion('type', [
     }),
 ]);
 
+/**
+ * What a battle is fought in front of: a small map that fills the screen, of terrain and maybe some
+ * prefabs (see src/core/map/backdrop.ts).
+ */
+const BackdropSchema = z.strictObject({
+  terrain: z.string(),
+  /** One character each. */
+  legend: z.record(z.string().length(1), IdSchema),
+  objects: z
+    .array(z.strictObject({ type: z.literal('prefab'), prefab: IdSchema, at: GridPointSchema }))
+    .optional(),
+});
+export type BackdropDef = ContentOf<typeof BackdropSchema>;
+
 const MapSchema = z.strictObject({
   id: IdSchema,
   name: TextSchema,
@@ -513,6 +527,7 @@ export const CONTENT_SCHEMAS = {
   terrains: z.record(IdSchema, TerrainSchema),
   prefabs: z.record(IdSchema, PrefabSchema),
   maps: z.record(IdSchema, MapSchema),
+  backdrops: z.record(IdSchema, BackdropSchema),
   events: z.record(ScriptIdSchema, EventScriptSchema),
   newGame: NewGameSchema,
 };

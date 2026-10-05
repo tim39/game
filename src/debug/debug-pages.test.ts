@@ -4,7 +4,13 @@ import { MAPS } from '../data/maps';
 import type { DebugSwitches } from '../systems/debug-switches';
 import type { SaveSlot } from '../systems/saves';
 import { DebugMenu } from './debug-menu';
-import { debugRootPage, type DebugMenuContext, type DebugSlot } from './debug-pages';
+import {
+  debugBattles,
+  debugRootPage,
+  type DebugBattle,
+  type DebugMenuContext,
+  type DebugSlot,
+} from './debug-pages';
 
 const room = (id: string, name: string, spawns: [string, number, number][]): MapDef =>
   defineMap({
@@ -28,9 +34,16 @@ const SLOTS: readonly DebugSlot[] = [
   { slot: 3, label: 'Slot 3', detail: 'damaged', empty: false },
 ];
 
+const BATTLES: readonly DebugBattle[] = [
+  { label: 'Wolf x2', detail: 'pair', enemies: ['wolf', 'wolf'], backdrop: 'meadow' },
+  { label: 'Warden', detail: 'boss', enemies: ['warden'], backdrop: 'shore' },
+];
+
 function setUp(maps: Record<string, MapDef>) {
   const switches: DebugSwitches = { noclip: false, showCollision: false };
   const warps: [string, string][] = [];
+  const battles: DebugBattle[] = [];
+  const party = ['rowan'];
   const exported: SaveSlot[] = [];
   /** Imports waiting for a file, which report how they went once it's picked. */
   const importing: [SaveSlot, (notice: string) => void][] = [];
@@ -38,6 +51,14 @@ function setUp(maps: Record<string, MapDef>) {
     maps,
     switches,
     warp: (map, spawn) => void warps.push([map, spawn]),
+    battles: BATTLES,
+    battle: (battle) => void battles.push(battle),
+    recruits: () =>
+      [
+        ['rowan', 'Rowan'],
+        ['bram', 'Bram'],
+      ].map(([id = '', name = '']) => ({ id, name, joined: party.includes(id) })),
+    join: (id) => void party.push(id),
     saves: {
       slots: () => SLOTS,
       exportSlot: (slot) => {
@@ -49,7 +70,7 @@ function setUp(maps: Record<string, MapDef>) {
     notify: (notice) => menu.notify(notice),
   };
   const menu = new DebugMenu(debugRootPage(context), 10);
-  return { menu, switches, warps, exported, importing };
+  return { menu, switches, warps, battles, party, exported, importing };
 }
 
 const lines = (menu: DebugMenu) =>
@@ -65,22 +86,24 @@ test('the first page warps, and flips noclip and the collision view', () => {
   expect(menu.view().title).toBe('Debug');
   expect(lines(menu)).toEqual([
     { label: 'Warp to a map', detail: undefined, on: undefined, enabled: true },
+    { label: 'Start a battle', detail: undefined, on: undefined, enabled: true },
+    { label: 'Join the party', detail: undefined, on: undefined, enabled: true },
     { label: 'Noclip', detail: undefined, on: false, enabled: true },
     { label: 'Show collision', detail: undefined, on: false, enabled: true },
     { label: 'Export a save', detail: undefined, on: undefined, enabled: true },
     { label: 'Import a save', detail: undefined, on: undefined, enabled: true },
   ]);
 
-  menu.move(1);
+  menu.move(3);
   menu.choose();
   expect(switches).toEqual({ noclip: true, showCollision: false });
-  expect(lines(menu)[1]?.on).toBe(true);
+  expect(lines(menu)[3]?.on).toBe(true);
   menu.move(1);
   menu.choose();
   menu.choose();
   menu.choose();
   expect(switches).toEqual({ noclip: true, showCollision: true });
-  expect(lines(menu)[2]?.on).toBe(true);
+  expect(lines(menu)[4]?.on).toBe(true);
 });
 
 test('warping picks a map, then one of its spawns', () => {
@@ -128,7 +151,7 @@ test('every real map can be warped to', () => {
 
 test('a slot with something in it can be exported, and says it was', () => {
   const { menu, exported } = setUp({});
-  menu.move(3);
+  menu.move(5);
   menu.choose();
   expect(menu.view().title).toBe('Export');
   expect(lines(menu).map(({ label, detail, enabled }) => [label, detail, enabled])).toEqual([
@@ -151,7 +174,7 @@ test('a slot with something in it can be exported, and says it was', () => {
 
 test('a save file can be imported into any slot, and says how that went once it has', () => {
   const { menu, importing } = setUp({});
-  menu.move(4);
+  menu.move(6);
   menu.choose();
   expect(menu.view().title).toBe('Import into');
   expect(lines(menu).map(({ label, enabled }) => [label, enabled])).toEqual([
@@ -167,4 +190,57 @@ test('a save file can be imported into any slot, and says how that went once it 
   expect(menu.view().notice).toBeNull();
   importing[0]?.[1]('Imported into Slot 2.');
   expect(menu.view()).toMatchObject({ title: 'Import into', notice: 'Imported into Slot 2.' });
+});
+
+test('a battle can be started against any of them', () => {
+  const { menu, battles } = setUp({});
+  menu.move(1);
+  menu.choose();
+  expect(menu.view().title).toBe('Start a battle');
+  expect(lines(menu).map(({ label, detail, enabled }) => [label, detail, enabled])).toEqual([
+    ['Wolf x2', 'pair', true],
+    ['Warden', 'boss', true],
+  ]);
+  menu.move(1);
+  menu.choose();
+  expect(battles).toEqual([BATTLES[1]]);
+});
+
+test('the battles are each encounter group, each boss, and each other enemy in a pair', () => {
+  const battles = debugBattles({
+    enemies: {
+      bat: { name: 'Bat' },
+      snail: { name: 'Snail' },
+      warden: { name: 'Warden', boss: true },
+    },
+    encounters: { cave: { groups: [{ enemies: ['bat', 'bat', 'snail', 'bat'] }] } },
+    bosses: [{ enemies: ['warden'], table: 'cave' }],
+    backdrop: (table) => (table === 'cave' ? 'shore' : 'meadow'),
+  });
+  expect(battles).toEqual([
+    {
+      label: 'Bat x3, Snail',
+      detail: 'cave',
+      enemies: ['bat', 'bat', 'snail', 'bat'],
+      backdrop: 'shore',
+    },
+    { label: 'Warden', detail: 'boss', enemies: ['warden'], backdrop: 'shore' },
+    { label: 'Bat x2', detail: 'pair', enemies: ['bat', 'bat'], backdrop: 'meadow' },
+    { label: 'Snail x2', detail: 'pair', enemies: ['snail', 'snail'], backdrop: 'meadow' },
+  ]);
+});
+
+test('someone not in the party yet can join it', () => {
+  const { menu, party } = setUp({});
+  menu.move(2);
+  menu.choose();
+  expect(menu.view().title).toBe('Join the party');
+  expect(lines(menu).map(({ label, detail, enabled }) => [label, detail, enabled])).toEqual([
+    ['Rowan', 'in the party', false],
+    ['Bram', 'bram', true],
+  ]);
+  menu.move(1);
+  menu.choose();
+  expect(party).toEqual(['rowan', 'bram']);
+  expect(lines(menu)[1]).toMatchObject({ detail: 'in the party', enabled: false });
 });

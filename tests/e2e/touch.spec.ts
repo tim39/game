@@ -349,12 +349,17 @@ test('three fingers on the game open the debug menu, and the controls work it', 
   expect((await debugMenu())?.hint).toBe('A: choose   B: back');
 
   // The d-pad moves the cursor, and A flips the switch under it.
-  await fingers.tap(await spot(page, 'dpad', 'down'));
-  await page.waitForFunction(() => window.__game?.inspect('debug-menu')?.selected === 'Noclip');
+  for (const below of ['Start a battle', 'Join the party', 'Noclip']) {
+    await fingers.tap(await spot(page, 'dpad', 'down'));
+    await page.waitForFunction(
+      (label) => window.__game?.inspect('debug-menu')?.selected === label,
+      below,
+    );
+  }
   await fingers.tap(await spot(page, 'a'));
   await page.waitForFunction(() => {
     const items = window.__game?.inspect('debug-menu')?.items as { on: boolean | null }[];
-    return items[1]?.on === true;
+    return items[3]?.on === true;
   });
   await page.screenshot({ path: 'test-results/screenshots/touch-debug-menu.png' });
 

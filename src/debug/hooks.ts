@@ -1,15 +1,26 @@
 import type Phaser from 'phaser';
-import { addItem, setFlag } from '../core/state';
+import { recruit } from '../core/party';
+import { addItem, inParty, setFlag } from '../core/state';
+import { BACKDROPS } from '../data/backdrops';
+import { AREAS } from '../data/balance';
+import { CHARACTERS } from '../data/characters';
+import { DB } from '../data/db';
+import { ENCOUNTERS } from '../data/encounters';
+import { ENEMIES } from '../data/enemies';
 import { MAPS } from '../data/maps';
+import { BATTLE_SCENE, type BattleStart } from '../scenes/battle';
 import type { FieldScene, FieldStart } from '../scenes/field';
+import { ASSETS } from '../systems/asset-manifest';
 import { audio } from '../systems/audio';
 import { debugSwitches } from '../systems/debug-switches';
 import { input } from '../systems/input/game-input';
 import { saveSlots } from '../systems/saves';
 import { session } from '../systems/session';
-import type { DebugApi } from './api';
+import { settings } from '../systems/settings';
+import type { DebugApi, DebugBattleOptions } from './api';
 import { AssetGalleryScene } from './asset-gallery';
 import { installDebugMenu } from './debug-menu-scene';
+import { debugBattles } from './debug-pages';
 import { debugSaves } from './debug-saves';
 
 interface Inspectable {
@@ -32,11 +43,44 @@ export function installDebugHooks(game: Phaser.Game): void {
     game.scene.start(key, data);
   };
 
+  // A battle over nothing, which goes back to the field where the player is once it's over.
+  const battle: DebugApi['battle'] = (enemies, options: DebugBattleOptions = {}) => {
+    const unknown = enemies.find((id) => !Object.hasOwn(ENEMIES, id));
+    if (unknown !== undefined) throw new Error(`There's no enemy called ${unknown}`);
+    const { backdrop = 'meadow', seed = Date.now(), start } = options;
+    if (!Object.hasOwn(BACKDROPS, backdrop)) throw new Error(`There's no backdrop ${backdrop}`);
+    startScene(BATTLE_SCENE, {
+      setup: start === undefined ? { enemies } : { enemies, start },
+      backdrop,
+      seed,
+      onEnd: () => startScene('field', session.state.location satisfies FieldStart),
+    } satisfies BattleStart);
+  };
+
   // Added last, so it draws over everything.
   installDebugMenu(game, {
     maps: MAPS,
     switches: debugSwitches,
     warp: (map, spawn) => startScene('field', { map, spawn } satisfies FieldStart),
+    battles: debugBattles({
+      enemies: ENEMIES,
+      encounters: ENCOUNTERS,
+      bosses: Object.values(AREAS).map((area) => ({
+        enemies: area.boss,
+        table: area.encounters,
+      })),
+      // Until the caves have a backdrop of their own, their battles are on the beach.
+      backdrop: (table) => (table === 'tide-caves' ? 'shore' : 'meadow'),
+    }),
+    battle: ({ enemies, backdrop }) => battle(enemies, { backdrop }),
+    // Only those with a sprite to fight as, until everyone has one.
+    recruits: () =>
+      Object.entries(CHARACTERS)
+        .filter(([id]) => Object.hasOwn(ASSETS, `sprite.${id}`))
+        .map(([id, { name }]) => ({ id, name, joined: inParty(session.state, id) })),
+    join: (id) => {
+      session.state = recruit(session.state, id, DB);
+    },
     saves: debugSaves(saveSlots),
   });
 
@@ -62,11 +106,19 @@ export function installDebugHooks(game: Phaser.Game): void {
     give: (item, count) => {
       session.state = addItem(session.state, item, count);
     },
+    join: (character) => {
+      session.state = recruit(session.state, character, DB);
+    },
     run: (script) => {
       if (!game.scene.isActive('field')) throw new Error(`Can't run ${script}: the field isn't up`);
       (game.scene.getScene('field') as FieldScene).runScript(script);
     },
     audio: () => audio.debugInfo(),
+    battle,
+    battleSpeed: (speed) => {
+      if (!(speed > 0)) throw new RangeError(`${speed} isn't a battle speed`);
+      settings.battleSpeed = speed;
+    },
   };
   window.__game = api;
 }

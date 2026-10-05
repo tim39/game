@@ -107,6 +107,29 @@ export const ASSETS = {
   // Things on the map that change, drawn as sprites rather than tiles.
   'object.chest': frames('sprites/treasure-chest.png', 16, 14), // shut, then open
 
+  // Enemies in battle, by enemy ID: each a strip of the frames it loops through, facing right,
+  // towards the party. Bosses are bigger.
+  'monster.wolf': frames('monsters/dog-black.png', 18, 17),
+  'monster.cave-bat': sheet('monsters/blue-bat.png'),
+  'monster.reef-snail': sheet('monsters/mollusc.png'),
+  'monster.grotto-octopus': sheet('monsters/octopus-2.png'),
+  'monster.drowned-wisp': sheet('monsters/spirit.png'),
+  'monster.drowned-warden': frames('monsters/giant-blue-samurai.png', 96, 48),
+
+  // Battle effects, played once over whoever an action reaches: a hit of each kind and element,
+  // healing and helpful statuses, harmful ones, and Guard.
+  'vfx.slash': frames('vfx/cut.png', 32, 32),
+  'vfx.claw': frames('vfx/claw.png', 32, 32),
+  'vfx.fire': frames('vfx/flam.png', 25, 30),
+  'vfx.water': frames('vfx/water.png', 40, 33),
+  'vfx.wind': frames('vfx/spirit.png', 32, 32), // white, tinted when drawn
+  'vfx.earth': frames('vfx/rock.png', 30, 30),
+  'vfx.light': frames('vfx/circle-spark.png', 32, 32),
+  'vfx.gloam': frames('vfx/smoke.png', 32, 32), // grey, tinted when drawn
+  'vfx.heal': frames('vfx/spark.png', 27, 35),
+  'vfx.ailment': frames('vfx/aura.png', 25, 24),
+  'vfx.guard': frames('vfx/shield-blue.png', 24, 26),
+
   // Dialogue portraits, 38×38
   'portrait.rowan': image('portraits/hunter.png'),
   'portrait.bram': image('portraits/knight.png'),

@@ -13,6 +13,7 @@ import {
 } from '../src/core/schema';
 import type { NewGame } from '../src/core/state';
 import type { AreaBalance } from '../src/data/balance';
+import type { AssetEntry } from '../src/systems/asset-manifest';
 
 type Kind = keyof typeof CONTENT_SCHEMAS;
 
@@ -30,6 +31,7 @@ const NAMES: { readonly [K in Kind]: string } = {
   terrains: 'Terrain',
   prefabs: 'Prefab',
   maps: 'Map',
+  backdrops: 'Backdrop',
   events: 'Event',
   newGame: 'The new game',
 };
@@ -309,16 +311,25 @@ export function checkCharacters({
 export interface EnemySources {
   readonly enemies: Readonly<Record<string, EnemyDef>>;
   readonly skills: Readonly<Record<string, SkillDef>>;
+  /** The asset manifest, which has each enemy's look in battle as `monster.<id>`. */
+  readonly manifest: Readonly<Record<string, AssetEntry>>;
 }
 
 /**
- * Checks each enemy's actions, in every phase, against the skills. Returns one line per problem:
- * the skills they use exist, and an action with a rule for picking its target is aimed at one
- * fighter.
+ * Checks each enemy against the skills and the asset manifest. Returns one line per problem: it has
+ * a sprite sheet to fight as, the skills it uses exist, in every phase, and an action with a rule
+ * for picking its target is aimed at one fighter.
  */
-export function checkEnemies({ enemies, skills }: EnemySources): string[] {
+export function checkEnemies({ enemies, skills, manifest }: EnemySources): string[] {
   const problems: string[] = [];
   for (const [id, enemy] of Object.entries(enemies)) {
+    const sprite = `monster.${id}`;
+    const entry = Object.hasOwn(manifest, sprite) ? manifest[sprite] : undefined;
+    if (entry?.type !== 'spritesheet') {
+      problems.push(
+        `Enemy ${id}: has no sprite sheet to fight as, ${sprite} in the asset manifest`,
+      );
+    }
     const lists: [string, readonly EnemyActionDef[]][] = [
       ['actions', enemy.actions ?? []],
       ...(enemy.phases ?? []).map((phase, index): [string, readonly EnemyActionDef[]] => [

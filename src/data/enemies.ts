@@ -4,11 +4,12 @@ import type { EnemyDef } from '../core/schema';
  * Every enemy, by ID: its stats, which don't grow, how it takes each element, and what it does on
  * its turn (see Enemy behavior in docs/DESIGN.md). So far, a wolf for the first fights, and a first
  * draft of the Tide Caves and the Drowned Warden, its boss. Stats are starting points, for the
- * simulator and the balance passes to tune (`npm run sim`). Each notes the pack's monster it's
- * meant to look like, for when battles are drawn.
+ * simulator and the balance passes to tune (`npm run sim`). Each fights as `monster.<id>` in the
+ * asset manifest, and notes which of the pack's monsters that is.
  */
 export const ENEMIES: Readonly<Record<string, EnemyDef>> = {
-  // Prowls outside Saltmere. A pair is a fair fight for Rowan and Bram at level 1.
+  // Prowls outside Saltmere. A pair is a fair fight for Rowan and Bram at level 1. The pack has no
+  // wolf, so it's the pack's DogBlack.
   wolf: {
     name: 'Wolf',
     stats: { hp: 30, mp: 0, atk: 12, def: 6, mag: 2, res: 4, spd: 12 },
