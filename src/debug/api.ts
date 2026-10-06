@@ -31,6 +31,16 @@ export interface DebugApi {
   /** Has a character join the party, at level 1 in the gear they start with. */
   join(character: string): void;
   /**
+   * Puts a party member at a level, or with no `character` everyone in the party, with all the EXP
+   * it takes, as the debug menu does.
+   */
+  setLevel(level: number, character?: string): void;
+  /**
+   * Puts a piece of gear on a party member, out of thin air, as the debug menu does: what it
+   * replaces goes into the inventory.
+   */
+  equip(character: string, item: string): void;
+  /**
    * A party member's HP and MP, and the most they can have. With `set`, first sets how much of
    * either they have, as a battle might leave them: 0 HP is KO'd.
    */

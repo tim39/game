@@ -1,5 +1,22 @@
+import { MAX_ENEMIES } from '../core/battle/battle';
+import type { GameDb } from '../core/db';
 import { ENCOUNTER_RATES, type EncounterRate } from '../core/encounters';
+import { SLOTS, canEquip, slotOf, type Slot } from '../core/equipment';
+import { expToReach, type ExpCurve } from '../core/levels';
 import type { MapDef, SpawnObject } from '../core/map/types';
+import type { ItemDef } from '../core/schema';
+import {
+  addItem,
+  equip,
+  itemCount,
+  restoreParty,
+  setLevel,
+  unequip,
+  type CharacterId,
+  type GameState,
+  type ItemId,
+} from '../core/state';
+import { STATS } from '../core/stats';
 import type { DebugSwitches } from '../systems/debug-switches';
 import type { SaveSlot } from '../systems/saves';
 import type { DebugItem, DebugPage } from './debug-menu';
@@ -8,13 +25,23 @@ import type { DebugItem, DebugPage } from './debug-menu';
 export interface DebugMenuContext {
   readonly maps: Readonly<Record<string, MapDef>>;
   readonly switches: DebugSwitches;
-  /** The Encounter rate option, which the debug menu sets until the Options screen exists. */
-  readonly settings: { encounterRate: EncounterRate };
+  /** The options the debug menu sets until the Options screen exists. */
+  readonly settings: { battleSpeed: number; encounterRate: EncounterRate };
+  /** The game being played, which the Party pages change: `session.state`, in the game. */
+  readonly game: { get(): GameState; set(state: GameState): void };
+  /** The content the Party pages and Build a battle draw on. */
+  readonly db: GameDb;
+  /** How much EXP each level takes. */
+  readonly curve: ExpCurve;
   /** Puts the player on `map` at one of its spawns. */
   warp(map: string, spawn: string): void;
-  /** The battles there are to start (see `debugBattles`). */
+  /** The ready-made battles there are to start (see `debugBattles`). */
   readonly battles: readonly DebugBattle[];
-  /** Starts a battle, with the party as it is, which goes back to the field once it's over. */
+  /** The battle Build a battle puts together, which it keeps from one visit to the next. */
+  readonly plan: DebugBattlePlan;
+  /** What a battle can be fought in front of: the backdrops' IDs. */
+  readonly backdrops: readonly string[];
+  /** Starts a battle, with the party as it is, which goes back to the field once it's won or fled. */
   battle(battle: DebugBattle): void;
   /** Who could join the party: everyone with a sprite to fight as, and whether they're in it. */
   recruits(): readonly { readonly id: string; readonly name: string; readonly joined: boolean }[];
@@ -43,9 +70,12 @@ export interface DebugSlot {
   readonly empty: boolean;
 }
 
+/** The battle speeds the debug menu goes round: the Options screen's 1x to 3x, and 4x. */
+export const DEBUG_BATTLE_SPEEDS = [1, 2, 3, 4] as const;
+
 /**
- * The debug menu's first page: warping, battles, joining the party, the switches, the encounter
- * rate, and exporting and importing saves.
+ * The debug menu's first page: warping, battles, the party, the switches, the battle speed and
+ * encounter rate, and exporting and importing saves.
  */
 export function debugRootPage(context: DebugMenuContext): DebugPage {
   const { switches, settings } = context;
@@ -61,17 +91,23 @@ export function debugRootPage(context: DebugMenuContext): DebugPage {
     items: () => [
       { label: 'Warp to a map', choose: () => warpPage(context) },
       { label: 'Start a battle', choose: () => battlePage(context) },
-      { label: 'Join the party', choose: () => joinPage(context) },
+      { label: 'Party', choose: () => partyPage(context) },
       toggle('Noclip', 'noclip'),
       toggle('Show collision', 'showCollision'),
+      {
+        label: 'Battle speed',
+        detail: `${settings.battleSpeed}x`,
+        // 1x, 2x, 3x, 4x, and round again.
+        choose: () => {
+          settings.battleSpeed = nextOf(DEBUG_BATTLE_SPEEDS, settings.battleSpeed);
+        },
+      },
       {
         label: 'Encounter rate',
         detail: RATE_NAMES[settings.encounterRate],
         // Off, Low, Normal, High, and round again.
         choose: () => {
-          const next =
-            (ENCOUNTER_RATES.indexOf(settings.encounterRate) + 1) % ENCOUNTER_RATES.length;
-          settings.encounterRate = ENCOUNTER_RATES[next] ?? 'normal';
+          settings.encounterRate = nextOf(ENCOUNTER_RATES, settings.encounterRate);
         },
       },
       { label: 'Export a save', choose: () => exportPage(context) },
@@ -87,44 +123,56 @@ const RATE_NAMES: Readonly<Record<EncounterRate, string>> = {
   high: 'High',
 };
 
+/** The one after `current` in `list`, round from the last to the first: the first, if it's not there. */
+function nextOf<T>(list: readonly T[], current: T): T {
+  const next = list[(list.indexOf(current) + 1) % list.length];
+  return next === undefined ? current : next;
+}
+
 /** A battle the debug menu can start. */
 export interface DebugBattle {
   /** Whom it's against, as the menu lists them: `Cave Bat x3`. */
   readonly label: string;
-  /** Where they're met: an encounter table's ID, `boss`, or `pair`. */
+  /** Where they're met: an encounter table's ID, or `boss`. */
   readonly detail: string;
   readonly enemies: readonly string[];
   /** What it's fought in front of. */
   readonly backdrop: string;
+  /** Who gets the jump: the party, with a preemptive strike, or the enemies, with an ambush. */
+  readonly start?: FirstTurn;
+}
+
+type FirstTurn = 'preemptive' | 'ambush';
+
+/** A battle being put together on Build a battle, which changes it as choices are made. */
+export interface DebugBattlePlan {
+  /** Whom it's against, left to right. */
+  enemies: string[];
+  backdrop: string;
+  /** Who gets the jump, if anyone does. */
+  start: FirstTurn | null;
 }
 
 /** Where a debug battle's enemies come from, and what to fight them in front of. */
 export interface DebugBattleSources {
-  readonly enemies: Readonly<Record<string, { readonly name: string; readonly boss?: boolean }>>;
+  readonly enemies: Readonly<Record<string, { readonly name: string }>>;
   readonly encounters: Readonly<
     Record<string, { readonly groups: readonly { readonly enemies: readonly string[] }[] }>
   >;
   /** Each area's boss, and the encounter table of the area it's met in (src/data/balance.ts). */
   readonly bosses: readonly { readonly enemies: readonly string[]; readonly table: string }[];
-  /** The backdrop for an encounter table's battles, or for any other. */
-  readonly backdrop: (table?: string) => string;
+  /** The backdrop for an encounter table's battles. */
+  readonly backdrop: (table: string) => string;
 }
 
 /**
- * The battles the debug menu offers: every group of every encounter table, each area's boss, and
- * each other enemy in a pair, as wolves come.
+ * The ready-made battles the debug menu offers: every group of every encounter table, and each
+ * area's boss, in front of the area's backdrop. Build a battle makes any other.
  */
 export function debugBattles(sources: DebugBattleSources): DebugBattle[] {
   const { enemies, encounters, bosses, backdrop } = sources;
-  const label = (group: readonly string[]): string => {
-    const counts = new Map<string, number>();
-    for (const id of group) counts.set(id, (counts.get(id) ?? 0) + 1);
-    return [...counts]
-      .map(([id, count]) => `${enemies[id]?.name ?? id}${count > 1 ? ` x${count}` : ''}`)
-      .join(', ');
-  };
-  const battle = (group: readonly string[], detail: string, table?: string): DebugBattle => ({
-    label: label(group),
+  const battle = (group: readonly string[], detail: string, table: string): DebugBattle => ({
+    label: groupName(group, enemies),
     detail,
     enemies: group,
     backdrop: backdrop(table),
@@ -134,10 +182,257 @@ export function debugBattles(sources: DebugBattleSources): DebugBattle[] {
       groups.map((group) => battle(group.enemies, table, table)),
     ),
     ...bosses.map(({ enemies: group, table }) => battle(group, 'boss', table)),
-    ...Object.entries(enemies)
-      .filter(([, enemy]) => !enemy.boss)
-      .map(([id]) => battle([id, id], 'pair')),
   ];
+}
+
+/** A group of enemies by name, each kind once with how many there are: `Bat x3, Snail`. */
+function groupName(
+  group: readonly string[],
+  enemies: Readonly<Record<string, { readonly name: string }>>,
+): string {
+  const counts = new Map<string, number>();
+  for (const id of group) counts.set(id, (counts.get(id) ?? 0) + 1);
+  return [...counts]
+    .map(([id, count]) => `${nameIn(enemies, id)}${count > 1 ? ` x${count}` : ''}`)
+    .join(', ');
+}
+
+/** Build a battle against anyone, or start a ready-made one. */
+function battlePage(context: DebugMenuContext): DebugPage {
+  return {
+    title: 'Start a battle',
+    items: () => [
+      { label: 'Build a battle', choose: () => buildPage(context) },
+      ...context.battles.map((battle) => ({
+        label: battle.label,
+        detail: battle.detail,
+        choose: () => context.battle(battle),
+      })),
+    ],
+  };
+}
+
+const FIRST_TURNS = [null, 'preemptive', 'ambush'] as const;
+const FIRST_TURN_NAMES: Readonly<Record<FirstTurn | 'either', string>> = {
+  either: 'Either side',
+  preemptive: 'The party',
+  ambush: 'The enemies',
+};
+
+/**
+ * A battle against up to six of any enemies, left to right as they're added, in front of any
+ * backdrop, with either side getting the jump. The enemies in it are listed below, and choosing
+ * one takes it out.
+ */
+function buildPage(context: DebugMenuContext): DebugPage {
+  const { plan, db } = context;
+  return {
+    title: 'Build a battle',
+    items: () => [
+      {
+        label: 'Fight',
+        detail: plan.enemies.length > 0 ? groupName(plan.enemies, db.enemies) : 'no one yet',
+        choose:
+          plan.enemies.length > 0
+            ? () =>
+                context.battle({
+                  label: groupName(plan.enemies, db.enemies),
+                  detail: 'built',
+                  enemies: [...plan.enemies],
+                  backdrop: plan.backdrop,
+                  ...(plan.start === null ? {} : { start: plan.start }),
+                })
+            : undefined,
+      },
+      {
+        label: 'Backdrop',
+        detail: plan.backdrop,
+        choose: () => {
+          plan.backdrop = nextOf(context.backdrops, plan.backdrop);
+        },
+      },
+      {
+        label: 'First turn',
+        detail: FIRST_TURN_NAMES[plan.start ?? 'either'],
+        choose: () => {
+          plan.start = nextOf(FIRST_TURNS, plan.start);
+        },
+      },
+      {
+        label: 'Add an enemy',
+        detail: `${plan.enemies.length} of ${MAX_ENEMIES}`,
+        choose: plan.enemies.length < MAX_ENEMIES ? () => enemyPage(context) : undefined,
+      },
+      ...plan.enemies.map((id, index) => ({
+        label: nameIn(db.enemies, id),
+        detail: 'take out',
+        choose: () => {
+          plan.enemies.splice(index, 1);
+        },
+      })),
+    ],
+  };
+}
+
+/** Every enemy there is: choosing one adds it to the battle being built, up to six. */
+function enemyPage(context: DebugMenuContext): DebugPage {
+  const { plan, db } = context;
+  return {
+    title: 'Add an enemy',
+    items: () =>
+      Object.entries(db.enemies).map(([id, enemy]) => ({
+        label: enemy.name,
+        detail: enemy.boss ? `${id}, boss` : id,
+        choose:
+          plan.enemies.length < MAX_ENEMIES
+            ? () => {
+                plan.enemies.push(id);
+                context.notify(`Added ${enemy.name}: ${plan.enemies.length} of ${MAX_ENEMIES}.`);
+              }
+            : undefined,
+      })),
+  };
+}
+
+/**
+ * The party: each member, to set their level and gear; someone joining; items to give; and a rest,
+ * which puts everyone back to their most HP and MP.
+ */
+function partyPage(context: DebugMenuContext): DebugPage {
+  const { game, db } = context;
+  return {
+    title: 'Party',
+    items: () => [
+      ...game.get().party.map((id) => ({
+        label: nameIn(db.characters, id),
+        detail: `Lv ${game.get().members[id]?.level ?? '?'}`,
+        choose: () => memberPage(context, id),
+      })),
+      { label: 'Join the party', choose: () => joinPage(context) },
+      { label: 'Give an item', choose: () => itemPage(context) },
+      {
+        label: 'Rest',
+        detail: 'full HP and MP',
+        choose: () => {
+          game.set(restoreParty(game.get()));
+          context.notify('Everyone is back to full HP and MP.');
+        },
+      },
+    ],
+  };
+}
+
+const SLOT_NAMES: Readonly<Record<Slot, string>> = {
+  weapon: 'Weapon',
+  armor: 'Armor',
+  accessory: 'Accessory',
+};
+
+/** A member of the party: their level, and what they have on in each slot. */
+function memberPage(context: DebugMenuContext, id: CharacterId): DebugPage {
+  const { game, db } = context;
+  return {
+    title: nameIn(db.characters, id),
+    items: () => {
+      const member = game.get().members[id];
+      return [
+        {
+          label: 'Level',
+          detail: String(member?.level ?? '?'),
+          choose: () => levelPage(context, id),
+        },
+        ...SLOTS.map((slot) => {
+          const worn = member?.equipment[slot];
+          return {
+            label: SLOT_NAMES[slot],
+            detail: worn === undefined ? 'nothing' : nameIn(db.items, worn),
+            choose: () => gearPage(context, id, slot),
+          };
+        }),
+      ];
+    },
+  };
+}
+
+/** Every level there is, with the EXP it takes: choosing one puts the member at it. */
+function levelPage(context: DebugMenuContext, id: CharacterId): DebugPage {
+  const { game, db, curve } = context;
+  return {
+    title: `${nameIn(db.characters, id)}'s level`,
+    items: () =>
+      Array.from({ length: curve.maxLevel }, (_, index) => {
+        const level = index + 1;
+        const now = game.get().members[id]?.level === level;
+        return {
+          label: `Level ${level}`,
+          detail: now ? 'now' : `${expToReach(level, curve)} EXP`,
+          choose: now ? undefined : () => game.set(setLevel(game.get(), id, level, curve)),
+        };
+      }),
+  };
+}
+
+/**
+ * Everything a member can wear in a slot, which choosing puts on them, out of thin air; and
+ * Nothing, which takes off what's there. What comes off goes into the inventory, as it does.
+ */
+function gearPage(context: DebugMenuContext, id: CharacterId, slot: Slot): DebugPage {
+  const { game, db } = context;
+  const character = db.characters[id];
+  const pieces = Object.entries(db.items).filter(
+    ([, item]) => character !== undefined && slotOf(item) === slot && canEquip(character, item),
+  );
+  return {
+    title: `${nameIn(db.characters, id)}'s ${SLOT_NAMES[slot].toLowerCase()}`,
+    items: () => {
+      const worn = game.get().members[id]?.equipment[slot];
+      return [
+        ...pieces.map(([item, def]) => ({
+          label: def.name,
+          detail: item === worn ? 'worn' : bonusesOf(def),
+          choose: item === worn ? undefined : () => game.set(putOn(game.get(), id, item, db)),
+        })),
+        {
+          label: 'Nothing',
+          detail: worn === undefined ? 'worn' : undefined,
+          choose: worn === undefined ? undefined : () => game.set(unequip(game.get(), id, slot)),
+        },
+      ];
+    },
+  };
+}
+
+/**
+ * Puts a piece of gear on a member of the party, out of thin air, as the debug menu does: what it
+ * replaces goes into the inventory.
+ */
+export const putOn = (state: GameState, id: CharacterId, item: ItemId, db: GameDb): GameState =>
+  equip(addItem(state, item), id, item, db);
+
+/** What a piece of gear adds to its wearer's stats, briefly: `ATK +8 SPD -1`. */
+function bonusesOf(item: ItemDef): string {
+  if (!('stats' in item)) return '';
+  return STATS.flatMap((stat) => {
+    const bonus = item.stats[stat];
+    return bonus === undefined ? [] : [`${stat.toUpperCase()} ${bonus > 0 ? '+' : ''}${bonus}`];
+  }).join(' ');
+}
+
+/** Every item there is, with how many the party has: choosing one gives the party another. */
+function itemPage(context: DebugMenuContext): DebugPage {
+  const { game, db } = context;
+  return {
+    title: 'Give an item',
+    items: () =>
+      Object.entries(db.items).map(([id, item]) => {
+        const count = itemCount(game.get(), id);
+        return {
+          label: item.name,
+          detail: count > 0 ? `x${count}` : undefined,
+          choose: () => game.set(addItem(game.get(), id)),
+        };
+      }),
+  };
 }
 
 /** Everyone who could join the party; those in it already can't be chosen. */
@@ -149,19 +444,6 @@ function joinPage(context: DebugMenuContext): DebugPage {
         label: name,
         detail: joined ? 'in the party' : id,
         choose: joined ? undefined : () => context.join(id),
-      })),
-  };
-}
-
-/** Every battle there is to start. */
-function battlePage(context: DebugMenuContext): DebugPage {
-  return {
-    title: 'Start a battle',
-    items: () =>
-      context.battles.map((battle) => ({
-        label: battle.label,
-        detail: battle.detail,
-        choose: () => context.battle(battle),
       })),
   };
 }
@@ -225,3 +507,7 @@ function spawnPage(context: DebugMenuContext, map: MapDef, spawns: SpawnObject[]
 
 const spawnsOf = (map: MapDef): SpawnObject[] =>
   (map.objects ?? []).filter((object): object is SpawnObject => object.type === 'spawn');
+
+/** Something's name, by its ID, or the ID itself if there's nothing by that ID. */
+const nameIn = (record: Readonly<Record<string, { readonly name: string }>>, id: string): string =>
+  (Object.hasOwn(record, id) ? record[id]?.name : undefined) ?? id;

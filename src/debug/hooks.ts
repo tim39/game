@@ -1,9 +1,9 @@
 import type Phaser from 'phaser';
 import { ENCOUNTER_RATES } from '../core/encounters';
 import { memberVitals, recruit } from '../core/party';
-import { addItem, inParty, setFlag, setVitals } from '../core/state';
+import { addItem, inParty, setFlag, setLevel, setVitals } from '../core/state';
 import { BACKDROPS } from '../data/backdrops';
-import { AREAS } from '../data/balance';
+import { AREAS, EXP_CURVE } from '../data/balance';
 import { CHARACTERS } from '../data/characters';
 import { DB } from '../data/db';
 import { ENCOUNTERS } from '../data/encounters';
@@ -22,7 +22,7 @@ import { settings } from '../systems/settings';
 import type { DebugApi, DebugBattleOptions } from './api';
 import { AssetGalleryScene } from './asset-gallery';
 import { installDebugMenu } from './debug-menu-scene';
-import { debugBattles } from './debug-pages';
+import { debugBattles, putOn, type DebugBattlePlan } from './debug-pages';
 import { debugSaves } from './debug-saves';
 
 interface Inspectable {
@@ -60,11 +60,22 @@ export function installDebugHooks(game: Phaser.Game): void {
     } satisfies BattleStart);
   };
 
+  // The battle the debug menu's Build a battle puts together, kept until the page is reloaded.
+  const plan: DebugBattlePlan = { enemies: [], backdrop: 'meadow', start: null };
+
   // Added last, so it draws over everything.
   installDebugMenu(game, {
     maps: MAPS,
     switches: debugSwitches,
     settings,
+    game: {
+      get: () => session.state,
+      set: (state) => {
+        session.state = state;
+      },
+    },
+    db: DB,
+    curve: EXP_CURVE,
     warp: (map, spawn) => startScene('field', { map, spawn } satisfies FieldStart),
     battles: debugBattles({
       enemies: ENEMIES,
@@ -76,7 +87,10 @@ export function installDebugHooks(game: Phaser.Game): void {
       // Until the caves have a backdrop of their own, their battles are on the beach.
       backdrop: (table) => (table === 'tide-caves' ? 'shore' : 'meadow'),
     }),
-    battle: ({ enemies, backdrop }) => battle(enemies, { backdrop }),
+    plan,
+    backdrops: Object.keys(BACKDROPS),
+    battle: ({ enemies, backdrop, start }) =>
+      battle(enemies, start === undefined ? { backdrop } : { backdrop, start }),
     // Only those with a sprite to fight as, until everyone has one.
     recruits: () =>
       Object.entries(CHARACTERS)
@@ -112,6 +126,14 @@ export function installDebugHooks(game: Phaser.Game): void {
     },
     join: (character) => {
       session.state = recruit(session.state, character, DB);
+    },
+    setLevel: (level, character) => {
+      for (const id of character === undefined ? session.state.party : [character]) {
+        session.state = setLevel(session.state, id, level, EXP_CURVE);
+      }
+    },
+    equip: (character, item) => {
+      session.state = putOn(session.state, character, item, DB);
     },
     vitals: (character, set = {}) => {
       const { now, most } = memberVitals(session.state, character, DB);

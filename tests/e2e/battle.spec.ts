@@ -414,10 +414,11 @@ test('the debug menu starts a battle over the field, and joins Bram to the party
   };
   await page.keyboard.press('Backquote');
   await page.waitForFunction(() => window.__game?.activeScenes().includes('debug-menu') ?? false);
+  await choose('Party');
   await choose('Join the party');
   await choose('Bram');
   expect(await page.evaluate(() => window.__game?.state().party)).toEqual(['rowan', 'bram']);
-  await press(page, 'KeyX');
+  await press(page, 'KeyX', 'KeyX');
   await choose('Start a battle');
   await choose('Cave Bat x3');
   await waitForPlayer(page);

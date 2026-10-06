@@ -11,6 +11,7 @@ interface MenuInfo {
   top: number;
   selected: string;
   items: { label: string; detail: string | null; on: boolean | null; enabled: boolean }[];
+  notice: string | null;
   hint: string;
 }
 
@@ -106,9 +107,10 @@ test('the backtick opens the menu over the field, which waits until it closes', 
   expect(opened.items.map(({ label, on }) => [label, on])).toEqual([
     ['Warp to a map', null],
     ['Start a battle', null],
-    ['Join the party', null],
+    ['Party', null],
     ['Noclip', false],
     ['Show collision', false],
+    ['Battle speed', null],
     ['Encounter rate', null],
     ['Export a save', null],
     ['Import a save', null],
@@ -261,5 +263,135 @@ test('show collision marks solid cells, ways out, spawns and people, on every ma
   await page.evaluate(() => window.__game?.showCollision(false));
   await nextFrames(page);
   expect((await field(page))?.collision).toBeNull();
+  expect(errors).toEqual([]);
+});
+
+test('the party page sets levels and gear, gives items, and rests the party', async ({ page }) => {
+  const errors = watchErrors(page);
+  await warp(page, 'test-shore', 10, 7, 'down');
+  await page.evaluate(() => window.__game?.vitals('rowan', { hp: 5 }));
+  const state = async () => (await page.evaluate(() => window.__game?.state())) ?? null;
+  await openMenu(page);
+  await choose(page, 'Party');
+  expect((await menu(page)).items.map(({ label, detail }) => [label, detail])).toEqual([
+    ['Rowan', 'Lv 1'],
+    ['Join the party', null],
+    ['Give an item', null],
+    ['Rest', 'full HP and MP'],
+  ]);
+
+  // Rowan to level 5, with the EXP it takes, still hurt.
+  await choose(page, 'Rowan');
+  await choose(page, 'Level');
+  await choose(page, 'Level 5');
+  expect((await state())?.members.rowan).toMatchObject({ level: 5, exp: 384, hp: 5 });
+  await tapKey(page, 'KeyX');
+
+  // An Iron Sword, out of thin air: the Bronze Sword goes into the inventory.
+  await choose(page, 'Weapon');
+  expect(
+    (await menu(page)).items.map(({ label, detail, enabled }) => [label, detail, enabled]),
+  ).toEqual([
+    ['Bronze Sword', 'worn', false],
+    ['Iron Sword', 'ATK +9', true],
+    ['Nothing', null, true],
+  ]);
+  await choose(page, 'Iron Sword');
+  await tapKey(page, 'KeyX');
+  expect((await state())?.members.rowan?.equipment).toEqual({
+    weapon: 'iron-sword',
+    armor: 'travel-clothes',
+  });
+  expect((await state())?.inventory).toEqual({ 'bronze-sword': 1 });
+  expect((await menu(page)).items.map(({ label, detail }) => [label, detail])).toEqual([
+    ['Level', '5'],
+    ['Weapon', 'Iron Sword'],
+    ['Armor', 'Travel Clothes'],
+    ['Accessory', 'nothing'],
+  ]);
+  await page.screenshot({ path: 'test-results/screenshots/debug-menu-member.png' });
+
+  // A Fire Bomb, and a rest.
+  await tapKey(page, 'KeyX');
+  await choose(page, 'Give an item');
+  await choose(page, 'Fire Bomb');
+  expect((await state())?.inventory).toMatchObject({ 'fire-bomb': 1 });
+  await tapKey(page, 'KeyX');
+  await choose(page, 'Rest');
+  expect((await menu(page)).notice).toBe('Everyone is back to full HP and MP.');
+  expect((await state())?.members.rowan).not.toHaveProperty('hp');
+  expect((await menu(page)).items[0]).toMatchObject({ label: 'Rowan', detail: 'Lv 5' });
+
+  // The hooks the tests use do the same as the menu.
+  await page.evaluate(() => {
+    window.__game?.join('bram');
+    window.__game?.setLevel(10);
+    window.__game?.setLevel(3, 'bram');
+    window.__game?.equip('rowan', 'guard-ring');
+  });
+  expect((await state())?.members).toMatchObject({
+    rowan: { level: 10, exp: 2916, equipment: { accessory: 'guard-ring' } },
+    bram: { level: 3, exp: 68 },
+  });
+  expect(errors).toEqual([]);
+});
+
+test('a battle can be built against anyone, in front of any backdrop, with a first turn', async ({
+  page,
+}) => {
+  const errors = watchErrors(page);
+  await warp(page, 'test-shore', 10, 7, 'down');
+  await openMenu(page);
+  // Battles at 4x: the speed goes round from 1x.
+  for (const speed of ['2x', '3x', '4x']) {
+    await choose(page, 'Battle speed');
+    expect((await menu(page)).items[5]).toMatchObject({ label: 'Battle speed', detail: speed });
+  }
+
+  await choose(page, 'Start a battle');
+  await choose(page, 'Build a battle');
+  await choose(page, 'Add an enemy');
+  for (const enemy of ['Cave Bat', 'Cave Bat', 'Wolf']) await choose(page, enemy);
+  expect((await menu(page)).notice).toBe('Added Wolf: 3 of 6.');
+  await tapKey(page, 'KeyX');
+  await choose(page, 'Backdrop');
+  await choose(page, 'First turn');
+  await choose(page, 'First turn');
+  const built = await menu(page);
+  expect(built.items.map(({ label, detail }) => [label, detail])).toEqual([
+    ['Fight', 'Cave Bat x2, Wolf'],
+    ['Backdrop', 'shore'],
+    ['First turn', 'The enemies'],
+    ['Add an enemy', '3 of 6'],
+    ['Cave Bat', 'take out'],
+    ['Cave Bat', 'take out'],
+    ['Wolf', 'take out'],
+  ]);
+  await page.screenshot({ path: 'test-results/screenshots/debug-menu-build-battle.png' });
+
+  // Over the field, as any battle from the debug menu: the enemies get the jump.
+  await choose(page, 'Fight');
+  await page.waitForFunction(() => window.__game?.inspect('battle')?.banner === 'Ambush!');
+  expect(await activeScenes(page)).toEqual(['battle']);
+  const battle = (await page.evaluate(() => window.__game?.inspect('battle'))) as {
+    backdrop: string;
+    fighters: { name: string }[];
+  };
+  expect(battle.backdrop).toBe('shore');
+  expect(battle.fighters.map(({ name }) => name)).toEqual([
+    'Rowan',
+    'Cave Bat A',
+    'Cave Bat B',
+    'Wolf',
+  ]);
+
+  // The menu keeps the battle it built, to fight again.
+  await openMenu(page);
+  await choose(page, 'Start a battle');
+  await choose(page, 'Build a battle');
+  expect((await menu(page)).items[0]).toMatchObject({
+    label: 'Fight',
+    detail: 'Cave Bat x2, Wolf',
+  });
   expect(errors).toEqual([]);
 });

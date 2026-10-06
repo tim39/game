@@ -24,6 +24,7 @@ import {
   removeItem,
   restoreParty,
   setFlag,
+  setLevel,
   setLocation,
   setVar,
   setVitals,
@@ -186,6 +187,7 @@ test('no operation changes the state it is given', () => {
     removeGold(before, 5),
     joinParty(before, 'bram'),
     gainExp(before, 'rowan', 15, CURVE),
+    setLevel(before, 'rowan', 3, CURVE),
     equip(addItem(before, 'iron-sword'), 'rowan', 'iron-sword', DB),
     unequip(joinParty(before, 'bram', { weapon: 'hand-axe' }), 'bram', 'weapon'),
     setVitals(before, 'rowan', { hp: 1, mp: 0 }, { hp: 50, mp: 10 }),
@@ -396,6 +398,43 @@ describe('EXP', () => {
     for (const amount of [-1, 1.5, Number.NaN]) {
       expect(() => gainExp(state, 'rowan', amount, CURVE)).toThrow(RangeError);
     }
+  });
+});
+
+describe('setting a level', () => {
+  test('puts a member at it, with all the EXP it takes, up or down', () => {
+    let state = setLevel(start(), 'rowan', 4, CURVE);
+    expect(state.members.rowan).toEqual({ level: 4, exp: 90, equipment: {} });
+    state = setLevel(gainExp(state, 'rowan', 30, CURVE), 'rowan', 2, CURVE);
+    expect(state.members.rowan).toEqual({ level: 2, exp: 10, equipment: {} });
+    expect(setLevel(state, 'rowan', 1, CURVE).members.rowan).toMatchObject({ level: 1, exp: 0 });
+    expect(setLevel(state, 'rowan', 5, CURVE).members.rowan).toMatchObject({ level: 5, exp: 160 });
+  });
+
+  test('leaves gear, HP and MP and the rest of the party as they were', () => {
+    let state = joinParty(start(), 'bram', { weapon: 'hand-axe' });
+    state = setVitals(state, 'bram', { hp: 5, mp: 3 }, { hp: 50, mp: 10 });
+    expect(setLevel(state, 'bram', 3, CURVE).members).toEqual({
+      rowan: { level: 1, exp: 0, equipment: {} },
+      bram: { level: 3, exp: 40, equipment: { weapon: 'hand-axe' }, hp: 5, mp: 3 },
+    });
+  });
+
+  test('to the level a member is at, with its EXP, changes nothing', () => {
+    const state = setLevel(start(), 'rowan', 3, CURVE);
+    expect(setLevel(state, 'rowan', 3, CURVE)).toBe(state);
+    // EXP partway to the next level is brought back to what this one takes.
+    const partway = gainExp(state, 'rowan', 5, CURVE);
+    expect(setLevel(partway, 'rowan', 3, CURVE).members.rowan).toMatchObject({ exp: 40 });
+  });
+
+  test('takes levels there are, for members of the party', () => {
+    for (const level of [0, 6, 2.5, Number.NaN]) {
+      expect(() => setLevel(start(), 'rowan', level, CURVE)).toThrow(RangeError);
+    }
+    expect(() => setLevel(start(), 'bram', 2, CURVE)).toThrow(
+      "bram can't change level: they aren't in the party",
+    );
   });
 });
 

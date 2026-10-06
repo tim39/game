@@ -3,7 +3,7 @@ import type { GameDb } from './db';
 import { DIRECTIONS, isDirection, type Direction } from './direction';
 import { SLOTS, canEquip, slotOf, type Equipment, type Slot } from './equipment';
 import { isId, isNamespacedId } from './ids';
-import { levelForExp, type ExpCurve } from './levels';
+import { expToReach, levelForExp, type ExpCurve } from './levels';
 
 /** IDs from the content in src/data: `rowan`, `potion`, `saltmere`. */
 export type CharacterId = string;
@@ -197,6 +197,23 @@ export function gainExp(
   if (amount === 0) return state;
   const exp = member.exp + amount;
   const level = Math.max(member.level, levelForExp(exp, curve));
+  return withMember(state, id, { ...member, level, exp });
+}
+
+/**
+ * Puts a member of the party at a level, up or down, with all the EXP it takes to reach it (see
+ * src/core/levels.ts): what the debug menu does. Their gear and the HP and MP they have stay as
+ * they were, held to their new most as ever (`memberVitals` in src/core/party.ts).
+ */
+export function setLevel(
+  state: GameState,
+  id: CharacterId,
+  level: number,
+  curve: ExpCurve,
+): GameState {
+  const member = memberOf(state, id, 'change level');
+  const exp = expToReach(level, curve);
+  if (member.level === level && member.exp === exp) return state;
   return withMember(state, id, { ...member, level, exp });
 }
 
