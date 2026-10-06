@@ -1,4 +1,6 @@
 import { defineEvent } from '../../core/events';
+import { INN_PRICES } from '../balance';
+import { inn, lightShrine } from './rest';
 
 // The test maps' lines: enough to try talking and reading. Saltmere's real dialogue replaces them.
 
@@ -81,4 +83,20 @@ export const cheer = defineEvent(async (ev) => {
 /** Walks the guide into the trees, which fails: the test that a blocked step stops the script. */
 export const bump = defineEvent(async (ev) => {
   await ev.move('guide', ['up', 'up', 'up']);
+});
+
+// The Test Market: a shop, an inn and a Light Shrine, for the tests and the debug menu.
+
+export const shopkeeper = defineEvent(async (ev) => {
+  await ev.say('villager', 'Welcome! A bit of everything, for a price.');
+  await ev.shop('test-shop');
+  await ev.say('villager', 'Come again!');
+});
+
+export const innkeeper = defineEvent(async (ev) => {
+  await inn(ev, 'villager', INN_PRICES.test);
+});
+
+export const shrine = defineEvent(async (ev) => {
+  await lightShrine(ev);
 });

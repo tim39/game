@@ -8,6 +8,7 @@ import saltmereLighthouseTop from './saltmere-lighthouse-top';
 import saltmereTamsin from './saltmere-tamsin';
 import testCellar from './test-cellar';
 import testHouse from './test-house';
+import testMarket from './test-market';
 import testMeadow from './test-meadow';
 import testShore from './test-shore';
 import testSquare from './test-square';
@@ -27,5 +28,6 @@ export const MAPS: Readonly<Record<string, MapDef>> = recordById(
     testCellar,
     testMeadow,
     testSquare,
+    testMarket,
   ].map((map) => [map.id, map] as const),
 );

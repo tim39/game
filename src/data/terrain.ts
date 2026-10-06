@@ -190,6 +190,8 @@ export const PREFABS = definePrefabs({
   oven: { sheet: 'tiles.house', origin: [29, 11], layout: ['##', '##'] },
   // The Tide Beacon's flame, at the top of the lighthouse.
   beacon: { sheet: 'tiles.dungeon', origin: [2, 2], layout: ['#'] },
+  // A Light Shrine: a gold orb on a stone, which heals the party (see src/data/events/rest.ts).
+  shrine: { sheet: 'tiles.dungeon', origin: [7, 2], layout: ['#'] },
 });
 
 export const MAP_CONTENT: MapContent = { terrains: TERRAINS, prefabs: PREFABS };

@@ -11,6 +11,7 @@ import { EVENTS } from '../src/data/events';
 import { ITEMS } from '../src/data/items';
 import { MAPS } from '../src/data/maps';
 import { NEW_GAME } from '../src/data/new-game';
+import { SHOPS } from '../src/data/shops';
 import { SKILLS } from '../src/data/skills';
 import { SPEAKERS } from '../src/data/speakers';
 import { MAP_CONTENT, PREFABS, TERRAINS } from '../src/data/terrain';
@@ -27,6 +28,7 @@ import {
   checkEnemies,
   checkMapEncounters,
   checkNewGame,
+  checkShops,
 } from './content-checks';
 import { checkEvents } from './event-checks';
 import { measureBodyFont } from './font-metrics';
@@ -55,6 +57,7 @@ const content = {
   items: ITEMS,
   enemies: ENEMIES,
   encounters: ENCOUNTERS,
+  shops: SHOPS,
   speakers: SPEAKERS,
   terrains: TERRAINS,
   prefabs: PREFABS,
@@ -78,6 +81,7 @@ const events = await checkEvents({
   maps: MAPS,
   characters: CHARACTERS,
   items: ITEMS,
+  shops: SHOPS,
   manifest: ASSETS,
   font,
   chestText: CHEST_TEXT,
@@ -116,6 +120,7 @@ const problems = [
   ...checkEnemies({ enemies: ENEMIES, skills: SKILLS, items: ITEMS, manifest: ASSETS }),
   ...checkEncounters({ encounters: ENCOUNTERS, enemies: ENEMIES }),
   ...checkMapEncounters({ maps: MAPS, encounters: ENCOUNTERS, backdrops: BACKDROPS }),
+  ...checkShops({ shops: SHOPS, items: ITEMS }),
   ...checkAreas({
     areas: AREAS,
     characters: CHARACTERS,
@@ -151,7 +156,7 @@ const chests = Object.values(MAPS).flatMap((map) =>
 console.log(
   `Content: ${some(size(CHARACTERS), 'character')}, ${some(size(SKILLS), 'skill')}, ` +
     `${some(size(ITEMS), 'item')}, ${some(size(ENEMIES), 'enemy', 'enemies')}, ` +
-    `${some(size(ENCOUNTERS), 'encounter table')}, ` +
+    `${some(size(ENCOUNTERS), 'encounter table')}, ${some(size(SHOPS), 'shop')}, ` +
     `${some(size(SPEAKERS), 'speaker')}, ` +
     `${some(size(TERRAINS), 'terrain')}, ${some(size(PREFABS), 'prefab')}, ` +
     `${some(maps, 'map')}, ${some(size(BACKDROPS), 'backdrop')}, ` +
@@ -182,6 +187,7 @@ console.log(
   'Party: everyone starts in gear that exists and that they can equip, and learns skills that ' +
     'exist, at levels there are.',
 );
+console.log("Shops: everything they sell exists, and isn't a key item.");
 console.log(
   'Enemies: each has a sprite to fight as, every skill they use exists, only actions aimed at ' +
     'one fighter pick a target, every item they drop exists, and ' +

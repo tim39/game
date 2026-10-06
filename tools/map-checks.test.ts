@@ -9,6 +9,7 @@ import { ITEMS } from '../src/data/items';
 import { BACKDROPS } from '../src/data/backdrops';
 import { MAPS } from '../src/data/maps';
 import { NEW_GAME } from '../src/data/new-game';
+import { SHOPS } from '../src/data/shops';
 import { SPEAKERS } from '../src/data/speakers';
 import { MAP_CONTENT } from '../src/data/terrain';
 import { CHEST_TEXT } from '../src/data/ui-text';
@@ -216,6 +217,7 @@ describe('reaching maps', () => {
       maps: MAPS,
       characters: CHARACTERS,
       items: ITEMS,
+      shops: SHOPS,
       manifest: ASSETS,
       font,
       chestText: CHEST_TEXT,

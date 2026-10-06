@@ -77,6 +77,24 @@ export const MENU_TEXT = {
   moreSkills: (count: number) => `and ${count} more`,
 };
 
+/** A shop: its commands, and what it says about the item under the cursor. */
+export const SHOP_TEXT = {
+  commands: { buy: 'Buy', sell: 'Sell', leave: 'Leave' },
+  /** How many of it the party carries, and how many it's wearing. */
+  have: (count: number) => `Have ${count}`,
+  worn: (count: number) => `Worn ${count}`,
+  howMany: { buy: 'Buy how many?', sell: 'Sell how many?' },
+  /** Under how many: what that many come to. */
+  total: (gold: number) => `${gold} gold`,
+  /**
+   * Under each member, for a piece of gear: how it would change a stat (a short name from
+   * BATTLE_TEXT.stats), that they're wearing one, or that it changes nothing.
+   */
+  change: (stat: string, by: number) => `${stat} ${by > 0 ? '+' : ''}${by}`,
+  wearing: 'Worn',
+  same: 'Same',
+};
+
 /** The Game Over screen, once a battle is lost: what it says, and what it offers. */
 export const GAME_OVER_TEXT = {
   heading: 'Game Over',

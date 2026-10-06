@@ -9,6 +9,7 @@ import {
   type EnemyActionDef,
   type EnemyDef,
   type ItemDef,
+  type ShopDef,
   type SkillDef,
 } from '../src/core/schema';
 import type { NewGame } from '../src/core/state';
@@ -27,6 +28,7 @@ const NAMES: { readonly [K in Kind]: string } = {
   items: 'Item',
   enemies: 'Enemy',
   encounters: 'Encounter table',
+  shops: 'Shop',
   speakers: 'Speaker',
   terrains: 'Terrain',
   prefabs: 'Prefab',
@@ -379,6 +381,26 @@ export function checkEncounters({
           (enemy) => `Encounter table ${id}: groups[${index}] has ${enemy}, which isn't an enemy`,
         ),
     ),
+  );
+}
+
+/** Checks that every item a shop sells exists, and has a price: isn't a key item. One line per problem. */
+export function checkShops({
+  shops,
+  items,
+}: {
+  readonly shops: Readonly<Record<string, ShopDef>>;
+  readonly items: Readonly<Record<string, ItemDef>>;
+}): string[] {
+  return Object.entries(shops).flatMap(([id, shop]) =>
+    shop.items.flatMap((item, index) => {
+      const def = Object.hasOwn(items, item) ? items[item] : undefined;
+      if (!def) return [`Shop ${id}: items[${index}] is ${item}, which isn't an item`];
+      if (def.kind === 'key') {
+        return [`Shop ${id}: items[${index}] is ${item}, a key item, which shops don't sell`];
+      }
+      return [];
+    }),
   );
 }
 

@@ -64,7 +64,7 @@ By **Pixel-boy** and **AAA**: https://pixel-boy.itch.io/ninja-adventure-asset-pa
 | `public/assets/tiles/desert.png` | Beach plants (and desert buildings, later) | `Backgrounds/Tilesets/TilesetDesert.png` | None |
 | `public/assets/tiles/camp.png` | Fire pits, logs, barrels, crates | `Backgrounds/Tilesets/tileset_camp.png` | None |
 | `public/assets/tiles/bed.png` | Beds and rugs | `Backgrounds/Tilesets/tileset_bed.png` | None |
-| `public/assets/tiles/dungeon.png` | The Tide Beacon (an orb on a pedestal) | `Backgrounds/Tilesets/TilesetDungeon.png` | None |
+| `public/assets/tiles/dungeon.png` | The Tide Beacon and the Light Shrines (orbs on pedestals) | `Backgrounds/Tilesets/TilesetDungeon.png` | None |
 | `public/assets/tiles/boat.png` | A fishing boat | `Backgrounds/Vehicles/Boat.png` | None |
 | `public/assets/bgm/intro.ogg`, `public/assets/bgm/intro.m4a` | Title music | `Audio/Musics/38 - Intro.ogg` | Turned up 1.1 dB, to −20 LUFS like the other tracks; re-encoded as Ogg Vorbis (quality 4) and AAC (128 kbps) |
 | `public/assets/bgm/calm-village.ogg`, `public/assets/bgm/calm-village.m4a` | Saltmere's music | `Audio/Musics/33 - Calm Village.ogg` | Turned down 1.3 dB, to −20 LUFS; re-encoded as Ogg Vorbis (quality 4) and AAC (128 kbps) |
@@ -73,4 +73,6 @@ By **Pixel-boy** and **AAA**: https://pixel-boy.itch.io/ninja-adventure-asset-pa
 | `public/assets/sfx/success-3.ogg`, `public/assets/sfx/success-3.m4a` | Winning a battle | `Audio/Jingles/Success3.wav` | Encoded as Ogg Vorbis (quality 4) and AAC (128 kbps) |
 | `public/assets/sfx/level-up-1.ogg`, `public/assets/sfx/level-up-1.m4a` | A level-up | `Audio/Jingles/LevelUp1.wav` | Encoded as Ogg Vorbis (quality 4) and AAC (128 kbps) |
 | `public/assets/sfx/game-over-3.ogg`, `public/assets/sfx/game-over-3.m4a` | Losing a battle | `Audio/Jingles/GameOver3.wav` | Encoded as Ogg Vorbis (quality 4) and AAC (128 kbps) |
+| `public/assets/sfx/secret-4.ogg`, `public/assets/sfx/secret-4.m4a` | Morning, after a night's rest | `Audio/Jingles/Secret4.wav` | Encoded as Ogg Vorbis (quality 4) and AAC (128 kbps) |
+| `public/assets/sfx/heal-2.ogg`, `public/assets/sfx/heal-2.m4a` | A Light Shrine's healing | `Audio/Sounds/Magic & Skill/Heal2.wav` | Encoded as Ogg Vorbis (quality 4) and AAC (128 kbps) |
 | `public/assets/tiles/lighthouse.png` | Saltmere's lighthouse | `Backgrounds/Tilesets/TilesetDesert.png`, the domed tower (columns 3–5, rows 0–4) | Cut out; the dome recoloured from greens to the pack's reds, and the two windows lit in its yellows |

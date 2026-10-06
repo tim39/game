@@ -89,7 +89,7 @@ Start a session and say **"next task"**, or name one. Claude takes the first unc
 *Goal: everything between battles.*
 
 - [x] Main menu: Items, Skills (healing outside battle), Equip (with stat comparison), Status, Options, Save.
-- [ ] Shops (buy and sell, quantities, who can equip it and how stats change), inns and Light Shrines.
+- [x] Shops (buy and sell, quantities, who can equip it and how stats change), inns and Light Shrines.
 - [ ] Options, remembered between sessions: text speed, battle speed, encounter rate, always run, volumes, screen shake, reduce flashing.
 - [ ] Area name banner, and a sound pass on menus and cursors.
 

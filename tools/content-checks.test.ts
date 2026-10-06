@@ -11,6 +11,7 @@ import { EVENTS } from '../src/data/events';
 import { ITEMS } from '../src/data/items';
 import { MAPS } from '../src/data/maps';
 import { NEW_GAME } from '../src/data/new-game';
+import { SHOPS } from '../src/data/shops';
 import { SKILLS } from '../src/data/skills';
 import { SPEAKERS } from '../src/data/speakers';
 import { MAP_CONTENT, PREFABS, TERRAINS } from '../src/data/terrain';
@@ -23,6 +24,7 @@ import {
   checkEnemies,
   checkMapEncounters,
   checkNewGame,
+  checkShops,
   type AreaSources,
   type CharacterSources,
   type ContentSources,
@@ -172,6 +174,7 @@ describe('checkContent', () => {
     encounters: {
       cave: { groups: [{ enemies: ['wolf', 'wolf'], weight: 2 }, { enemies: ['wolf'] }] },
     },
+    shops: { market: { items: ['potion'] } },
     speakers: { ada: { name: 'Ada', portrait: 'portrait.ada' }, sign: { name: '' } },
     terrains: {
       grass: {
@@ -589,6 +592,12 @@ describe('checkContent', () => {
     ]);
   });
 
+  test('reports shops that sell nothing, or the same thing twice', () => {
+    expect(
+      check({ shops: { empty: { items: [] }, twice: { items: ['potion', 'ether', 'potion'] } } }),
+    ).toEqual(['Shop empty: items is empty', 'Shop twice: items lists an item twice']);
+  });
+
   test('reports random battles on a map without a table or backdrop, or with more', () => {
     expect(
       check({
@@ -631,6 +640,7 @@ describe('checkContent', () => {
         items: ITEMS,
         enemies: ENEMIES,
         encounters: ENCOUNTERS,
+        shops: SHOPS,
         speakers: SPEAKERS,
         terrains: TERRAINS,
         prefabs: PREFABS,
@@ -975,6 +985,34 @@ describe('checkEncounters', () => {
 
   test('the real encounter tables check out', () => {
     expect(checkEncounters({ encounters: ENCOUNTERS, enemies: ENEMIES })).toEqual([]);
+  });
+});
+
+describe('checkShops', () => {
+  test('reports items there are none of, and key items, which shops don’t sell', () => {
+    expect(
+      checkShops({
+        shops: { market: { items: ['potion', 'plums', 'shard'] } },
+        items: {
+          potion: {
+            name: 'Potion',
+            description: 'Heals.',
+            kind: 'consumable',
+            price: 25,
+            target: 'one-ally',
+            effects: [{ type: 'restore', hp: 50 }],
+          },
+          shard: { name: 'Shard', description: 'Glows.', kind: 'key' },
+        },
+      }),
+    ).toEqual([
+      "Shop market: items[1] is plums, which isn't an item",
+      "Shop market: items[2] is shard, a key item, which shops don't sell",
+    ]);
+  });
+
+  test('the real shops check out', () => {
+    expect(checkShops({ shops: SHOPS, items: ITEMS })).toEqual([]);
   });
 });
 

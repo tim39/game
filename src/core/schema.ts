@@ -499,6 +499,20 @@ const EncounterTableSchema = z.strictObject({
 });
 export type EncounterTable = ContentOf<typeof EncounterTableSchema>;
 
+// Shops.
+
+/**
+ * A shop: what it sells, in the order it lists them, each at its price. It buys anything back
+ * but key items, for half (see src/core/shop.ts).
+ */
+const ShopSchema = z.strictObject({
+  items: z
+    .array(IdSchema)
+    .min(1)
+    .refine((items) => new Set(items).size === items.length, { error: 'lists an item twice' }),
+});
+export type ShopDef = ContentOf<typeof ShopSchema>;
+
 // Everything else.
 
 /** Who speaks in the dialogue box: the name in its tab, and a portrait if they have one. */
@@ -537,6 +551,7 @@ export const CONTENT_SCHEMAS = {
   items: z.record(IdSchema, ItemSchema),
   enemies: z.record(IdSchema, EnemySchema),
   encounters: z.record(IdSchema, EncounterTableSchema),
+  shops: z.record(IdSchema, ShopSchema),
   speakers: z.record(IdSchema, SpeakerSchema),
   terrains: z.record(IdSchema, TerrainSchema),
   prefabs: z.record(IdSchema, PrefabSchema),

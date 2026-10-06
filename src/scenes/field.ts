@@ -59,6 +59,7 @@ import { MAX_CHOICES } from '../ui/dialogue-layout';
 import { BATTLE_MUSIC, BATTLE_SCENE, type BattleStart } from './battle';
 import type { DialogueRequest } from './dialogue';
 import { MAIN_MENU_SCENE, type MainMenuStart } from './main-menu';
+import { SHOP_SCENE, type ShopStart } from './shop';
 
 /**
  * Where to put the player, `scene.start('field', start)`: a cell, or one of the map's spawns. With
@@ -607,6 +608,11 @@ export class FieldScene extends Phaser.Scene {
       fadeOut: (ms = MAP_FADE_MS) => this.fade('out', checkedMs(ms)),
       fadeIn: (ms = MAP_FADE_MS) => this.fade('in', checkedMs(ms)),
       teleport: (map, spawn) => this.teleport(map, spawn),
+      shop: (id) =>
+        new Promise((resolve) => {
+          this.scene.launch(SHOP_SCENE, { shop: id, onClose: () => resolve() } satisfies ShopStart);
+        }),
+      jingle: (sound) => this.jingle(sound),
       bgm: (track) => audio.playMusic(track),
       sfx: (sound) => audio.playSound(sound),
     };
@@ -747,6 +753,21 @@ export class FieldScene extends Phaser.Scene {
   private dialogue(request: Omit<DialogueRequest, 'onDone'>): Promise<number | null> {
     return new Promise((onDone) => {
       this.scene.launch('dialogue', { ...request, onDone } satisfies DialogueRequest);
+    });
+  }
+
+  /**
+   * Plays a jingle with the music paused, as a battle's music pauses it, and resolves once the
+   * jingle is over and the music is coming back.
+   */
+  private jingle(sound: string): Promise<void> {
+    audio.interruptMusic(null);
+    audio.playSound(sound);
+    return new Promise((resolve) => {
+      this.time.delayedCall(audio.soundLength(sound), () => {
+        audio.resumeMusic();
+        resolve();
+      });
     });
   }
 

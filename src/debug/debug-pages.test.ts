@@ -418,11 +418,16 @@ test('the party page lists each member with their level, and rests the party', (
     ['Bram', 'Lv 1', true],
     ['Join the party', undefined, true],
     ['Give an item', undefined, true],
+    ['Give gold', '0 gold', true],
     ['Rest', 'full HP and MP', true],
   ]);
   choose(menu, 'Rest');
   expect(game.state.members.bram).toEqual({ level: 1, exp: 0, equipment: {} });
   expect(menu.view().notice).toBe('Everyone is back to full HP and MP.');
+  choose(menu, 'Give gold');
+  expect(game.state.gold).toBe(1000);
+  expect(menu.view().notice).toBe('Gave the party 1000 gold.');
+  expect(lines(menu).find(({ label }) => label === 'Give gold')?.detail).toBe('1000 gold');
 });
 
 test('a member can be put at any level, with the EXP it takes', () => {

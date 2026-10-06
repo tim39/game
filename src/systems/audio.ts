@@ -130,6 +130,13 @@ class AudioManager {
     if (this.played.length > SOUNDS_LISTED) this.played.shift();
   }
 
+  /** How long a sound effect, `sfx.*`, lasts, in ms: 0 if it hasn't loaded. */
+  soundLength(key: string): number {
+    checkKey(key, 'sfx.');
+    const data: unknown = this.game?.cache.audio.get(key);
+    return data instanceof AudioBuffer ? Math.round(data.duration * 1000) : 0;
+  }
+
   /**
    * Stops a sound effect, `sfx.*`, wherever it's playing: a jingle cut short by the next, rather
    * than heard under it.

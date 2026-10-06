@@ -53,6 +53,8 @@ function fakeStage(answers: number[] = []): { stage: Stage; log: string[] } {
     fadeOut: (ms) => done(`fadeOut ${ms ?? 'default'}`),
     fadeIn: (ms) => done(`fadeIn ${ms ?? 'default'}`),
     teleport: (map, spawn) => done(`teleport ${map} ${spawn}`),
+    shop: (id) => done(`shop ${id}`),
+    jingle: (sound) => done(`jingle ${sound}`),
     bgm: (track) => {
       log.push(`bgm ${track ?? 'off'}`);
     },

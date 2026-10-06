@@ -31,6 +31,8 @@ export interface EventSources {
   readonly characters: Readonly<Record<string, unknown>>;
   /** Every item, by ID, as in src/data/items.ts. */
   readonly items: Readonly<Record<string, unknown>>;
+  /** Every shop, by ID, as in src/data/shops.ts. */
+  readonly shops: Readonly<Record<string, unknown>>;
   /** Logical key → entry, as in src/systems/asset-manifest.ts. */
   readonly manifest: Readonly<Record<string, AssetEntry>>;
   /** The body font, which dialogue is drawn in. */
@@ -85,6 +87,7 @@ export async function checkEvents({
   maps,
   characters,
   items,
+  shops,
   manifest,
   font,
   chestText,
@@ -277,6 +280,14 @@ export async function checkEvents({
             }
             if (mapId !== null) teleports.set(mapId, (teleports.get(mapId) ?? new Set()).add(map));
             mapId = map;
+            return Promise.resolve();
+          },
+          shop: (id) => {
+            if (!Object.hasOwn(shops, id)) report(`it opens the shop ${id}, which isn't a shop`);
+            return Promise.resolve();
+          },
+          jingle: (sound) => {
+            checkSound(sound, 'sfx.');
             return Promise.resolve();
           },
           bgm: (track) => {

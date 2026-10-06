@@ -1,7 +1,7 @@
 import type Phaser from 'phaser';
 import { ENCOUNTER_RATES } from '../core/encounters';
 import { memberVitals, recruit } from '../core/party';
-import { addItem, inParty, setFlag, setLevel, setVitals } from '../core/state';
+import { addGold, addItem, inParty, setFlag, setLevel, setVitals } from '../core/state';
 import { BACKDROPS } from '../data/backdrops';
 import { AREAS, EXP_CURVE } from '../data/balance';
 import { CHARACTERS } from '../data/characters';
@@ -125,6 +125,9 @@ export function installDebugHooks(game: Phaser.Game): void {
     },
     give: (item, count) => {
       session.state = addItem(session.state, item, count);
+    },
+    giveGold: (amount) => {
+      session.state = addGold(session.state, amount);
     },
     join: (character) => {
       session.state = recruit(session.state, character, DB);

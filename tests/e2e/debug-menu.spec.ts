@@ -277,6 +277,7 @@ test('the party page sets levels and gear, gives items, and rests the party', as
     ['Rowan', 'Lv 1'],
     ['Join the party', null],
     ['Give an item', null],
+    ['Give gold', '0 gold'],
     ['Rest', 'full HP and MP'],
   ]);
 

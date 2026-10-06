@@ -180,10 +180,16 @@ test('Saltmere’s villagers can be talked to', async ({ page }) => {
   await page.screenshot({ path: 'test-results/screenshots/saltmere-dock.png' });
   await closeDialogue(page);
 
+  // The vendor sells supplies for the road, from the market stall's shop.
   await page.evaluate(() => window.__game?.warp('saltmere', 12, 7, 'down'));
   await arrivedOn(page, 'saltmere');
   expect(await talk(page)).toMatchObject({ name: 'Villager' });
   await page.screenshot({ path: 'test-results/screenshots/saltmere-square.png' });
+  await readOn(page);
+  await page.waitForFunction(() => window.__game?.inspect('shop')?.shop === 'saltmere-market');
+  // Cancel leaves, and the vendor says goodbye.
+  await page.keyboard.press('KeyX');
+  await page.waitForFunction(() => window.__game?.inspect('dialogue')?.text === 'Happy Kindling!');
   await closeDialogue(page);
   expect(errors).toEqual([]);
 });

@@ -1,4 +1,5 @@
 import { defineEvent } from '../../core/events';
+import { rest } from './rest';
 
 // Saltmere on Kindling day. Draft lines, to be rewritten with the opening and when the village is
 // fully populated (both M6).
@@ -34,8 +35,11 @@ export const fisher = defineEvent(async (ev) => {
   );
 });
 
+// The market stall sells supplies for the road north too (src/data/shops.ts).
 export const vendor = defineEvent(async (ev) => {
-  await ev.say('villager', 'Fish, greens, plums! Get them before the Kindling crowd does.');
+  await ev.say('villager', 'Fish, greens, plums! Potions and bombs for the road, too.');
+  await ev.shop('saltmere-market');
+  await ev.say('villager', 'Happy Kindling!');
 });
 
 export const kid = defineEvent(async (ev) => {
@@ -51,15 +55,12 @@ export const kid = defineEvent(async (ev) => {
   );
 });
 
-// Rowan's bed, in Tamsin's house: a rest puts the party back on their feet. Until there are inns
-// (M5), it's the only way to.
+// Rowan's bed, in Tamsin's house: a night's rest puts the party back on their feet, as an inn's
+// does, for nothing. It's home.
 export const rowansBed = defineEvent(async (ev) => {
   await ev.say('sign', "Rowan's bed, still unmade. A rest would do the party good.");
   if ((await ev.choice(['Rest a while', 'Not now'])) !== 0) return;
-  await ev.fadeOut();
-  ev.heal();
-  await ev.wait(800);
-  await ev.fadeIn();
+  await rest(ev);
   await ev.say('sign', 'Rested, and ready to go again.');
 });
 

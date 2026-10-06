@@ -8,6 +8,7 @@ import { CHARACTERS } from '../src/data/characters';
 import { EVENTS } from '../src/data/events';
 import { ITEMS } from '../src/data/items';
 import { MAPS } from '../src/data/maps';
+import { SHOPS } from '../src/data/shops';
 import { SPEAKERS } from '../src/data/speakers';
 import { CHEST_TEXT } from '../src/data/ui-text';
 import { ASSETS, type AssetEntry } from '../src/systems/asset-manifest';
@@ -63,6 +64,7 @@ const sources = (overrides: Partial<EventSources>): EventSources => ({
   maps: {},
   characters: { rowan: {}, bram: {} },
   items: { potion: { name: 'Potion' }, 'old-key': { name: 'Old Key' } },
+  shops: { market: {} },
   manifest: MANIFEST,
   font: FONT,
   chestText: CHEST_TEXT_ADA,
@@ -405,6 +407,25 @@ test('reports music and sound effects that are not in the manifest', async () =>
   ]);
 });
 
+test('reports shops that do not exist, and jingles that are not sound effects', async () => {
+  const problems = await check({
+    events: {
+      fine: defineEvent(async (ev) => {
+        await ev.shop('market');
+        await ev.jingle('sfx.ding');
+      }),
+      off: defineEvent(async (ev) => {
+        await ev.shop('bazaar');
+        await ev.jingle('bgm.town');
+      }),
+    },
+  });
+  expect(problems).toEqual([
+    "Event off: it opens the shop bazaar, which isn't a shop",
+    "Event off: it plays bgm.town, which isn't a sound effect in the asset manifest",
+  ]);
+});
+
 test('reports scripts that triggers run but do not exist', async () => {
   const problems = await check({
     maps: {
@@ -457,6 +478,7 @@ test('the real event scripts, speakers and maps check out', async () => {
     maps: MAPS,
     characters: CHARACTERS,
     items: ITEMS,
+    shops: SHOPS,
     manifest: ASSETS,
     font: measureBodyFont(
       readFileSync(join(import.meta.dirname, '../public', ASSETS['font.body'].url)),

@@ -6,6 +6,7 @@ import { expToReach, type ExpCurve } from '../core/levels';
 import type { MapDef, SpawnObject } from '../core/map/types';
 import type { ItemDef } from '../core/schema';
 import {
+  addGold,
   addItem,
   equip,
   itemCount,
@@ -69,6 +70,9 @@ export interface DebugSlot {
   readonly detail: string;
   readonly empty: boolean;
 }
+
+/** How much gold Give gold gives, each time: enough to try out a shop. */
+export const DEBUG_GOLD = 1000;
 
 /** The battle speeds the debug menu goes round: the Options screen's 1x to 3x, and 4x. */
 export const DEBUG_BATTLE_SPEEDS = [1, 2, 3, 4] as const;
@@ -310,6 +314,14 @@ function partyPage(context: DebugMenuContext): DebugPage {
       })),
       { label: 'Join the party', choose: () => joinPage(context) },
       { label: 'Give an item', choose: () => itemPage(context) },
+      {
+        label: 'Give gold',
+        detail: `${game.get().gold} gold`,
+        choose: () => {
+          game.set(addGold(game.get(), DEBUG_GOLD));
+          context.notify(`Gave the party ${DEBUG_GOLD} gold.`);
+        },
+      },
       {
         label: 'Rest',
         detail: 'full HP and MP',

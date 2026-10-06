@@ -80,6 +80,12 @@ export const FIELD_SPEEDS: WalkSpeeds = { walkMs: 240, runMs: 120 };
 /** Going between maps fades to black and back, this long each way. */
 export const MAP_FADE_MS = 250;
 
+/** A night's rest fades to black and back this slowly, either side of the morning jingle. */
+export const REST_FADE_MS = 500;
+
+/** What a night at each inn costs (see Items and economy in docs/DESIGN.md). */
+export const INN_PRICES = { test: 20 } as const;
+
 /**
  * How long the battle screen takes over what it shows, in milliseconds: a party member stepping
  * forward when their turn comes and back after it, lunging at a target, a hit landing, a number or

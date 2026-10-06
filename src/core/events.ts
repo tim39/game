@@ -40,6 +40,16 @@ export interface EventContext {
    */
   teleport(map: string, spawn: string): Promise<void>;
   /**
+   * Opens a shop, by its ID in src/data/shops.ts, and resolves once the player leaves it, having
+   * bought and sold whatever they liked.
+   */
+  shop(id: string): Promise<void>;
+  /**
+   * Plays a jingle, a sound effect from the asset manifest like `sfx.rest`, with the music paused,
+   * and resolves once it's over. The music then carries on where it was.
+   */
+  jingle(sound: string): Promise<void>;
+  /**
    * Changes the music to a track from the asset manifest, like `bgm.saltmere`, or with null fades
    * it out. It crossfades while the script carries on. Arriving on a map plays that map's music.
    */

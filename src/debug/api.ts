@@ -28,6 +28,8 @@ export interface DebugApi {
   setFlag(flag: string, on?: boolean): void;
   /** Gives the party `count` of an item (1 if left out). */
   give(item: string, count?: number): void;
+  /** Gives the party some gold. */
+  giveGold(amount: number): void;
   /** Has a character join the party, at level 1 in the gear they start with. */
   join(character: string): void;
   /**
