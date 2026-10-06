@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import type { GameState } from '../core/state';
 import { MAPS } from '../data/maps';
 import { SAVE_MENU_TEXT } from '../data/ui-text';
+import { audio } from '../systems/audio';
 import { GAME_HEIGHT, GAME_WIDTH } from '../systems/display';
 import { input } from '../systems/input/game-input';
 import { touchMode } from '../systems/input/touch-controls';
@@ -111,16 +112,17 @@ export class SaveMenuScene extends Phaser.Scene {
       cancel: input.pressed('cancel') || input.pressed('menu'),
     });
     this.menu = step.menu;
+    // A save the browser won't keep buzzes, rather than confirms.
+    const kept = step.action === 'save' ? this.save() : true;
+    audio.playMenuSound(kept ? step.sound : 'buzzer');
     switch (step.action) {
-      case 'save':
-        this.save();
-        break;
       case 'load':
         this.loadPicked();
         return;
       case 'close':
         this.close(start.onClose);
         return;
+      case 'save':
       case null:
         break;
     }
@@ -150,21 +152,27 @@ export class SaveMenuScene extends Phaser.Scene {
     };
   }
 
-  /** Saves the game being played in the slot under the cursor, and shows it there. */
-  private save(): void {
+  /**
+   * Saves the game being played in the slot under the cursor, and shows it there. Returns whether
+   * the browser kept it.
+   */
+  private save(): boolean {
     const { menu } = this;
     const entry = menu?.slots[menu.cursor];
-    if (!menu || !entry) return;
+    if (!menu || !entry) return false;
+    let kept = true;
     try {
       saveSlots.write(entry.slot, session.state, new Date());
       this.menu = saved(menu, saveSlots.read(entry.slot));
     } catch (error) {
       console.warn("Couldn't save:", error);
       this.menu = saveFailed(menu);
+      kept = false;
     }
     this.panels[menu.cursor]?.destroy();
     const now = this.menu.slots[menu.cursor] ?? entry;
     this.panels[menu.cursor] = this.drawSlot(this.menu, now, menu.cursor);
+    return kept;
   }
 
   /** Closes, and hands the save under the cursor to whoever opened the menu. */

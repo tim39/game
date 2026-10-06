@@ -131,6 +131,7 @@ export class GameOverScene extends Phaser.Scene {
       confirm: input.pressed('confirm'),
     });
     this.menu = step.menu;
+    audio.playMenuSound(step.sound);
     if (step.menu.cursor !== menu.cursor) this.drawCursor();
     if (step.chosen) this.choose(step.chosen);
   }

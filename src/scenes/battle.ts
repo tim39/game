@@ -279,6 +279,7 @@ export class BattleScene extends Phaser.Scene {
         confirm: input.pressed('confirm'),
         cancel: input.pressed('cancel'),
       });
+      audio.playMenuSound(step.sound);
       if (step.action) this.chosen(step.action);
       else if (step.menu !== menu) this.showMenu(step.menu);
     } else if (this.confirmed && input.pressed('confirm')) {

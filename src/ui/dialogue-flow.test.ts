@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'vitest';
 import {
+  choiceSound,
   isTyping,
   picked,
   showsChoices,
@@ -119,5 +120,24 @@ describe('choices', () => {
     expect(showsChoices(flow)).toBe(true);
     flow = step(flow, { confirm: true });
     expect(picked(flow)).toBe(0);
+  });
+
+  test('click as the cursor moves, and confirm as one is picked', () => {
+    const flow = startDialogue(LINES, CHOICES, false);
+    expect(choiceSound(flow, step(flow, { move: 1 }))).toBe('cursor');
+    expect(choiceSound(flow, step(flow, { confirm: true }))).toBe('confirm');
+    expect(choiceSound(flow, step(flow, { dt: 100 }))).toBeNull();
+    // With one choice, the cursor has nowhere to go.
+    const one = startDialogue(LINES, ['Yes.'], false);
+    expect(choiceSound(one, step(one, { move: 1 }))).toBeNull();
+  });
+
+  test('make no sound until they show, and reading a line makes none', () => {
+    const typing = startDialogue(LINES, CHOICES);
+    expect(choiceSound(typing, step(typing, { confirm: true }))).toBeNull();
+    const line = startDialogue(LINES, [], false);
+    expect(choiceSound(line, step(line, { confirm: true }))).toBeNull();
+    const done = step(startDialogue(LINES, CHOICES, false), { confirm: true });
+    expect(choiceSound(done, step(done, { confirm: true }))).toBeNull();
   });
 });

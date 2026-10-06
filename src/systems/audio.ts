@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { MUSIC_FADE_MS, SOUND_REPEAT_MS } from '../data/balance';
+import { MENU_SOUNDS, type MenuSound } from '../ui/menu-sound';
 import { ASSETS, type AssetEntry } from './asset-manifest';
 import { SILENCE, crossfadeTo, resumed, stepMix, type MusicMix } from './music-mix';
 import { settings } from './settings';
@@ -128,6 +129,11 @@ class AudioManager {
     game.sound.play(key, { volume: settings.soundVolume });
     this.played.push(key);
     if (this.played.length > SOUNDS_LISTED) this.played.shift();
+  }
+
+  /** Plays the sound a press in a menu made, if it made one (see src/ui/menu-sound.ts). */
+  playMenuSound(sound: MenuSound | null): void {
+    if (sound !== null) this.playSound(MENU_SOUNDS[sound]);
   }
 
   /** How long a sound effect, `sfx.*`, lasts, in ms: 0 if it hasn't loaded. */

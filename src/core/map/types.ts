@@ -177,8 +177,14 @@ export interface MapEncounters {
 export interface MapDef {
   /** Kebab-case, like `saltmere` or `tide-caves-b1`. */
   readonly id: string;
-  /** The place name, as the area banner shows it. */
+  /** The place's name, as the menus and the save slots show it. */
   readonly name: string;
+  /**
+   * The map whose area this one is part of, by its ID, as a town's houses are part of the town.
+   * Without it, the map is an area of its own. Arriving in another area shows its name in the area
+   * banner, so going between maps in one area shows nothing.
+   */
+  readonly area?: string;
   /**
    * The music that plays on arriving, `bgm.*` in the asset manifest; without it, silence. A map
    * with the same music as the last carries on playing it, so a town's houses share its tune.

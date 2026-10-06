@@ -34,7 +34,13 @@ import {
   type Walker,
   type WalkWorld,
 } from '../core/walker';
-import { ENCOUNTER_TUNING, FIELD_SPEEDS, MAP_FADE_MS, NPC_TUNING } from '../data/balance';
+import {
+  AREA_BANNER_MS,
+  ENCOUNTER_TUNING,
+  FIELD_SPEEDS,
+  MAP_FADE_MS,
+  NPC_TUNING,
+} from '../data/balance';
 import { DB } from '../data/db';
 import { ENCOUNTERS } from '../data/encounters';
 import { EVENTS } from '../data/events';
@@ -53,6 +59,8 @@ import { saveSlots } from '../systems/saves';
 import { session } from '../systems/session';
 import { settings } from '../systems/settings';
 import { DEPTH, TILE, createTilemap } from '../systems/tilemap';
+import { bannerOnArrival } from '../ui/area-banner';
+import { showAreaBanner, type AreaBannerBox } from '../ui/area-banner-box';
 import { playBattleTransition } from '../ui/battle-transition';
 import type { DialogueLine } from '../ui/dialogue-box';
 import { MAX_CHOICES } from '../ui/dialogue-layout';
@@ -164,6 +172,10 @@ export class FieldScene extends Phaser.Scene {
   private transitioning = false;
   /** What covers the field as a battle starts, until it's over. */
   private curtain?: Phaser.GameObjects.Graphics;
+  /** The area banner, naming the area the player has arrived in. */
+  private banner?: AreaBannerBox;
+  /** A script brought the player to a new area: the banner naming it waits for the script to end. */
+  private bannerPending: string | null = null;
 
   constructor() {
     super('field');
@@ -177,6 +189,8 @@ export class FieldScene extends Phaser.Scene {
     this.arrival = undefined;
     if (!arrival) this.script = null;
     this.stopWalks();
+    // The map left, on a map change; any other start (a new game, a load) has none.
+    const left = start.autosave ? this.map?.id : undefined;
     const map = compileMap(def, MAP_CONTENT);
     this.map = map;
     // The same music as the last map's plays on.
@@ -252,6 +266,11 @@ export class FieldScene extends Phaser.Scene {
     this.menuPending = false;
     // The map's enter script runs on arrival; if a script brought the player, once that ends.
     this.enterPending = arrival !== undefined;
+    // Arriving in another area names it; if a script brought the player, once that ends.
+    this.banner = undefined;
+    const banner = bannerOnArrival(MAPS, map.id, left);
+    this.bannerPending = arrival ? banner : null;
+    if (!arrival && banner !== null) this.showBanner(banner);
     if (!arrival) this.runTrigger(enterTrigger(map, session.state));
     else if (this.dark) arrival();
     else camera.once(Phaser.Cameras.Scene2D.Events.FADE_IN_COMPLETE, () => arrival());
@@ -380,6 +399,7 @@ export class FieldScene extends Phaser.Scene {
       script: this.script?.id ?? null,
       dark: this.dark,
       fading: camera.fadeEffect.isRunning,
+      banner: this.banner?.showing ? this.banner.name : null,
       noclip: debugSwitches.noclip,
       collision: this.collisionView?.marked ?? null,
       encounters: map.encounters,
@@ -454,6 +474,8 @@ export class FieldScene extends Phaser.Scene {
     this.transitioning = true;
     this.buffered = null;
     this.menuPending = false;
+    // A battle cuts the banner short.
+    this.banner?.destroy();
     audio.interruptMusic(BATTLE_MUSIC);
     void playBattleTransition(this, DEPTH.transition, !settings.reduceFlashing).then((curtain) => {
       // The field may have started over meanwhile: a debug warp, say.
@@ -485,6 +507,12 @@ export class FieldScene extends Phaser.Scene {
     this.scene.wake();
   }
 
+  /** Names the area the player has arrived in, across the top of the screen. */
+  private showBanner(name: string): void {
+    this.banner?.destroy();
+    this.banner = showAreaBanner(this, name, DEPTH.banner, AREA_BANNER_MS);
+  }
+
   /** Saves the game as it is in the autosave slot, which every map change does. */
   private autosave(): void {
     saveSlots.autosave(session.state, new Date());
@@ -493,6 +521,7 @@ export class FieldScene extends Phaser.Scene {
   /** Opens the main menu over the field, which waits until it closes. */
   private openMainMenu(): void {
     this.buffered = null;
+    audio.playMenuSound('confirm');
     this.scene.pause();
     this.scene.launch(MAIN_MENU_SCENE, {
       onClose: () => this.scene.resume(),
@@ -563,12 +592,17 @@ export class FieldScene extends Phaser.Scene {
 
   /**
    * Once a script ends, anyone it set walking without waiting stops, the screen comes back if it
-   * left it black, and a map it brought the player to autosaves and runs its enter script.
+   * left it black, and a map it brought the player to names its area, autosaves and runs its enter
+   * script.
    */
   private scriptEnded(): void {
     this.script = null;
     this.stopWalks();
     if (this.dark) void this.fade('in', MAP_FADE_MS);
+    if (this.bannerPending !== null) {
+      this.showBanner(this.bannerPending);
+      this.bannerPending = null;
+    }
     if (this.autosavePending) {
       this.autosavePending = false;
       this.autosave();

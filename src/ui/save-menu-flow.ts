@@ -1,4 +1,5 @@
 import type { SaveSlot, SlotContents } from '../systems/saves';
+import type { MenuSound } from './menu-sound';
 
 /** Saving the game in a slot, or loading one to carry on from. */
 export type SaveMenuMode = 'save' | 'load';
@@ -52,35 +53,43 @@ export function openSaveMenu(mode: SaveMenuMode, slots: readonly MenuSlot[]): Sa
 export const canChoose = (mode: SaveMenuMode, { slot, contents }: MenuSlot): boolean =>
   mode === 'save' ? slot !== 'autosave' : contents.kind === 'saved';
 
+/**
+ * What a press does: moves the cursor, asks before saving over a slot, answers that, or asks the
+ * scene to save, load or close; and the sound that makes. Confirm on a slot that can't be chosen
+ * buzzes.
+ */
 export function stepSaveMenu(
   menu: SaveMenu,
   input: SaveMenuInput,
-): { menu: SaveMenu; action: SaveMenuAction } {
+): { menu: SaveMenu; action: SaveMenuAction; sound: MenuSound | null } {
   const { move, confirm, cancel } = input;
   // Confirm first, so a press in the same frame as a move picks what was on screen.
   if (menu.overwrite !== null) {
-    if (confirm) {
-      return { menu: { ...menu, overwrite: null }, action: menu.overwrite === 0 ? 'save' : null };
+    const answered = { ...menu, overwrite: null };
+    if (confirm)
+      return { menu: answered, action: menu.overwrite === 0 ? 'save' : null, sound: 'confirm' };
+    if (cancel) return { menu: answered, action: null, sound: 'cancel' };
+    if (move !== 0) {
+      const overwrite = menu.overwrite === 0 ? 1 : 0;
+      return { menu: { ...menu, overwrite }, action: null, sound: 'cursor' };
     }
-    if (cancel) return { menu: { ...menu, overwrite: null }, action: null };
-    if (move !== 0)
-      return { menu: { ...menu, overwrite: menu.overwrite === 0 ? 1 : 0 }, action: null };
-    return { menu, action: null };
+    return { menu, action: null, sound: null };
   }
   if (confirm) {
     const entry = menu.slots[menu.cursor];
-    if (!entry || !canChoose(menu.mode, entry)) return { menu, action: null };
-    if (menu.mode === 'load') return { menu, action: 'load' };
-    if (entry.contents.kind === 'empty') return { menu, action: 'save' };
-    return { menu: { ...menu, overwrite: 0, notice: null }, action: null };
+    if (!entry || !canChoose(menu.mode, entry)) return { menu, action: null, sound: 'buzzer' };
+    if (menu.mode === 'load') return { menu, action: 'load', sound: 'confirm' };
+    if (entry.contents.kind === 'empty') return { menu, action: 'save', sound: 'confirm' };
+    return { menu: { ...menu, overwrite: 0, notice: null }, action: null, sound: 'confirm' };
   }
-  if (cancel) return { menu, action: 'close' };
+  if (cancel) return { menu, action: 'close', sound: 'cancel' };
   if (move !== 0 && menu.slots.length > 0) {
     const count = menu.slots.length;
     const cursor = (menu.cursor + move + count) % count;
-    return { menu: { ...menu, cursor, notice: null }, action: null };
+    const sound = cursor === menu.cursor ? null : 'cursor';
+    return { menu: { ...menu, cursor, notice: null }, action: null, sound };
   }
-  return { menu, action: null };
+  return { menu, action: null, sound: null };
 }
 
 /** After saving in the slot under the cursor: shows what's there now, and says so. */

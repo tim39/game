@@ -346,3 +346,73 @@ test('the party summary has each member’s level, HP, MP and EXP to their next 
   game = { ...game, state: setLevel(game.state, 'rowan', 5, CURVE) };
   expect(partySummary(game)[0]).toMatchObject({ level: 5, next: null });
 });
+
+describe('sounds', () => {
+  const sound = (menu: MainMenu, game: MenuWorld, input: MainMenuInput) =>
+    stepMainMenu(menu, input, game).sound;
+
+  test('the cursor clicks, choosing confirms, and Cancel and Menu go back', () => {
+    const game = world();
+    const menu = openMainMenu();
+    expect(sound(menu, game, DOWN)).toBe('cursor');
+    expect(sound(menu, game, UP)).toBe('cursor');
+    expect(sound(menu, game, CONFIRM)).toBe('confirm');
+    expect(sound(menu, game, CANCEL)).toBe('cancel');
+    expect(sound(menu, game, MENU)).toBe('cancel');
+    expect(sound(menu, game, NONE)).toBeNull();
+    // Save and Options open their screens.
+    expect(sound(play(menu, game, UP).menu, game, CONFIRM)).toBe('confirm');
+    expect(sound(play(menu, game, UP, UP).menu, game, CONFIRM)).toBe('confirm');
+    const skills = play(menu, game, DOWN, CONFIRM, CONFIRM).menu;
+    expect(sound(skills, game, RIGHT)).toBe('cursor');
+    expect(sound(skills, game, CANCEL)).toBe('cancel');
+    expect(sound(skills, game, MENU)).toBe('cancel');
+  });
+
+  test('using something, or changing gear, confirms', () => {
+    const game = hurt(world(), 'rowan', { hp: 30 });
+    const potion = play(openMainMenu(), game, CONFIRM, CONFIRM).menu;
+    expect(stepMainMenu(potion, CONFIRM, game)).toMatchObject({
+      action: { type: 'use' },
+      sound: 'confirm',
+    });
+    const weapons = play(openMainMenu(), game, DOWN, DOWN, CONFIRM, CONFIRM, CONFIRM).menu;
+    expect(stepMainMenu(weapons, CONFIRM, game)).toMatchObject({
+      action: { type: 'equip' },
+      sound: 'confirm',
+    });
+  });
+
+  test('choosing what does nothing for anyone now buzzes', () => {
+    const game = world();
+    // Everyone is full, so a Potion would help nobody.
+    const items = play(openMainMenu(), game, CONFIRM).menu;
+    expect(sound(items, game, CONFIRM)).toBe('buzzer');
+    const hurtRowan = hurt(game, 'rowan', { hp: 30 });
+    expect(sound(items, hurtRowan, CONFIRM)).toBe('confirm');
+    // Bram is full.
+    const onBram = play(items, hurtRowan, CONFIRM, DOWN).menu;
+    expect(sound(onBram, hurtRowan, CONFIRM)).toBe('buzzer');
+    // Rowan wears no weapon to remove.
+    const remove = play(openMainMenu(), game, DOWN, DOWN, CONFIRM, CONFIRM, CONFIRM, DOWN).menu;
+    expect(lines(remove, game)[1]).toEqual(['Remove', '', false]);
+    expect(sound(remove, game, CONFIRM)).toBe('buzzer');
+  });
+
+  test('with nowhere to go, the cursor stays quiet', () => {
+    // Aimed at everyone it helps, there's no one to choose between.
+    const hurtRowan = hurt(world(), 'rowan', { hp: 50 });
+    const page = { kind: 'skill-on', member: 'liora', skill: 'mend-all' } as const;
+    const all: MainMenu = { pages: [{ page, cursor: 0, top: 0 }] };
+    expect(sound(all, hurtRowan, DOWN)).toBeNull();
+    // A party of one has no one else to go round to, and Status nothing to choose.
+    const alone = world(gameWith(['rowan'], { potion: 1 }));
+    const status = play(openMainMenu(), alone, DOWN, DOWN, DOWN, CONFIRM, CONFIRM).menu;
+    expect(shownPage(status).page).toEqual({ kind: 'status', member: 'rowan' });
+    expect(sound(status, alone, RIGHT)).toBeNull();
+    expect(sound(status, alone, DOWN)).toBeNull();
+    expect(sound(status, alone, CONFIRM)).toBeNull();
+    const whose = play(openMainMenu(), alone, DOWN, CONFIRM).menu;
+    expect(sound(whose, alone, DOWN)).toBeNull();
+  });
+});

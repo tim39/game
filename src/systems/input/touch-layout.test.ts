@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'vitest';
+import { AREA_BANNER, areaBannerOnScreen } from '../../ui/area-banner';
 import { CHOICE_BOX, MAX_CHOICES, choiceBoxOnScreen } from '../../ui/dialogue-layout';
 import {
   dialogueBoxInView,
@@ -71,7 +72,7 @@ describe('layoutTouchControls', () => {
     }
   });
 
-  test('stay clear of the biggest choice box on phones held sideways', () => {
+  test('stay clear of the biggest choice box and area banner on phones held sideways', () => {
     // 16:9 phones fill the screen with the game; phones with a notch have room beside it.
     const phones: [Size, Insets][] = [
       [{ width: 667, height: 375 }, NO_INSETS],
@@ -81,10 +82,13 @@ describe('layoutTouchControls', () => {
       [{ width: 932, height: 430 }, NOTCH],
     ];
     const choices = choiceBoxOnScreen(CHOICE_BOX.maxTextWidth, MAX_CHOICES);
+    const banner = areaBannerOnScreen(AREA_BANNER.room);
     for (const [view, insets] of phones) {
       const layout = layoutTouchControls(view, insets);
       for (const control of [layout.dpad, layout.a, layout.b, layout.menu]) {
         expect(overlaps(control, gameBoxInView(view, choices))).toBe(false);
+        // And of the widest area banner, at the top.
+        expect(overlaps(control, gameBoxInView(view, banner))).toBe(false);
       }
     }
   });

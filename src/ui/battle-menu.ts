@@ -13,6 +13,7 @@ import type { FighterId } from '../core/battle/fighter';
 import type { Target } from '../core/battle/terms';
 import type { Direction } from '../core/direction';
 import { BATTLE_TEXT } from '../data/ui-text';
+import type { MenuSound } from './menu-sound';
 
 /**
  * The battle's command menu, without the drawing (see Commands in docs/DESIGN.md): what the party
@@ -101,10 +102,14 @@ export interface MenuInput {
   readonly cancel: boolean;
 }
 
-/** What a step of the menu leads to: the menu as it is now, and the action chosen, if any. */
+/**
+ * What a step of the menu leads to: the menu as it is now, the action chosen, if any, and the
+ * sound the press made.
+ */
 export interface MenuStep {
   readonly menu: BattleMenu;
   readonly action: Action | null;
+  readonly sound: MenuSound | null;
 }
 
 /** Opens the menu for the party member whose turn it is, with the cursor on Attack. */
@@ -152,7 +157,8 @@ export function openBattleMenu(battle: BattleState): BattleMenu {
 
 /**
  * The menu after a frame's input: Confirm, then Cancel, then a move, so a press in the same frame
- * as a move picks what was on screen. Hands back an action once one is chosen.
+ * as a move picks what was on screen. Hands back an action once one is chosen, and the sound the
+ * press made: Confirm on what can't be chosen buzzes, and there's no going back from the commands.
  */
 export function stepBattleMenu(menu: BattleMenu, battle: BattleState, input: MenuInput): MenuStep {
   const { aiming } = menu;
@@ -162,7 +168,8 @@ export function stepBattleMenu(menu: BattleMenu, battle: BattleState, input: Men
       if (input.move === null) return still(menu);
       const spots = ROOT_COMMANDS.map(({ at }) => at);
       const commands = moveInGrid(spots, menu.cursor.commands, input.move);
-      return still({ ...menu, cursor: { ...menu.cursor, commands } });
+      if (commands === menu.cursor.commands) return still(menu);
+      return step({ ...menu, cursor: { ...menu.cursor, commands } }, 'cursor');
     }
     case 'skills':
     case 'items': {
@@ -170,27 +177,32 @@ export function stepBattleMenu(menu: BattleMenu, battle: BattleState, input: Men
       const entries = menu[page];
       const entry = entries[menu.cursor[page]];
       if (input.confirm) {
-        return still(entry?.enabled ? aim(menu, battle, entry.command, page) : menu);
+        return entry?.enabled
+          ? step(aim(menu, battle, entry.command, page), 'confirm')
+          : step(menu, 'buzzer');
       }
-      if (input.cancel) return still({ ...menu, page: 'commands' });
+      if (input.cancel) return step({ ...menu, page: 'commands' }, 'cancel');
       if (input.move === null || entries.length === 0) return still(menu);
       const spots = listSpots(entries.length, LIST_COLUMNS);
       const cursor = moveInGrid(spots, menu.cursor[page], input.move);
-      return still(scrolledTo({ ...menu, cursor: { ...menu.cursor, [page]: cursor } }, page));
+      if (cursor === menu.cursor[page]) return still(menu);
+      const moved = scrolledTo({ ...menu, cursor: { ...menu.cursor, [page]: cursor } }, page);
+      return step(moved, 'cursor');
     }
     case 'target': {
       if (!aiming) return still({ ...menu, page: 'commands' });
       if (input.confirm) {
         const action = actionOf(aiming);
         const ok = action !== undefined && checkAction(battle, action) === undefined;
-        return ok ? { menu, action } : still(menu);
+        return ok ? { menu, action, sound: 'confirm' } : step(menu, 'buzzer');
       }
-      if (input.cancel) return still({ ...menu, page: aiming.from, aiming: null });
+      if (input.cancel) return step({ ...menu, page: aiming.from, aiming: null }, 'cancel');
       if (input.move === null || aiming.all) return still(menu);
-      const step = input.move === 'down' || input.move === 'right' ? 1 : -1;
+      const by = input.move === 'down' || input.move === 'right' ? 1 : -1;
       const count = aiming.choices.length;
-      const index = (aiming.index + step + count) % count;
-      return still({ ...menu, aiming: { ...aiming, index } });
+      const index = (aiming.index + by + count) % count;
+      if (index === aiming.index) return still(menu);
+      return step({ ...menu, aiming: { ...aiming, index } }, 'cursor');
     }
   }
 }
@@ -289,18 +301,18 @@ function actionOf(aiming: Aiming): Action | undefined {
 /** Confirm on the command window: Guard and Flee are taken; the others go on. */
 function chooseCommand(menu: BattleMenu, battle: BattleState): MenuStep {
   const entry = menu.commands[menu.cursor.commands];
-  if (!entry?.enabled) return still(menu);
+  if (!entry?.enabled) return step(menu, 'buzzer');
   switch (entry.id) {
     case 'attack':
-      return still(aim(menu, battle, { type: 'attack' }, 'commands'));
+      return step(aim(menu, battle, { type: 'attack' }, 'commands'), 'confirm');
     case 'skill':
-      return still({ ...menu, page: 'skills' });
+      return step({ ...menu, page: 'skills' }, 'confirm');
     case 'item':
-      return still({ ...menu, page: 'items' });
+      return step({ ...menu, page: 'items' }, 'confirm');
     case 'guard':
-      return { menu, action: { type: 'guard' } };
+      return { menu, action: { type: 'guard' }, sound: 'confirm' };
     case 'flee':
-      return { menu, action: { type: 'flee' } };
+      return { menu, action: { type: 'flee' }, sound: 'confirm' };
   }
 }
 
@@ -354,7 +366,11 @@ function scrolledTo(menu: BattleMenu, page: ListPage): BattleMenu {
   return { ...menu, top: { ...menu.top, [page]: top } };
 }
 
-const still = (menu: BattleMenu): MenuStep => ({ menu, action: null });
+/** The menu after a press that chose no action yet, with the sound it made. */
+const step = (menu: BattleMenu, sound: MenuSound): MenuStep => ({ menu, action: null, sound });
+
+/** The menu after a press that did nothing that's heard. */
+const still = (menu: BattleMenu): MenuStep => ({ menu, action: null, sound: null });
 
 /** Where each of `count` entries sits, laid out `columns` to a row. */
 export const listSpots = (count: number, columns: number): GridSpot[] =>

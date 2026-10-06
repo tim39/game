@@ -4,6 +4,7 @@ import { buy, sell } from '../core/shop';
 import { DB } from '../data/db';
 import { SHOPS } from '../data/shops';
 import { BATTLE_TEXT, MENU_TEXT, SHOP_TEXT } from '../data/ui-text';
+import { audio } from '../systems/audio';
 import { sheetRows } from '../systems/character-frames';
 import { input } from '../systems/input/game-input';
 import { session } from '../systems/session';
@@ -54,6 +55,8 @@ const WALK_STEP_MS = 160;
 /** A character sheet's walk cycle, facing down: the first column of its first four rows. */
 const WALK_ROWS = 4;
 const COLUMNS = 4;
+/** Plays as the party buys or sells something, in place of the confirm. */
+const TRADE_SOUND = 'sfx.trade';
 
 const { frame, content, lineHeight, cursor: CURSOR, party: PARTY } = SHOP_LAYOUT;
 
@@ -120,6 +123,9 @@ export class ShopScene extends Phaser.Scene {
       this.world(),
     );
     this.menu = step.menu;
+    const trades = step.action?.type === 'buy' || step.action?.type === 'sell';
+    if (trades) audio.playSound(TRADE_SOUND);
+    else audio.playMenuSound(step.sound);
     if (step.action) this.act(step.action);
     if (this.menu && (step.menu !== menu || step.action)) this.render();
     const row = Math.floor(time / WALK_STEP_MS);

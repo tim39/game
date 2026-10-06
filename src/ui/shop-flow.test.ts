@@ -250,3 +250,57 @@ test('the party’s count of an item counts what it carries and what it wears', 
   expect(carriedOf(game, 'swift-ring')).toEqual({ held: 1, worn: 2 });
   expect(carriedOf(game, 'potion')).toEqual({ held: 0, worn: 0 });
 });
+
+describe('sounds', () => {
+  const sound = (menu: ShopMenu, game: ShopWorld, input: ShopInput) =>
+    stepShop(menu, input, game).sound;
+
+  test('the cursor clicks as it moves, and what can be chosen confirms', () => {
+    const game = world(60, { potion: 1 });
+    const shop = openShop();
+    expect(sound(shop, game, DOWN)).toBe('cursor');
+    expect(sound(shop, game, CONFIRM)).toBe('confirm');
+    const buying = play(shop, game, CONFIRM).menu;
+    expect(sound(buying, game, DOWN)).toBe('cursor');
+    expect(sound(buying, game, LEFT)).toBeNull();
+    expect(sound(buying, game, CONFIRM)).toBe('confirm');
+    const counting = play(buying, game, CONFIRM).menu;
+    expect(sound(counting, game, RIGHT)).toBe('cursor');
+    // Already at 1, the count stays, quietly.
+    expect(sound(counting, game, LEFT)).toBeNull();
+    expect(stepShop(counting, CONFIRM, game)).toMatchObject({
+      action: { type: 'buy', item: 'potion', count: 1 },
+      sound: 'confirm',
+    });
+    expect(sound(counting, game, CANCEL)).toBe('cancel');
+    expect(sound(counting, game, NONE)).toBeNull();
+  });
+
+  test('what can’t be chosen buzzes', () => {
+    const game = world(60);
+    const onSell = play(openShop(), game, DOWN).menu;
+    expect(sound(onSell, game, CONFIRM)).toBe('buzzer');
+    // The Flame Sword is too dear.
+    const onSword = play(openShop(), game, CONFIRM, DOWN).menu;
+    expect(sound(onSword, game, CONFIRM)).toBe('buzzer');
+  });
+
+  test('a list of one has nowhere for the cursor to go', () => {
+    const game = world(60, {}, ['potion']);
+    const buying = play(openShop(), game, CONFIRM).menu;
+    expect(sound(buying, game, DOWN)).toBeNull();
+  });
+
+  test('Leave confirms and Cancel cancels, either way leaving', () => {
+    const game = world(0);
+    expect(stepShop(openShop(), CANCEL, game)).toMatchObject({
+      action: { type: 'leave' },
+      sound: 'cancel',
+    });
+    const onLeave = play(openShop(), game, UP).menu;
+    expect(stepShop(onLeave, CONFIRM, game)).toMatchObject({
+      action: { type: 'leave' },
+      sound: 'confirm',
+    });
+  });
+});

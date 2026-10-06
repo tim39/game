@@ -1,3 +1,5 @@
+import type { MenuSound } from './menu-sound';
+
 /** What the Game Over screen offers, top to bottom. */
 export const GAME_OVER_CHOICES = ['retry', 'load', 'title'] as const;
 export type GameOverChoice = (typeof GAME_OVER_CHOICES)[number];
@@ -27,18 +29,21 @@ export const canChoose = (menu: GameOverMenu, choice: GameOverChoice): boolean =
 
 /**
  * Moves the cursor, round from the last choice to the first, or with Confirm makes the choice
- * under it, if it can be made. There's no going back from a Game Over, so Cancel does nothing.
+ * under it, if it can be made; and the sound that makes, a buzz for one that can't. There's no
+ * going back from a Game Over, so Cancel does nothing.
  */
 export function stepGameOverMenu(
   menu: GameOverMenu,
   input: GameOverInput,
-): { menu: GameOverMenu; chosen: GameOverChoice | null } {
+): { menu: GameOverMenu; chosen: GameOverChoice | null; sound: MenuSound | null } {
   // Confirm first, so a press in the same frame as a move picks what was on screen.
   if (input.confirm) {
     const choice = GAME_OVER_CHOICES[menu.cursor];
-    return { menu, chosen: choice !== undefined && canChoose(menu, choice) ? choice : null };
+    const chosen = choice !== undefined && canChoose(menu, choice) ? choice : null;
+    return { menu, chosen, sound: chosen ? 'confirm' : 'buzzer' };
   }
-  if (input.move === 0) return { menu, chosen: null };
+  if (input.move === 0) return { menu, chosen: null, sound: null };
   const count = GAME_OVER_CHOICES.length;
-  return { menu: { ...menu, cursor: (menu.cursor + input.move + count) % count }, chosen: null };
+  const cursor = (menu.cursor + input.move + count) % count;
+  return { menu: { ...menu, cursor }, chosen: null, sound: 'cursor' };
 }

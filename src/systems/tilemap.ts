@@ -5,7 +5,7 @@ export const TILE = 16;
 
 /**
  * Field depths: the map's layers, with characters between the base and overhead layers, the debug
- * collision view over them, and over everything, the way into a battle.
+ * collision view over them, the area banner over that, and over everything, the way into a battle.
  */
 export const DEPTH = {
   ground: 0,
@@ -13,7 +13,8 @@ export const DEPTH = {
   characters: 2,
   overhead: 3,
   debug: 4,
-  transition: 5,
+  banner: 5,
+  transition: 6,
 } as const;
 
 /**

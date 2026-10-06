@@ -31,8 +31,14 @@ import {
   checkShops,
 } from './content-checks';
 import { checkEvents } from './event-checks';
-import { measureBodyFont } from './font-metrics';
-import { checkBackdrops, checkMapNames, checkMaps, checkReachable } from './map-checks';
+import { measureBodyFont, measureDisplayFont } from './font-metrics';
+import {
+  checkBackdrops,
+  checkMapAreas,
+  checkMapNames,
+  checkMaps,
+  checkReachable,
+} from './map-checks';
 import { checkBattleText, checkMenuText, checkText } from './text-checks';
 
 const ROOT = join(import.meta.dirname, '..');
@@ -75,6 +81,7 @@ if (shapeProblems.length > 0) {
 }
 
 const font = measureBodyFont(readFileSync(join(PUBLIC, ASSETS['font.body'].url)));
+const displayFont = measureDisplayFont(readFileSync(join(PUBLIC, ASSETS['font.display'].url)));
 const events = await checkEvents({
   events: EVENTS,
   speakers: SPEAKERS,
@@ -103,6 +110,7 @@ const problems = [
   ...checkBackdrops(BACKDROPS, MAP_CONTENT),
   ...events.problems,
   ...checkMapNames(MAPS, font),
+  ...checkMapAreas(MAPS, displayFont),
   ...checkNewGame({
     newGame: NEW_GAME,
     maps: MAPS,
@@ -170,7 +178,8 @@ console.log(
   `Maps: ${maps === 1 ? 'the 1 map compiles' : `all ${maps} maps compile`}, and every tile ` +
     'their terrains and prefabs use exists; every way out leads somewhere; their music, ' +
     'encounter tables and battle backdrops exist; ' +
-    'no two chests share a flag; their names fit the save menu; and every map but the test maps ' +
+    'no two chests share a flag; their names fit the save menu; every area they are part of ' +
+    'is a map, and its name fits the area banner; and every map but the test maps ' +
     `can be reached from ${NEW_GAME.location.map}, where a new game starts. Every battle ` +
     'backdrop compiles, and fills the screen.',
 );

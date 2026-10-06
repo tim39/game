@@ -3,6 +3,7 @@ import type { Direction } from '../../src/core/direction';
 import type { GameState } from '../../src/core/state';
 import type {} from '../../src/debug/api';
 import type { AudioInfo } from '../../src/systems/audio';
+import { MENU_SOUNDS } from '../../src/ui/menu-sound';
 
 // Battles take a while to play out, even at 4×, more so with other tests running beside them, and
 // these lose one before fighting it again.
@@ -41,6 +42,10 @@ const gameOver = async (page: Page): Promise<GameOverInfo> =>
   (await page.evaluate(() => window.__game?.inspect('game-over'))) as unknown as GameOverInfo;
 const audio = async (page: Page): Promise<AudioInfo> =>
   (await page.evaluate(() => window.__game?.audio())) as AudioInfo;
+
+/** The jingles playing: every sound effect playing but a menu's, which come with every press. */
+const jingles = (info: AudioInfo): string[] =>
+  info.playing.filter((key) => !Object.values<string>(MENU_SOUNDS).includes(key));
 const state = async (page: Page): Promise<GameState> =>
   (await page.evaluate(() => window.__game?.state())) as GameState;
 const field = (page: Page) => page.evaluate(() => window.__game?.inspect('field'));
@@ -149,7 +154,8 @@ test('a battle lost ends in the Game Over screen, and Retry battle fights it aga
   const lost = await fightUntilOver(page, GUARD);
   expect(lost).toMatchObject({ outcome: 'defeat', banner: 'The party has fallen...' });
   const jingle = await audio(page);
-  expect(jingle).toMatchObject({ music: null, playing: ['sfx.game-over'] });
+  expect(jingle.music).toBeNull();
+  expect(jingles(jingle)).toEqual(['sfx.game-over']);
   expect(jingle.sounds.at(-1)).toBe('sfx.game-over');
   // Once the timeline's last turns have faded away.
   await page.waitForTimeout(250);
@@ -185,7 +191,9 @@ test('a battle lost ends in the Game Over screen, and Retry battle fights it aga
     timeline: first.timeline,
     status: ['Rowan HP 4/60 MP 12'],
   });
-  expect(await audio(page)).toMatchObject({ music: 'bgm.battle', playing: [] });
+  const retried = await audio(page);
+  expect(retried.music).toBe('bgm.battle');
+  expect(jingles(retried)).toEqual([]);
 
   // This time, the Fire Bomb.
   await press(page, ...FIRST_ITEM);

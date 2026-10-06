@@ -16,8 +16,14 @@ import { CHEST_TEXT } from '../src/data/ui-text';
 import { ASSETS, type AssetEntry } from '../src/systems/asset-manifest';
 import { pngSize } from './asset-checks';
 import { checkEvents } from './event-checks';
-import { measureBodyFont, type MeasuredFont } from './font-metrics';
-import { checkBackdrops, checkMapNames, checkMaps, checkReachable } from './map-checks';
+import { measureBodyFont, measureDisplayFont, type MeasuredFont } from './font-metrics';
+import {
+  checkBackdrops,
+  checkMapAreas,
+  checkMapNames,
+  checkMaps,
+  checkReachable,
+} from './map-checks';
 
 const MANIFEST: Record<string, AssetEntry> = {
   'tiles.grass': { type: 'spritesheet', url: 'grass.png', frameWidth: 16, frameHeight: 16 },
@@ -290,5 +296,57 @@ describe('backdrops', () => {
 
   test('the real backdrops check out', () => {
     expect(checkBackdrops(BACKDROPS, MAP_CONTENT)).toEqual([]);
+  });
+});
+
+describe('areas', () => {
+  /** Six pixels a character, and no lowercase z. */
+  const FONT: MeasuredFont = {
+    width: (text) => text.length * 6,
+    has: (char) => char !== 'z',
+  };
+  const map = (id: string, name: string, area?: string): MapDef => ({
+    id,
+    name,
+    ...(area ? { area } : {}),
+    terrain: '.',
+    legend: { '.': 'grass' },
+  });
+
+  test('are maps of their own, which the maps in them name', () => {
+    const maps = {
+      town: map('town', 'Saltmere'),
+      house: map('house', "Tamsin's House", 'town'),
+      cellar: map('cellar', 'Cellar', 'house'),
+      shed: map('shed', 'Shed', 'farm'),
+      loft: map('loft', 'Loft', 'loft'),
+    };
+    expect(checkMapAreas(maps, FONT)).toEqual([
+      'Map cellar: its area, house, is part of town: name town instead',
+      "Map shed: its area, farm, isn't a map",
+      'Map loft: its area, loft, is the map itself; leave the area out',
+    ]);
+  });
+
+  test('have names that fit the banner, in characters its font has', () => {
+    expect(checkMapAreas({ town: map('town', 'Saltmere') }, FONT)).toEqual([]);
+    expect(checkMapAreas({ town: map('town', 'The Very Long Town Name Indeed') }, FONT)).toEqual([
+      'Map town: its name, "The Very Long Town Name Indeed", is 180 pixels wide; the area banner has room for 150',
+    ]);
+    expect(checkMapAreas({ town: map('town', 'Zigzag Bazaar') }, FONT)).toEqual([
+      'Map town: its name, "Zigzag Bazaar", uses "z", which the area banner\'s font lacks',
+    ]);
+    // A map in another's area never shows its own name in the banner.
+    const house = map('house', 'The Very Long House Name Indeed', 'town');
+    expect(checkMapAreas({ town: map('town', 'Saltmere'), house }, FONT)).toEqual([]);
+  });
+
+  test('of the real maps check out, measured with the real font', () => {
+    const font = measureDisplayFont(
+      readFileSync(
+        join(fileURLToPath(new URL('../public', import.meta.url)), ASSETS['font.display'].url),
+      ),
+    );
+    expect(checkMapAreas(MAPS, font)).toEqual([]);
   });
 });

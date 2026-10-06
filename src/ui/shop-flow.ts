@@ -13,6 +13,7 @@ import {
 } from '../core/state';
 import { STATS, type Stat } from '../core/stats';
 import { SHOP_TEXT } from '../data/ui-text';
+import type { MenuSound } from './menu-sound';
 
 /**
  * A shop without the drawing (see Screens in docs/DESIGN.md): Buy, Sell and Leave. Buy lists what
@@ -85,6 +86,13 @@ export type ShopAction =
   | { readonly type: 'sell'; readonly item: ItemId; readonly count: number }
   | { readonly type: 'leave' };
 
+/** What a press did: the shop as it now is, what the scene should do, and the sound it made. */
+export interface ShopStep {
+  readonly menu: ShopMenu;
+  readonly action: ShopAction | null;
+  readonly sound: MenuSound | null;
+}
+
 const COMMANDS: OpenPage = { page: { kind: 'commands' }, cursor: 0, top: 0 };
 
 /** Opens the shop on its commands, with the cursor on Buy. */
@@ -130,20 +138,17 @@ export function entriesOf(page: ShopPage, world: ShopWorld): ShopEntry[] {
 
 /**
  * What a press does on the page showing: moves the cursor (round from the end to the start),
- * changes how many, opens a page, goes back, or asks the scene to buy, sell or leave.
+ * changes how many, opens a page, goes back, or asks the scene to buy, sell or leave; and the
+ * sound that makes. Confirm on something that can't be chosen buzzes.
  */
-export function stepShop(
-  menu: ShopMenu,
-  input: ShopInput,
-  world: ShopWorld,
-): { menu: ShopMenu; action: ShopAction | null } {
-  const still = { menu, action: null };
+export function stepShop(menu: ShopMenu, input: ShopInput, world: ShopWorld): ShopStep {
+  const still = { menu, action: null, sound: null };
   const open = shownPage(menu);
   const { page } = open;
   if (input.confirm) return confirm(menu, open, world);
   if (input.cancel) {
-    if (menu.pages.length === 1) return { menu, action: { type: 'leave' } };
-    return { menu: { pages: menu.pages.slice(0, -1) }, action: null };
+    if (menu.pages.length === 1) return { menu, action: { type: 'leave' }, sound: 'cancel' };
+    return { menu: { pages: menu.pages.slice(0, -1) }, action: null, sound: 'cancel' };
   }
   if (input.move === null) return still;
   if (page.kind === 'how-many') {
@@ -151,14 +156,16 @@ export function stepShop(
     const by = { left: -1, right: 1, down: -COUNT_STEP, up: COUNT_STEP }[input.move];
     const count = Math.max(1, Math.min(most, page.count + by));
     if (count === page.count) return still;
-    return { menu: replaceShown(menu, { ...open, page: { ...page, count } }), action: null };
+    const next = replaceShown(menu, { ...open, page: { ...page, count } });
+    return { menu: next, action: null, sound: 'cursor' };
   }
   if (input.move === 'left' || input.move === 'right') return still;
   const entries = entriesOf(page, world);
   if (entries.length === 0) return still;
   const step = input.move === 'down' ? 1 : -1;
   const cursor = (open.cursor + step + entries.length) % entries.length;
-  return { menu: replaceShown(menu, scrolled({ ...open, cursor })), action: null };
+  if (cursor === open.cursor) return still;
+  return { menu: replaceShown(menu, scrolled({ ...open, cursor })), action: null, sound: 'cursor' };
 }
 
 /**
@@ -242,34 +249,35 @@ export function carriedOf(world: ShopWorld, id: ItemId): { held: number; worn: n
 
 // What a press does.
 
-function confirm(
-  menu: ShopMenu,
-  open: OpenPage,
-  world: ShopWorld,
-): { menu: ShopMenu; action: ShopAction | null } {
-  const still = { menu, action: null };
+function confirm(menu: ShopMenu, open: OpenPage, world: ShopWorld): ShopStep {
+  // Nothing that can be chosen there.
+  const refused: ShopStep = { menu, action: null, sound: 'buzzer' };
   const { page, cursor } = open;
   const entry = entriesOf(page, world)[cursor];
-  const push = (next: ShopPage) => ({
+  const push = (next: ShopPage): ShopStep => ({
     menu: { pages: [...menu.pages, { page: next, cursor: 0, top: 0 }] },
     action: null,
+    sound: 'confirm',
   });
   switch (page.kind) {
     case 'commands': {
       const command = SHOP_COMMANDS[cursor];
-      if (!entry?.enabled || command === undefined) return still;
-      if (command === 'leave') return { menu, action: { type: 'leave' } };
+      if (!entry?.enabled || command === undefined) return refused;
+      if (command === 'leave') return { menu, action: { type: 'leave' }, sound: 'confirm' };
       return push({ kind: command });
     }
     case 'buy':
     case 'sell': {
-      if (!entry?.enabled || entry.item === null) return still;
+      if (!entry?.enabled || entry.item === null) return refused;
       return push({ kind: 'how-many', deal: page.kind, item: entry.item, count: 1 });
     }
     case 'how-many': {
       const back = { pages: menu.pages.slice(0, -1) };
-      if (page.count < 1 || page.count > mostOf(page, world)) return { menu: back, action: null };
-      return { menu: back, action: { type: page.deal, item: page.item, count: page.count } };
+      if (page.count < 1 || page.count > mostOf(page, world)) {
+        return { menu: back, action: null, sound: 'buzzer' };
+      }
+      const action = { type: page.deal, item: page.item, count: page.count } as const;
+      return { menu: back, action, sound: 'confirm' };
     }
   }
 }

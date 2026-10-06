@@ -110,3 +110,18 @@ test('a setting can’t be changed past either end', () => {
   expect(canChange('musicVolume', { ...DEFAULT_SETTINGS, musicVolume: 0 }, -1)).toBe(false);
   expect(canChange('battleSpeed', { ...DEFAULT_SETTINGS, battleSpeed: 4 }, 1)).toBe(false);
 });
+
+test('the cursor and a changed setting click, Confirm confirms, and Cancel cancels', () => {
+  const menu = openOptions();
+  const sound = (input: OptionsInput, settings = DEFAULT_SETTINGS) =>
+    stepOptions(menu, input, settings).sound;
+  expect(sound(DOWN)).toBe('cursor');
+  expect(sound(UP)).toBe('cursor');
+  expect(sound(RIGHT)).toBe('cursor');
+  expect(sound(CONFIRM)).toBe('confirm');
+  expect(sound(CANCEL)).toBe('cancel');
+  expect(sound(NONE)).toBeNull();
+  // Pushed against either end, a setting stays as it is, quietly.
+  expect(sound(RIGHT, { ...DEFAULT_SETTINGS, textSpeed: 'fast' })).toBeNull();
+  expect(sound(LEFT, { ...DEFAULT_SETTINGS, textSpeed: 'slow' })).toBeNull();
+});

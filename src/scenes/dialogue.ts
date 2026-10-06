@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { TEXT_SPEED } from '../data/balance';
+import { audio } from '../systems/audio';
 import { input } from '../systems/input/game-input';
 import { settings } from '../systems/settings';
 import {
@@ -10,6 +11,7 @@ import {
   type DrawnDialogue,
 } from '../ui/dialogue-box';
 import {
+  choiceSound,
   isTyping,
   picked,
   showsChoices,
@@ -76,6 +78,7 @@ export class DialogueScene extends Phaser.Scene {
       { dt: Math.min(delta, MAX_FRAME_MS), confirm, move },
       TEXT_SPEED[settings.textSpeed],
     );
+    audio.playMenuSound(choiceSound(flow, this.flow));
     this.render();
     if (!this.flow.done) return;
     this.request = undefined;

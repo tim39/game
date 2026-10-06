@@ -4,6 +4,7 @@ import { defineMap } from '../../core/map/types';
 export default defineMap({
   id: 'test-house',
   name: 'Test House',
+  area: 'test-shore',
   terrain: `
     ##########
     #........#

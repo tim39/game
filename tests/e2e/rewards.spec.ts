@@ -3,6 +3,7 @@ import type { GameState } from '../../src/core/state';
 import type {} from '../../src/debug/api';
 import { BATTLE_POSES } from '../../src/systems/character-frames';
 import type { AudioInfo } from '../../src/systems/audio';
+import { MENU_SOUNDS } from '../../src/ui/menu-sound';
 
 // Battles take a while to play out, even at 4×, more so with other tests running beside them.
 test.describe.configure({ timeout: 60_000 });
@@ -35,6 +36,10 @@ const state = async (page: Page): Promise<GameState> =>
   (await page.evaluate(() => window.__game?.state())) as GameState;
 const audio = async (page: Page): Promise<AudioInfo> =>
   (await page.evaluate(() => window.__game?.audio())) as AudioInfo;
+
+/** The jingles playing: every sound effect playing but a menu's, which come with every press. */
+const jingles = (info: AudioInfo): string[] =>
+  info.playing.filter((key) => !Object.values<string>(MENU_SOUNDS).includes(key));
 
 async function press(page: Page, ...keys: string[]): Promise<void> {
   for (const key of keys) {
@@ -117,7 +122,7 @@ test('a battle won shows what the party gained, a page at a time, and they keep 
   // The battle's music gives way to the victory jingle.
   const fanfare = await audio(page);
   expect(fanfare.sounds).toContain('sfx.victory');
-  expect(fanfare.playing).toEqual(['sfx.victory']);
+  expect(jingles(fanfare)).toEqual(['sfx.victory']);
   expect(fanfare.music).toBeNull();
   await page.screenshot({ path: 'test-results/screenshots/rewards-spoils.png' });
 
@@ -130,7 +135,7 @@ test('a battle won shows what the party gained, a page at a time, and they keep 
     'MAG +2 RES +2',
   ]);
   // The level-up jingle cuts the victory jingle short.
-  expect((await audio(page)).playing).toEqual(['sfx.level-up']);
+  expect(jingles(await audio(page))).toEqual(['sfx.level-up']);
   await page.screenshot({ path: 'test-results/screenshots/rewards-level-up.png' });
   await press(page, 'KeyZ');
   const bram = await info(page);

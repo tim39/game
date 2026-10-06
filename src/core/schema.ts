@@ -200,6 +200,8 @@ export type BackdropDef = ContentOf<typeof BackdropSchema>;
 const MapSchema = z.strictObject({
   id: IdSchema,
   name: TextSchema,
+  /** The map whose area it's part of. */
+  area: IdSchema.optional(),
   music: AssetKeySchema.optional(),
   terrain: z.string(),
   /** One character each. */

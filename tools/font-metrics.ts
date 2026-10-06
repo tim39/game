@@ -10,10 +10,16 @@ export interface MeasuredFont {
 }
 
 /** The body font, which dialogue and menus use, measured from its image (a PNG file's bytes). */
-export function measureBodyFont(png: Uint8Array): MeasuredFont {
+export const measureBodyFont = (png: Uint8Array): MeasuredFont => measure(png, FONT_CELL.body);
+
+/** The display font, which titles and the area banner use, measured from its image. */
+export const measureDisplayFont = (png: Uint8Array): MeasuredFont =>
+  measure(png, FONT_CELL.display);
+
+function measure(png: Uint8Array, cell: { width: number; height: number }): MeasuredFont {
   const { width, rgba } = decodePng(png);
   const alphaAt = (x: number, y: number): number => rgba[(y * width + x) * 4 + 3] ?? 0;
-  const advances = measureFont(alphaAt, FONT_CELL.body.width, FONT_CELL.body.height);
+  const advances = measureFont(alphaAt, cell.width, cell.height);
   return {
     width: (text) => textWidth(text, (char) => advances.get(char)),
     has: (char) => advances.has(char),

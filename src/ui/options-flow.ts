@@ -2,6 +2,7 @@ import type { Direction } from '../core/direction';
 import { ENCOUNTER_RATES } from '../core/encounters';
 import { OPTIONS_TEXT } from '../data/ui-text';
 import { BATTLE_SPEEDS, TEXT_SPEEDS, VOLUME_STEPS, type Settings } from '../systems/settings';
+import type { MenuSound } from './menu-sound';
 
 /**
  * The Options screen without the drawing (see Screens in docs/DESIGN.md): a row for each setting.
@@ -41,28 +42,39 @@ export const openOptions = (): OptionsMenu => ({ cursor: 0 });
 export const rowAt = (menu: OptionsMenu): OptionRow => OPTION_ROWS[menu.cursor] ?? 'textSpeed';
 
 /**
- * What a press does: moves the cursor, changes the setting under it, or closes the screen. Changes
- * come back as new settings; those not changed are the same object.
+ * What a press does: moves the cursor, changes the setting under it, or closes the screen; and the
+ * sound that makes. Changes come back as new settings; those not changed are the same object. A
+ * setting at the end it's pushed towards stays, quietly.
  */
 export function stepOptions(
   menu: OptionsMenu,
   input: OptionsInput,
   current: Readonly<Settings>,
-): { menu: OptionsMenu; settings: Readonly<Settings>; close: boolean } {
-  const still = { menu, settings: current, close: false };
-  if (input.cancel) return { ...still, close: true };
+): {
+  menu: OptionsMenu;
+  settings: Readonly<Settings>;
+  close: boolean;
+  sound: MenuSound | null;
+} {
+  const still = { menu, settings: current, close: false, sound: null };
+  if (input.cancel) return { ...still, close: true, sound: 'cancel' };
   const row = rowAt(menu);
-  if (input.confirm) return { ...still, settings: stepped(row, current, 1, true) };
+  if (input.confirm) {
+    const settings = stepped(row, current, 1, true);
+    return { ...still, settings, sound: settings === current ? null : 'confirm' };
+  }
   switch (input.move) {
     case 'up':
     case 'down': {
       const step = input.move === 'down' ? 1 : -1;
       const cursor = (menu.cursor + step + OPTION_ROWS.length) % OPTION_ROWS.length;
-      return { ...still, menu: { cursor } };
+      return { ...still, menu: { cursor }, sound: 'cursor' };
     }
     case 'left':
-    case 'right':
-      return { ...still, settings: stepped(row, current, input.move === 'right' ? 1 : -1, false) };
+    case 'right': {
+      const settings = stepped(row, current, input.move === 'right' ? 1 : -1, false);
+      return { ...still, settings, sound: settings === current ? null : 'cursor' };
+    }
     case null:
       return still;
   }

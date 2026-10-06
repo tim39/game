@@ -160,6 +160,13 @@ export const ASSETS = {
   'sfx.game-over': sound('sfx/game-over-3'),
   'sfx.rest': sound('sfx/secret-4'),
   'sfx.heal': sound('sfx/heal-2'),
+  // Menus: the cursor moving, a choice made, going back, a choice that can't be made now, and
+  // buying or selling in a shop.
+  'sfx.cursor': sound('sfx/move-3'),
+  'sfx.confirm': sound('sfx/accept-5'),
+  'sfx.cancel': sound('sfx/move-4'),
+  'sfx.buzzer': sound('sfx/menu-11'),
+  'sfx.trade': sound('sfx/gold-1'),
 } as const satisfies Record<string, AssetEntry>;
 
 export type AssetKey = keyof typeof ASSETS;

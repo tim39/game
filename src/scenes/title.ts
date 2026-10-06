@@ -111,11 +111,14 @@ export class TitleScene extends Phaser.Scene {
   private moveCursor(step: number): void {
     this.selected = (this.selected + step + this.menu.length) % this.menu.length;
     this.cursorMoves += 1;
+    audio.playMenuSound('cursor');
     this.drawCursor();
   }
 
+  /** Chooses what's under the cursor, or buzzes for Continue with no save to carry on from. */
   private choose(): void {
     const item = this.menu[this.selected];
+    audio.playMenuSound(item?.enabled ? 'confirm' : 'buzzer');
     if (!item?.enabled) return;
     if (item.id === 'continue') {
       this.continueGame();

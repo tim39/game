@@ -9,6 +9,7 @@ import { BATTLE_TUNING, EXP_CURVE } from '../data/balance';
 import { DB } from '../data/db';
 import { MAPS } from '../data/maps';
 import { BATTLE_TEXT, MENU_TEXT } from '../data/ui-text';
+import { audio } from '../systems/audio';
 import { input } from '../systems/input/game-input';
 import { session } from '../systems/session';
 import type { Box } from '../ui/battle-layout';
@@ -60,6 +61,8 @@ const BETTER = 0x2f7d4f;
 const WORSE = 0xc0392b;
 /** A KO'd member's portrait, greyed out. */
 const DOWN = 0x8a7fa3;
+/** Plays as an item or a skill heals someone, in place of the confirm. */
+const HEAL_SOUND = 'sfx.heal';
 
 /** The stats on Equip and Status: two columns of four, the most HP and MP first. */
 const STAT_COLUMNS: readonly (readonly Stat[])[] = [
@@ -125,6 +128,9 @@ export class MainMenuScene extends Phaser.Scene {
       this.world(),
     );
     this.menu = step.menu;
+    const heals = step.action?.type === 'use' || step.action?.type === 'cast';
+    if (heals) audio.playSound(HEAL_SOUND);
+    else audio.playMenuSound(step.sound);
     if (step.action) this.act(step.action);
     if (this.menu && (step.menu !== menu || step.action)) this.render();
   }

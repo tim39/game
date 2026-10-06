@@ -43,7 +43,7 @@ const move = (direction: Direction): MenuInput => ({ ...NOTHING, move: direction
 
 /** Steps the menu through each input in turn, and hands back the last step. */
 function press(menu: BattleMenu, battle: BattleState, ...inputs: MenuInput[]): MenuStep {
-  let step: MenuStep = { menu, action: null };
+  let step: MenuStep = { menu, action: null, sound: null };
   for (const input of inputs) {
     expect(step.action).toBeNull();
     step = stepBattleMenu(step.menu, battle, input);
@@ -336,5 +336,58 @@ describe('moveInGrid', () => {
 
   test('leaves a cursor that is off the grid where it is', () => {
     expect(moveInGrid([], 0, 'down')).toBe(0);
+  });
+});
+
+describe('sounds', () => {
+  const battle = battleWith(['slime', 'wolf']);
+  const menu = openBattleMenu(battle);
+  const sound = (from: BattleMenu, input: MenuInput, on = battle) =>
+    stepBattleMenu(from, on, input).sound;
+
+  test('the cursor clicks as it moves, and stays quiet with nowhere to go', () => {
+    expect(sound(menu, move('down'))).toBe('cursor');
+    expect(sound(menu, move('up'))).toBe('cursor');
+    // Attack is alone on its row.
+    expect(sound(menu, move('right'))).toBeNull();
+    expect(sound(menu, NOTHING)).toBeNull();
+    const aiming = press(menu, battle, CONFIRM).menu;
+    expect(sound(aiming, move('right'))).toBe('cursor');
+    const skills = press(menu, battle, move('down'), CONFIRM).menu;
+    expect(sound(skills, move('right'))).toBe('cursor');
+    // Aimed at every enemy, there's no one to move between.
+    const sweep = press(skills, battle, move('right'), CONFIRM).menu;
+    expect(sound(sweep, move('right'))).toBeNull();
+  });
+
+  test('choosing confirms, all the way to the action', () => {
+    expect(sound(menu, CONFIRM)).toBe('confirm');
+    const aiming = press(menu, battle, CONFIRM).menu;
+    expect(stepBattleMenu(aiming, battle, CONFIRM)).toMatchObject({
+      action: { type: 'attack' },
+      sound: 'confirm',
+    });
+    expect(sound(press(menu, battle, move('down')).menu, CONFIRM)).toBe('confirm');
+    const guard = press(menu, battle, move('up')).menu;
+    expect(stepBattleMenu(guard, battle, CONFIRM)).toMatchObject({
+      action: { type: 'guard' },
+      sound: 'confirm',
+    });
+  });
+
+  test('Cancel goes back, but not from the command window', () => {
+    expect(sound(menu, CANCEL)).toBeNull();
+    expect(sound(press(menu, battle, CONFIRM).menu, CANCEL)).toBe('cancel');
+    expect(sound(press(menu, battle, move('down'), CONFIRM).menu, CANCEL)).toBe('cancel');
+  });
+
+  test('what can’t be chosen buzzes', () => {
+    const boss = battleWith(['warden']);
+    const flee = press(openBattleMenu(boss), boss, move('up'), move('right')).menu;
+    expect(sound(flee, CONFIRM, boss)).toBe('buzzer');
+    // Nobody's down, so there's no one to use a Feather on.
+    const items = press(menu, battle, move('down'), move('down'), CONFIRM).menu;
+    expect(selected(press(items, battle, move('right')).menu)).toBe('Feather');
+    expect(sound(press(items, battle, move('right')).menu, CONFIRM)).toBe('buzzer');
   });
 });

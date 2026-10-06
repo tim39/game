@@ -14,6 +14,7 @@ import {
 } from '../core/state';
 import type { Stats } from '../core/stats';
 import { MENU_TEXT } from '../data/ui-text';
+import type { MenuSound } from './menu-sound';
 
 /**
  * The main menu without the drawing (see Screens in docs/DESIGN.md), which Menu opens on the field:
@@ -103,6 +104,13 @@ export type MenuAction =
   | { readonly type: 'save' }
   | { readonly type: 'close' };
 
+/** What a press did: the menu as it now is, what the scene should do, and the sound it made. */
+export interface MainMenuStep {
+  readonly menu: MainMenu;
+  readonly action: MenuAction | null;
+  readonly sound: MenuSound | null;
+}
+
 /** Opens the menu on its commands, with the cursor on Items. */
 export const openMainMenu = (): MainMenu => ({ pages: [COMMANDS] });
 
@@ -173,36 +181,38 @@ export function entriesOf(page: MenuPage, world: MenuWorld): MenuEntry[] {
 
 /**
  * What a press does on the page showing: moves the cursor (round from the end to the start), goes
- * to another member, opens a page, goes back, or asks the scene to do something.
+ * to another member, opens a page, goes back, or asks the scene to do something; and the sound
+ * that makes. Confirm on something that can't be chosen buzzes.
  */
-export function stepMainMenu(
-  menu: MainMenu,
-  input: MainMenuInput,
-  world: MenuWorld,
-): { menu: MainMenu; action: MenuAction | null } {
-  const still = { menu, action: null };
-  if (input.menu) return { menu, action: { type: 'close' } };
+export function stepMainMenu(menu: MainMenu, input: MainMenuInput, world: MenuWorld): MainMenuStep {
+  const still = { menu, action: null, sound: null };
+  if (input.menu) return { menu, action: { type: 'close' }, sound: 'cancel' };
   const open = shownPage(menu);
   const { page } = open;
   const entries = entriesOf(page, world);
   // Confirm first, so a press in the same frame as a move picks what was on screen.
   if (input.confirm) return confirm(menu, open, entries, world);
   if (input.cancel) {
-    if (menu.pages.length === 1) return { menu, action: { type: 'close' } };
-    return { menu: { pages: menu.pages.slice(0, -1) }, action: null };
+    if (menu.pages.length === 1) return { menu, action: { type: 'close' }, sound: 'cancel' };
+    return { menu: { pages: menu.pages.slice(0, -1) }, action: null, sound: 'cancel' };
   }
   if (input.move === 'left' || input.move === 'right') {
     const other = otherMember(page, world, input.move === 'right' ? 1 : -1);
-    return other
-      ? { menu: replaceShown(menu, { page: other, cursor: 0, top: 0 }), action: null }
-      : still;
+    if (!other) return still;
+    const next = replaceShown(menu, { page: other, cursor: 0, top: 0 });
+    return { menu: next, action: null, sound: 'cursor' };
   }
   if (input.move === 'up' || input.move === 'down') {
     // Aimed at everyone it helps, there's nobody to choose between.
     if (entries.length === 0 || aimsAtAll(page, world)) return still;
     const step = input.move === 'down' ? 1 : -1;
     const cursor = (open.cursor + step + entries.length) % entries.length;
-    return { menu: replaceShown(menu, scrolled({ ...open, cursor })), action: null };
+    if (cursor === open.cursor) return still;
+    return {
+      menu: replaceShown(menu, scrolled({ ...open, cursor })),
+      action: null,
+      sound: 'cursor',
+    };
   }
   return still;
 }
@@ -320,65 +330,74 @@ function confirm(
   open: OpenPage,
   entries: readonly MenuEntry[],
   world: MenuWorld,
-): { menu: MainMenu; action: MenuAction | null } {
-  const still = { menu, action: null };
+): MainMenuStep {
+  // Nothing that can be chosen there.
+  const refused: MainMenuStep = { menu, action: null, sound: 'buzzer' };
+  const chosen = (action: MenuAction, next = menu): MainMenuStep => ({
+    menu: next,
+    action,
+    sound: 'confirm',
+  });
   const { page, cursor } = open;
   const entry = entries[cursor];
-  const push = (next: MenuPage, at = 0) => ({
+  const push = (next: MenuPage, at = 0): MainMenuStep => ({
     menu: { pages: [...menu.pages, scrolled({ page: next, cursor: at, top: 0 })] },
     action: null,
+    sound: 'confirm',
   });
   switch (page.kind) {
     case 'commands': {
       const command = MAIN_COMMANDS[cursor];
-      if (!entry?.enabled || command === undefined) return still;
-      if (command === 'save') return { menu, action: { type: 'save' } };
+      if (!entry?.enabled || command === undefined) return refused;
+      if (command === 'save') return chosen({ type: 'save' });
       if (command === 'items') return push({ kind: 'items' });
-      if (command === 'options') return { menu, action: { type: 'options' } };
+      if (command === 'options') return chosen({ type: 'options' });
       return push({ kind: 'whose', command });
     }
     case 'items': {
       const item = carried(world)[cursor]?.[0];
-      if (!entry?.enabled || item === undefined) return still;
+      if (!entry?.enabled || item === undefined) return refused;
       const next: MenuPage = { kind: 'item-on', item };
       return push(next, nearestEnabled(entriesOf(next, world), 0));
     }
     case 'skills': {
       const skill = knownSkills(world.state, page.member, world.db)[cursor];
-      if (!entry?.enabled || skill === undefined) return still;
+      if (!entry?.enabled || skill === undefined) return refused;
       const next: MenuPage = { kind: 'skill-on', member: page.member, skill };
       return push(next, nearestEnabled(entriesOf(next, world), 0));
     }
     case 'item-on':
     case 'skill-on': {
       const targets = targetsOf(page, world);
-      if (!targets || targets.members.length === 0) return still;
+      if (!targets || targets.members.length === 0) return refused;
       const on = targets.all ? [...targets.members] : memberAt(world, cursor);
       const target = on[0];
-      if (target === undefined || (!targets.all && !targets.members.includes(target))) return still;
-      if (page.kind === 'item-on') return { menu, action: { type: 'use', item: page.item, on } };
-      return { menu, action: { type: 'cast', member: page.member, skill: page.skill, on } };
+      if (target === undefined || (!targets.all && !targets.members.includes(target))) {
+        return refused;
+      }
+      if (page.kind === 'item-on') return chosen({ type: 'use', item: page.item, on });
+      return chosen({ type: 'cast', member: page.member, skill: page.skill, on });
     }
     case 'whose': {
       const member = world.state.party[cursor];
-      if (member === undefined) return still;
+      if (member === undefined) return refused;
       return push({ kind: page.command, member });
     }
     case 'equip': {
       const slot = SLOTS[cursor];
-      return slot === undefined ? still : push({ kind: 'gear', member: page.member, slot });
+      return slot === undefined ? refused : push({ kind: 'gear', member: page.member, slot });
     }
     case 'gear': {
-      if (!entry?.enabled) return still;
+      if (!entry?.enabled) return refused;
       // Back to the slots, whatever's chosen.
       const back = { pages: menu.pages.slice(0, -1) };
       const piece = fitting(world, page.member, page.slot)[cursor];
-      if (piece)
-        return { menu: back, action: { type: 'equip', member: page.member, item: piece[0] } };
-      return { menu: back, action: { type: 'unequip', member: page.member, slot: page.slot } };
+      if (piece) return chosen({ type: 'equip', member: page.member, item: piece[0] }, back);
+      return chosen({ type: 'unequip', member: page.member, slot: page.slot }, back);
     }
     case 'status':
-      return still;
+      // A page to read, with nothing on it to choose.
+      return { menu, action: null, sound: null };
   }
 }
 

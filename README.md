@@ -4,7 +4,7 @@ A classic high-fantasy JRPG for the browser, with turn-order-timeline battles, 1
 
 Built with TypeScript and Phaser 4, and vibe coded with Claude Code.
 
-> **Status:** milestones M0 to M4 are done: you can walk around a draft of Saltmere, on desktop or a phone, talk to the villagers, open chests, save and load, and fight wolves on the road north in turn-order battles, with rewards, level-ups and a Game Over screen. See the roadmap for what's next.
+> **Status:** milestones M0 to M5 are done: you can walk around a draft of Saltmere, on desktop or a phone, talk to the villagers, open chests, save and load, and fight wolves on the road north in turn-order battles, with rewards, level-ups and a Game Over screen. Between battles there's the menu (items, skills, gear, status), shops, inns, Light Shrines and an Options screen, all with sounds. See the roadmap for what's next.
 
 ## Run it locally
 

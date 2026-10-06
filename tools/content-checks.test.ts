@@ -612,6 +612,13 @@ describe('checkContent', () => {
     ]);
   });
 
+  test('reports an area that isn’t an ID', () => {
+    expect(check({ maps: { town: { ...TOWN, area: 'Saltmere' } } })).toEqual([
+      'Map town: area "Saltmere" isn\'t kebab-case, like tide-caves-b1',
+    ]);
+    expect(check({ maps: { town: { ...TOWN, area: 'saltmere' } } })).toEqual([]);
+  });
+
   test('reports backdrops with something on them besides prefabs', () => {
     const field = VALID.backdrops.field;
     expect(

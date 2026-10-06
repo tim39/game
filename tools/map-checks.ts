@@ -3,6 +3,7 @@ import { compileMap, type CompiledMap } from '../src/core/map/compile';
 import type { GridPoint, MapContent, MapDef, WarpTarget } from '../src/core/map/types';
 import type { BackdropDef } from '../src/core/schema';
 import type { AssetEntry } from '../src/systems/asset-manifest';
+import { AREA_BANNER } from '../src/ui/area-banner';
 import { SAVE_MENU } from '../src/ui/save-menu-layout';
 import type { MeasuredFont } from './font-metrics';
 
@@ -199,6 +200,39 @@ export function checkMapNames(
     const width = font.width(map.name);
     if (width <= SAVE_MENU.placeWidth) return [];
     return [`${name} is ${width} pixels wide; the save menu has room for ${SAVE_MENU.placeWidth}`];
+  });
+}
+
+/**
+ * Checks the maps' areas, which the area banner names: every map a map says it's part of exists
+ * and is an area of its own, rather than part of another; and every area's name fits the banner,
+ * in characters the display font has. Returns one line per problem.
+ */
+export function checkMapAreas(
+  maps: Readonly<Record<string, MapDef>>,
+  font: MeasuredFont,
+): string[] {
+  return Object.values(maps).flatMap((map) => {
+    const { area } = map;
+    if (area !== undefined) {
+      const whose = `Map ${map.id}: its area, ${area},`;
+      if (area === map.id) return [`${whose} is the map itself; leave the area out`];
+      const named = Object.hasOwn(maps, area) ? maps[area] : undefined;
+      if (!named) return [`${whose} isn't a map`];
+      if (named.area !== undefined) {
+        return [`${whose} is part of ${named.area}: name ${named.area} instead`];
+      }
+      return [];
+    }
+    const name = `Map ${map.id}: its name, "${map.name}",`;
+    const missing = [...new Set([...map.name].filter((char) => !font.has(char)))];
+    if (missing.length > 0) {
+      const chars = missing.map((char) => `"${char}"`).join(', ');
+      return [`${name} uses ${chars}, which the area banner's font lacks`];
+    }
+    const width = font.width(map.name);
+    if (width <= AREA_BANNER.room) return [];
+    return [`${name} is ${width} pixels wide; the area banner has room for ${AREA_BANNER.room}`];
   });
 }
 

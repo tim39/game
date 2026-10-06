@@ -74,5 +74,10 @@ By **Pixel-boy** and **AAA**: https://pixel-boy.itch.io/ninja-adventure-asset-pa
 | `public/assets/sfx/level-up-1.ogg`, `public/assets/sfx/level-up-1.m4a` | A level-up | `Audio/Jingles/LevelUp1.wav` | Encoded as Ogg Vorbis (quality 4) and AAC (128 kbps) |
 | `public/assets/sfx/game-over-3.ogg`, `public/assets/sfx/game-over-3.m4a` | Losing a battle | `Audio/Jingles/GameOver3.wav` | Encoded as Ogg Vorbis (quality 4) and AAC (128 kbps) |
 | `public/assets/sfx/secret-4.ogg`, `public/assets/sfx/secret-4.m4a` | Morning, after a night's rest | `Audio/Jingles/Secret4.wav` | Encoded as Ogg Vorbis (quality 4) and AAC (128 kbps) |
-| `public/assets/sfx/heal-2.ogg`, `public/assets/sfx/heal-2.m4a` | A Light Shrine's healing | `Audio/Sounds/Magic & Skill/Heal2.wav` | Encoded as Ogg Vorbis (quality 4) and AAC (128 kbps) |
+| `public/assets/sfx/heal-2.ogg`, `public/assets/sfx/heal-2.m4a` | A Light Shrine's healing, and healing from the menu | `Audio/Sounds/Magic & Skill/Heal2.wav` | Encoded as Ogg Vorbis (quality 4) and AAC (128 kbps) |
+| `public/assets/sfx/move-3.ogg`, `public/assets/sfx/move-3.m4a` | A menu's cursor moving | `Audio/Sounds/Menu/Move3.wav` | Encoded as Ogg Vorbis (quality 4) and AAC (128 kbps) |
+| `public/assets/sfx/accept-5.ogg`, `public/assets/sfx/accept-5.m4a` | Choosing something in a menu | `Audio/Sounds/Menu/Accept5.wav` | Encoded as Ogg Vorbis (quality 4) and AAC (128 kbps) |
+| `public/assets/sfx/move-4.ogg`, `public/assets/sfx/move-4.m4a` | Going back in a menu | `Audio/Sounds/Menu/Move4.wav` | Encoded as Ogg Vorbis (quality 4) and AAC (128 kbps) |
+| `public/assets/sfx/menu-11.ogg`, `public/assets/sfx/menu-11.m4a` | Choosing something that can't be chosen now | `Audio/Sounds/Menu/Menu11.wav` | Encoded as Ogg Vorbis (quality 4) and AAC (128 kbps) |
+| `public/assets/sfx/gold-1.ogg`, `public/assets/sfx/gold-1.m4a` | Buying or selling in a shop | `Audio/Sounds/Bonus/Gold1.wav` | Encoded as Ogg Vorbis (quality 4) and AAC (128 kbps) |
 | `public/assets/tiles/lighthouse.png` | Saltmere's lighthouse | `Backgrounds/Tilesets/TilesetDesert.png`, the domed tower (columns 3–5, rows 0–4) | Cut out; the dome recoloured from greens to the pack's reds, and the two windows lit in its yellows |

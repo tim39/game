@@ -83,6 +83,12 @@ export const MAP_FADE_MS = 250;
 /** A night's rest fades to black and back this slowly, either side of the morning jingle. */
 export const REST_FADE_MS = 500;
 
+/**
+ * Arriving somewhere new, the area banner fades in this fast, stays this long, and fades out this
+ * slowly, in milliseconds.
+ */
+export const AREA_BANNER_MS = { fadeIn: 300, hold: 2000, fadeOut: 500 } as const;
+
 /** What a night at each inn costs (see Items and economy in docs/DESIGN.md). */
 export const INN_PRICES = { test: 20 } as const;
 

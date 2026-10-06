@@ -1,3 +1,5 @@
+import type { MenuSound } from './menu-sound';
+
 /**
  * What the dialogue box does, without the drawing: the typewriter, skipping it, the ▼ prompt and
  * the choices. DialogueScene feeds it each frame's time and presses, and draws what it shows.
@@ -83,6 +85,16 @@ export const showsChoices = (flow: DialogueFlow): boolean =>
 /** The choice picked, once the player has picked one. */
 export const picked = (flow: DialogueFlow): number | null =>
   flow.done && flow.choices.length > 0 ? flow.cursor : null;
+
+/**
+ * The sound a frame made, from the box as it was to as it is: the cursor moving between the
+ * choices, or one picked. Reading a line makes none.
+ */
+export function choiceSound(before: DialogueFlow, after: DialogueFlow): MenuSound | null {
+  if (!showsChoices(before)) return null;
+  if (picked(after) !== null) return 'confirm';
+  return after.cursor === before.cursor ? null : 'cursor';
+}
 
 function characterCount(lines: readonly string[]): number {
   return lines.reduce((count, line) => count + line.length, 0);

@@ -91,16 +91,16 @@ export class OptionsScene extends Phaser.Scene {
       },
       settings,
     );
+    const changed = step.settings !== settings;
+    const louder = step.settings.soundVolume !== settings.soundVolume;
+    if (changed) Object.assign(settings, step.settings);
+    // The music follows its volume by itself; a sound shows how loud sounds now are, in place of
+    // the press's own.
+    if (louder) audio.playSound(SAMPLE);
+    else audio.playMenuSound(step.sound);
     if (step.close) {
       this.close();
       return;
-    }
-    const changed = step.settings !== settings;
-    if (changed) {
-      const louder = step.settings.soundVolume !== settings.soundVolume;
-      Object.assign(settings, step.settings);
-      // The music follows its volume by itself; a sound shows how loud sounds now are.
-      if (louder) audio.playSound(SAMPLE);
     }
     if (changed || step.menu !== menu) {
       this.menu = step.menu;

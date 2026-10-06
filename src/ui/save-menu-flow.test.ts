@@ -165,3 +165,44 @@ describe('saving', () => {
     );
   });
 });
+
+describe('sounds', () => {
+  const sound = (menu: SaveMenu, input: SaveMenuInput) => stepSaveMenu(menu, input).sound;
+
+  test('the cursor clicks, choosing confirms, and Cancel goes back', () => {
+    const menu = openSaveMenu('save', slots(EMPTY, EMPTY, EMPTY, EMPTY));
+    expect(sound(menu, DOWN)).toBe('cursor');
+    expect(sound(menu, UP)).toBe('cursor');
+    expect(sound(menu, CANCEL)).toBe('cancel');
+    expect(sound(menu, NONE)).toBeNull();
+    // An empty slot saves at once.
+    expect(stepSaveMenu(menu, CONFIRM)).toMatchObject({ action: 'save', sound: 'confirm' });
+  });
+
+  test('saving over a save asks first: Yes and No click, and either answer confirms', () => {
+    const menu = openSaveMenu('save', slots(EMPTY, savedAt('10:00'), EMPTY, EMPTY));
+    expect(stepSaveMenu(menu, CONFIRM)).toMatchObject({
+      menu: { overwrite: 0 },
+      sound: 'confirm',
+    });
+    const asking = play(menu, CONFIRM).menu;
+    expect(sound(asking, DOWN)).toBe('cursor');
+    expect(stepSaveMenu(asking, CONFIRM)).toMatchObject({ action: 'save', sound: 'confirm' });
+    expect(stepSaveMenu(play(asking, DOWN).menu, CONFIRM)).toMatchObject({
+      action: null,
+      sound: 'confirm',
+    });
+    expect(sound(asking, CANCEL)).toBe('cancel');
+    expect(sound(asking, NONE)).toBeNull();
+  });
+
+  test('a slot that can’t be chosen buzzes', () => {
+    // The autosave can't be saved in.
+    const saving = openSaveMenu('save', slots(savedAt('12:00'), EMPTY, EMPTY, EMPTY));
+    expect(sound(play(saving, UP).menu, CONFIRM)).toBe('buzzer');
+    const loading = openSaveMenu('load', slots(savedAt('12:00'), EMPTY, DAMAGED, EMPTY));
+    expect(stepSaveMenu(loading, CONFIRM)).toMatchObject({ action: 'load', sound: 'confirm' });
+    expect(sound(play(loading, DOWN).menu, CONFIRM)).toBe('buzzer');
+    expect(sound(play(loading, DOWN, DOWN).menu, CONFIRM)).toBe('buzzer');
+  });
+});

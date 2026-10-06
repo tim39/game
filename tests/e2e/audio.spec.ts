@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import type { Direction } from '../../src/core/direction';
 import type {} from '../../src/debug/api';
+import { SOUND_REPEAT_MS } from '../../src/data/balance';
 import type { AudioInfo } from '../../src/systems/audio';
 
 const audio = (page: Page): Promise<AudioInfo | undefined> =>
@@ -24,12 +25,44 @@ const nextFrames = (page: Page) =>
       }),
   );
 
-/** Opens the title screen, and presses a key, which unlocks audio, as browsers require. */
+/**
+ * Opens the title screen, and presses a key, which unlocks audio, as browsers require: one the game
+ * doesn't use, so the title screen's cursor stays where it is, quietly.
+ */
 async function toTitle(page: Page): Promise<void> {
   await page.goto('/');
   await page.waitForFunction(() => window.__game?.activeScenes().includes('title') ?? false);
-  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('KeyQ');
   await page.waitForFunction(() => window.__game?.audio().locked === false);
+}
+
+/**
+ * Presses a key, and checks the sound effect it plays: the latest, once there's a new one. A sound
+ * plays once however often it's asked for within SOUND_REPEAT_MS, so it waits that long first.
+ */
+async function pressFor(page: Page, key: string, sound: string): Promise<void> {
+  await page.waitForTimeout(SOUND_REPEAT_MS * 2);
+  const before = JSON.stringify((await audio(page))?.sounds);
+  await page.keyboard.press(key);
+  await page.waitForFunction(
+    (was) => JSON.stringify(window.__game?.audio().sounds) !== was,
+    before,
+  );
+  expect((await audio(page))?.sounds.at(-1), `${key} plays ${sound}`).toBe(sound);
+}
+
+/** Presses a key, and checks that it plays no sound effect. */
+async function pressQuietly(page: Page, key: string): Promise<void> {
+  const before = (await audio(page))?.sounds;
+  await page.keyboard.press(key);
+  await nextFrames(page);
+  await nextFrames(page);
+  expect((await audio(page))?.sounds, `${key} plays nothing`).toEqual(before);
+}
+
+/** Waits until `scene` is running. */
+async function sceneUp(page: Page, scene: string): Promise<void> {
+  await page.waitForFunction((key) => window.__game?.activeScenes().includes(key) ?? false, scene);
 }
 
 /** Waits until the player is standing on `map`, with the fade in over. */
@@ -106,10 +139,12 @@ test('a map crossfades to its own music, which plays on indoors', async ({ page 
     return fading('bgm.title', 0) && fading('bgm.saltmere', 1);
   });
   await onlyMusic(page, 'bgm.saltmere');
-  const town = await audio(page);
-  // At full level, it plays at the music volume setting.
-  expect(town?.tracks[0]?.volume).toBeCloseTo(0.6);
-  expect(town?.starts).toBe(2);
+  // At full level, it plays at the music volume setting. Web Audio reports a volume set this frame
+  // once it has played a little more, so it waits for that.
+  await page.waitForFunction(
+    () => Math.abs((window.__game?.audio().tracks[0]?.volume ?? 0) - 0.6) < 0.005,
+  );
+  expect((await audio(page))?.starts).toBe(2);
 
   // Into Tamsin's house, which has the same music: it plays on, rather than starting over.
   await page.keyboard.press('ArrowUp');
@@ -156,6 +191,77 @@ test('a script plays a sound and changes the music, until the player leaves', as
   // Arriving on a map plays its music: the test shore has none.
   await warp(page, 'test-shore', 12, 12, 'down');
   await onlyMusic(page, null);
+  expect(errors).toEqual([]);
+});
+
+test('the title screen and Options click, confirm, go back, and buzz', async ({ page }) => {
+  const errors = watchErrors(page);
+  await toTitle(page);
+  expect((await audio(page))?.sounds).toEqual([]);
+  // With no save to carry on from, Continue can't be chosen.
+  await pressFor(page, 'ArrowDown', 'sfx.cursor');
+  await pressFor(page, 'KeyZ', 'sfx.buzzer');
+  await pressFor(page, 'ArrowDown', 'sfx.cursor');
+  await pressFor(page, 'KeyZ', 'sfx.confirm');
+  await sceneUp(page, 'options');
+  // Text speed, from Normal to Fast, and no further.
+  await pressFor(page, 'ArrowRight', 'sfx.cursor');
+  await pressQuietly(page, 'ArrowRight');
+  await pressFor(page, 'KeyZ', 'sfx.confirm');
+  await pressFor(page, 'ArrowDown', 'sfx.cursor');
+  await pressFor(page, 'KeyX', 'sfx.cancel');
+  await page.waitForFunction(() => window.__game?.activeScenes().join() === 'title');
+  expect(errors).toEqual([]);
+});
+
+test('the main menu clicks, confirms, goes back, buzzes, and heals', async ({ page }) => {
+  const errors = watchErrors(page);
+  await toTitle(page);
+  await page.evaluate(() => window.__game?.give('potion', 2));
+  await warp(page, 'test-house', 4, 5, 'up');
+  await pressFor(page, 'KeyC', 'sfx.confirm');
+  await sceneUp(page, 'main-menu');
+  await pressFor(page, 'ArrowDown', 'sfx.cursor');
+  await pressFor(page, 'ArrowUp', 'sfx.cursor');
+  await pressFor(page, 'KeyZ', 'sfx.confirm');
+  // Everyone is full, so a Potion would help nobody.
+  await pressFor(page, 'KeyZ', 'sfx.buzzer');
+  await pressFor(page, 'KeyX', 'sfx.cancel');
+  await pressFor(page, 'KeyX', 'sfx.cancel');
+  await arrivedOn(page, 'test-house');
+
+  // Hurt, Rowan can drink one, which sounds like healing.
+  await page.evaluate(() => window.__game?.vitals('rowan', { hp: 1 }));
+  await pressFor(page, 'KeyC', 'sfx.confirm');
+  await sceneUp(page, 'main-menu');
+  await pressFor(page, 'KeyZ', 'sfx.confirm');
+  await pressFor(page, 'KeyZ', 'sfx.confirm');
+  await pressFor(page, 'KeyZ', 'sfx.heal');
+  // Menu closes it from any page.
+  await pressFor(page, 'KeyC', 'sfx.cancel');
+  await arrivedOn(page, 'test-house');
+  expect(errors).toEqual([]);
+});
+
+test('buying in a shop rings up the gold', async ({ page }) => {
+  const errors = watchErrors(page);
+  await toTitle(page);
+  await page.evaluate(() => window.__game?.giveGold(100));
+  // In front of the Test Market's shopkeeper.
+  await warp(page, 'test-market', 3, 3, 'up');
+  await confirmUntilSaid(page, 'Welcome! A bit of everything, for a price.');
+  // Going on through what's said is quiet.
+  await pressQuietly(page, 'KeyZ');
+  await sceneUp(page, 'shop');
+  await pressFor(page, 'KeyZ', 'sfx.confirm');
+  await pressFor(page, 'KeyZ', 'sfx.confirm');
+  await pressFor(page, 'ArrowRight', 'sfx.cursor');
+  await pressFor(page, 'KeyZ', 'sfx.trade');
+  expect((await page.evaluate(() => window.__game?.state()))?.inventory).toMatchObject({
+    potion: 2,
+  });
+  await pressFor(page, 'KeyX', 'sfx.cancel');
+  await pressFor(page, 'KeyX', 'sfx.cancel');
   expect(errors).toEqual([]);
 });
 

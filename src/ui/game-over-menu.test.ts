@@ -64,8 +64,19 @@ describe('the Game Over menu', () => {
     });
   });
 
-  test('nothing pressed changes nothing', () => {
+  test('nothing pressed changes nothing, and makes no sound', () => {
     const menu = openGameOverMenu(true);
-    expect(stepGameOverMenu(menu, NONE)).toEqual({ menu, chosen: null });
+    expect(stepGameOverMenu(menu, NONE)).toEqual({ menu, chosen: null, sound: null });
+  });
+
+  test('the cursor clicks as it moves, a choice confirms, and one greyed out buzzes', () => {
+    const menu = openGameOverMenu(false);
+    expect(stepGameOverMenu(menu, DOWN).sound).toBe('cursor');
+    expect(stepGameOverMenu(menu, UP).sound).toBe('cursor');
+    expect(stepGameOverMenu(menu, CONFIRM).sound).toBe('confirm');
+    const onLoad = play(menu, DOWN).menu;
+    expect(stepGameOverMenu(onLoad, CONFIRM)).toMatchObject({ chosen: null, sound: 'buzzer' });
+    const saved = play(openGameOverMenu(true), DOWN).menu;
+    expect(stepGameOverMenu(saved, CONFIRM)).toMatchObject({ chosen: 'load', sound: 'confirm' });
   });
 });
