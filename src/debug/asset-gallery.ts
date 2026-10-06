@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { ASSETS, type AssetKey } from '../systems/asset-manifest';
+import { GAME_HEIGHT, GAME_WIDTH } from '../systems/display';
 import { input } from '../systems/input/game-input';
 import { FONT } from '../ui/fonts';
 
@@ -15,16 +16,25 @@ const PORTRAITS = KEYS.filter((key) => key.startsWith('portrait.'));
 const SCALE = 2; // the world's scale
 const COLUMN_WIDTH = 156; // four characters to a row
 const ROW_HEIGHT = 56;
+const PORTRAIT_WIDTH = 92; // six portraits to a row
+const PORTRAIT_ROW = 96;
+const PORTRAITS_PER_ROW = 6;
+/** The strip along the bottom, which the hint sits in, over whatever scrolls under it. */
+const FOOTER = 28;
 const GRASS = 0x4f7a43; // so dark outlines show up
+const BACKDROP = 0x14101c;
 const TEXT = 0xe8e0f5;
 const DIM = 0x8a7fa3;
 
 /**
  * Debug only: every character sheet facing down, up, left and right, then the portraits, all at
  * the world's scale, to check curated art in the engine. Open it with
- * `__game.startScene('asset-gallery')`; Cancel goes back to the title.
+ * `__game.startScene('asset-gallery')`; Up and Down scroll, and Cancel goes back to the title.
  */
 export class AssetGalleryScene extends Phaser.Scene {
+  /** How far down it can scroll, to show the last row above the hint. */
+  private maxScroll = 0;
+
   constructor() {
     super('asset-gallery');
   }
@@ -48,17 +58,33 @@ export class AssetGalleryScene extends Phaser.Scene {
 
     const portraitsY = 36 + Math.ceil(CHARACTERS.length / 4) * ROW_HEIGHT + 6;
     PORTRAITS.forEach((key, index) => {
-      const x = 16 + index * 92;
-      this.add.image(x, portraitsY, key).setOrigin(0).setScale(SCALE);
+      const x = 16 + (index % PORTRAITS_PER_ROW) * PORTRAIT_WIDTH;
+      const y = portraitsY + Math.floor(index / PORTRAITS_PER_ROW) * PORTRAIT_ROW;
+      this.add.image(x, y, key).setOrigin(0).setScale(SCALE);
       const label = key.slice('portrait.'.length);
-      this.add.bitmapText(x, portraitsY + 79, FONT.body, label).setTint(DIM);
+      this.add.bitmapText(x, y + 79, FONT.body, label).setTint(DIM);
     });
+    const bottom = portraitsY + Math.ceil(PORTRAITS.length / PORTRAITS_PER_ROW) * PORTRAIT_ROW;
+    this.maxScroll = Math.max(0, bottom + FOOTER - GAME_HEIGHT);
 
-    this.add.bitmapText(16, 340, FONT.body, 'Cancel: back to the title').setTint(DIM);
+    // The hint stays put along the bottom as the rest scrolls.
+    this.add
+      .rectangle(0, GAME_HEIGHT - FOOTER, GAME_WIDTH, FOOTER, BACKDROP)
+      .setOrigin(0)
+      .setScrollFactor(0);
+    this.add
+      .bitmapText(16, GAME_HEIGHT - 20, FONT.body, 'Up, Down: scroll   Cancel: back to the title')
+      .setTint(DIM)
+      .setScrollFactor(0);
   }
 
   override update(): void {
     if (input.pressed('cancel')) this.scene.start('title');
+    const camera = this.cameras.main;
+    const step = input.pressedOrRepeated('down') ? 1 : input.pressedOrRepeated('up') ? -1 : 0;
+    if (step !== 0) {
+      camera.scrollY = Phaser.Math.Clamp(camera.scrollY + step * ROW_HEIGHT, 0, this.maxScroll);
+    }
   }
 
   /** Read by `window.__game.inspect('asset-gallery')`: how every manifest key loaded. */
@@ -75,6 +101,14 @@ export class AssetGalleryScene extends Phaser.Scene {
       };
     });
     const sounds = SOUNDS.map((key) => ({ key, loaded: this.cache.audio.exists(key) }));
-    return { characters: CHARACTERS, portraits: PORTRAITS, textures, sounds };
+    const camera = this.cameras.main;
+    return {
+      characters: CHARACTERS,
+      portraits: PORTRAITS,
+      textures,
+      sounds,
+      scroll: camera.scrollY,
+      maxScroll: this.maxScroll,
+    };
   }
 }

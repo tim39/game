@@ -245,7 +245,7 @@ The simulator's party plays as a sensible but unadventurous player would. It get
 - **Gold** comes from battles and chests. Items sell for half their price, rounded down. Shops buy back anything but key items, though not gear someone is wearing, and sell no more of a thing than makes 99.
 - **Shops** in each new town sell gear about one tier above the last. Outfitting the whole party in a new tier should cost roughly what the previous dungeon paid out at Normal encounter rate. Chests sometimes hold gear a tier ahead.
 - **Inns** cost 10–80 gold depending on the town: Saltmere's, the Gull's Rest, is 10.
-- **Saltmere**, where the game starts, has Corin's stall (Potions, cures, Smoke Pellets, and Fire, Wind and Earth Bombs, for the wolves on the road and what lives in the Tide Caves) and Hal's forge (the gear the party starts in, and a Leather Vest, the one step up). Its chests hold some gold, a Fire Bomb, an Ether and an Ember Feather.
+- **Saltmere**, where the game starts, has Corin's stall (Potions, cures, Smoke Pellets, and Fire, Wind and Earth Bombs, for the wolves on the road and what lives in the Tide Caves) and Hal's forge (the gear the party starts in, and a Leather Vest, the one step up). Its chests hold some gold, a Potion, a Fire Bomb, an Ether and an Ember Feather.
 
 ## Screens
 

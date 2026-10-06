@@ -45,6 +45,22 @@ test('every manifest asset loads, sprite sheets cut into whole frames', async ({
   }
 
   await page.screenshot({ path: 'test-results/screenshots/asset-gallery.png' });
+  // Down scrolls a row at a time to the rest, the portraits, as far as there's more to see.
+  const scroll = async () =>
+    (await page.evaluate(() => window.__game?.inspect('asset-gallery'))) as {
+      scroll: number;
+      maxScroll: number;
+    };
+  expect((await scroll()).maxScroll).toBeGreaterThan(0);
+  while ((await scroll()).scroll < (await scroll()).maxScroll) {
+    const before = (await scroll()).scroll;
+    await page.keyboard.press('ArrowDown');
+    await page.waitForFunction(
+      (from) => window.__game?.inspect('asset-gallery')?.scroll !== from,
+      before,
+    );
+  }
+  await page.screenshot({ path: 'test-results/screenshots/asset-gallery-portraits.png' });
 
   await page.keyboard.press('Escape');
   await page.waitForFunction(() => window.__game?.activeScenes().includes('title') ?? false);
