@@ -33,6 +33,8 @@ const isInspectable = (scene: object): scene is Inspectable =>
   typeof (scene as Partial<Inspectable>).debugInfo === 'function';
 
 export function installDebugHooks(game: Phaser.Game): void {
+  // A build with these in it says so in the browser's tab.
+  document.title = `${document.title} (debug build)`;
   // Debug-only scenes, which production builds never include.
   game.scene.add('asset-gallery', AssetGalleryScene);
 

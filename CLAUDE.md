@@ -31,6 +31,7 @@ Keep the names stable.
 |---|---|
 | `npm run dev` | Vite dev server |
 | `npm run build` | Production build into `dist/`, then a check that no debug code leaked in |
+| `npm run build:debug` | The same game with the debug menu into `dist/debug/`, which deploys to `/game/debug/` |
 | `npm run preview` | Serve the production build locally |
 | `npm run typecheck` | `tsc --noEmit` |
 | `npm run lint` | ESLint + Prettier check |
@@ -76,5 +77,6 @@ A task is done when:
 
 - Outbound network is restricted. npm and GitHub release downloads work, but asset sites (kenney.nl, itch.io, opengameart.org) are blocked. Raw art packs are attached to this repo's GitHub Releases: `npm run fetch-assets` downloads them into `assets-src/` (see Assets in TECH.md). Never commit them. If you need an asset that isn't in a pack, ask the owner; never substitute something unlicensed.
 - The live site (`tim39.github.io`) isn't reachable from cloud sessions. Confirm a deploy from the CI run's "Deploy to GitHub Pages" job.
+- The live game at `/game/` has no debug menu: production builds strip it. When the owner needs debug tools to try something, point them at `https://tim39.github.io/game/debug/`, where the backtick key or three fingers open it.
 - Chromium for Playwright is preinstalled under `/opt/pw-browsers`. Don't run `playwright install`. If the pinned `@playwright/test` expects a different Chromium build, see the note at the end of TECH.md.
 - TypeScript is pinned to 6.0.x because typescript-eslint doesn't support TS 7 yet. Revisit when it does.

@@ -4,7 +4,7 @@ A classic high-fantasy JRPG for the browser, with turn-order-timeline battles, 1
 
 Built with TypeScript and Phaser 4, and vibe coded with Claude Code.
 
-> **Status:** milestones M0 and M1 are done: you can walk around a draft of Saltmere, on desktop or a phone, go in and out of its houses and the lighthouse, and talk to the villagers. So are M2's tasks: conversations with choices, event scripts, chests, music, and saving and loading. See the roadmap for what's next.
+> **Status:** milestones M0 to M4 are done: you can walk around a draft of Saltmere, on desktop or a phone, talk to the villagers, open chests, save and load, and fight wolves on the road north in turn-order battles, with rewards, level-ups and a Game Over screen. See the roadmap for what's next.
 
 ## Run it locally
 
@@ -28,3 +28,7 @@ Open the address it prints. In that dev build, the backtick key (`` ` ``), or th
 ## Play
 
 **https://tim39.github.io/game/**: every push to `main` deploys there once the checks pass.
+
+**https://tim39.github.io/game/debug/** is the same game with the debug menu, for playtesting: the backtick key (`` ` ``), or three fingers on the game on a touchscreen, opens it. It shares saves with the game above.
+
+On a keyboard: arrows or WASD to move, Z, Space or Enter to talk and choose, X, Esc or Backspace to go back, C or Tab for the menu (the START button on a phone), and hold Shift to run.

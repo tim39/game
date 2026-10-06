@@ -11,6 +11,7 @@
     "dev": "vite",
     "build": "vite build",
     "postbuild": "node tools/check-bundle.mjs",
+    "build:debug": "vite build --mode e2e --outDir dist/debug",
     "preview": "vite preview",
     "typecheck": "tsc -p tsconfig.app.json && tsc -p tsconfig.node.json",
     "lint": "eslint . && prettier --check .",

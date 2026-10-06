@@ -68,6 +68,9 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build
+      # The same game with the debug menu, at /debug/, for playtesting: what the e2e tests play.
+      # It's built after the production build's check, which it would fail.
+      - run: npm run build:debug
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

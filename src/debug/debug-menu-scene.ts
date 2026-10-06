@@ -182,11 +182,18 @@ export class DebugMenuScene extends Phaser.Scene {
   }
 }
 
+/** On the title screen of a build with the debug menu, how to open it. */
+const TITLE_HINT = {
+  keys: 'Debug build: backtick (`) opens the debug menu',
+  touch: 'Debug build: three fingers open the debug menu',
+};
+
 /**
  * Adds the debug menu to the game. The backtick key, or three fingers on the game on a touchscreen
  * (not on its touch controls), opens it over whatever is running, which pauses until it closes;
  * either again closes it. Closing and warping wait for the next frame, so the scenes that carry on
- * don't see the press that did it.
+ * don't see the press that did it. The title screen says how to open it, which also tells a build
+ * with the menu from one without.
  */
 export function installDebugMenu(
   game: Phaser.Game,
@@ -194,6 +201,23 @@ export function installDebugMenu(
 ): void {
   game.scene.add(DEBUG_MENU, DebugMenuScene);
   let paused: string[] = [];
+
+  // The title screen may be up already, or not yet: the scenes only exist once the game is ready.
+  const hintOnTitle = (): void => {
+    const title = game.scene.getScene('title') as Phaser.Scene | null;
+    if (!title) return;
+    const hint = (): void => {
+      title.add
+        .bitmapText(GAME_WIDTH / 2, 12, FONT.body, touchMode() ? TITLE_HINT.touch : TITLE_HINT.keys)
+        .setScale(SCALE)
+        .setOrigin(0.5, 0)
+        .setTint(DIM);
+    };
+    title.events.on(Phaser.Scenes.Events.CREATE, hint);
+    if (game.scene.isActive('title')) hint();
+  };
+  if (game.isRunning) hintOnTitle();
+  else game.events.once(Phaser.Core.Events.READY, hintOnTitle);
 
   const isOpen = (): boolean => game.scene.isActive(DEBUG_MENU);
   /** Runs `fn` at the start of the next frame, after input is read and before any scene updates. */
