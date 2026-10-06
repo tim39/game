@@ -154,6 +154,7 @@ const MapObjectSchema = z.discriminatedUnion('type', [
     facing: DirectionSchema,
     wander: CellSchema.optional(),
     script: ScriptIdSchema.optional(),
+    when: ConditionSchema.optional(),
   }),
   z.strictObject({
     type: z.literal('touch'),

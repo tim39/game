@@ -115,7 +115,11 @@ export const ASSETS = {
   'sprite.villager-5': sheet('sprites/villager-5.png'),
   'sprite.woman': sheet('sprites/woman.png'),
   'sprite.old-man': sheet('sprites/old-man.png'),
+  'sprite.old-man-2': sheet('sprites/old-man-2.png'),
   'sprite.old-man-3': sheet('sprites/old-man-3.png'),
+  'sprite.monk': sheet('sprites/monk.png'),
+  'sprite.monk-2': sheet('sprites/monk-2.png'),
+  'sprite.princess': sheet('sprites/princess.png'),
   'sprite.child': sheet('sprites/child.png'),
   'sprite.shadow': image('sprites/shadow.png'), // drawn under characters
 
@@ -145,10 +149,21 @@ export const ASSETS = {
   'vfx.ailment': frames('vfx/aura.png', 25, 24),
   'vfx.guard': frames('vfx/shield-blue.png', 24, 26),
 
-  // Dialogue portraits, 38×38
+  // Dialogue portraits, 38×38: the party, then Saltmere's people, each matching their sprite.
   'portrait.rowan': image('portraits/hunter.png'),
   'portrait.bram': image('portraits/knight.png'),
   'portrait.tamsin': image('portraits/old-woman.png'),
+  'portrait.hob': image('portraits/old-man-3.png'),
+  'portrait.nell': image('portraits/woman.png'),
+  'portrait.corin': image('portraits/villager-3.png'),
+  'portrait.pip': image('portraits/child.png'),
+  'portrait.gwen': image('portraits/villager-4.png'),
+  'portrait.aled': image('portraits/monk.png'),
+  'portrait.hal': image('portraits/monk-2.png'),
+  'portrait.ewan': image('portraits/old-man-2.png'),
+  'portrait.rhona': image('portraits/princess.png'),
+  'portrait.jory': image('portraits/villager-5.png'),
+  'portrait.dai': image('portraits/villager-2.png'),
 
   // Music, which loops (see Draft soundtrack in DESIGN.md), and sound effects.
   'bgm.title': sound('bgm/intro'),

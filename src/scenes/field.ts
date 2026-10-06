@@ -11,6 +11,7 @@ import {
   exitAt,
   isBlocked,
   isOutOfBounds,
+  npcsAbout,
   scriptAt,
   sideOf,
   touchAt,
@@ -197,7 +198,8 @@ export class FieldScene extends Phaser.Scene {
     audio.playMusic(def.music ?? null);
     this.overhead = createTilemap(this, map).overhead;
     this.rng = Rng.fromSeed(`field:${map.id}`);
-    this.npcs = map.npcs.map((placement) => ({
+    // Who's about follows the story, as it is on arrival.
+    this.npcs = npcsAbout(map, session.state).map((placement) => ({
       npc: createNpc(placement, this.rng, NPC_TUNING),
       ...this.figure(`sprite.${placement.sprite}`),
     }));

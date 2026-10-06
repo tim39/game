@@ -1,5 +1,7 @@
 import type { z } from 'zod';
+import { conditionFlags, type Condition } from '../src/core/conditions';
 import { canEquip, slotOf } from '../src/core/equipment';
+import { isNamespacedId } from '../src/core/ids';
 import { compileMap, isBlocked, type CompiledMap } from '../src/core/map/compile';
 import type { MapContent, MapDef } from '../src/core/map/types';
 import {
@@ -14,6 +16,7 @@ import {
 } from '../src/core/schema';
 import type { NewGame } from '../src/core/state';
 import type { AreaBalance } from '../src/data/balance';
+import type { StoryPoint } from '../src/data/story';
 import type { AssetEntry } from '../src/systems/asset-manifest';
 
 type Kind = keyof typeof CONTENT_SCHEMAS;
@@ -402,6 +405,58 @@ export function checkShops({
       return [];
     }),
   );
+}
+
+/** The flags of the main story are `story.` ones; everything else has a namespace of its own. */
+export const STORY_NAMESPACE = 'story.';
+
+/**
+ * Checks the main story (STORY in src/data/story.ts) and the flags the maps and characters look
+ * at. One line per problem: each point is a `story.` flag, once, with a name; and every `story.`
+ * flag a map's people and triggers wait on, or a character learns a skill by, is one of them, so a
+ * misspelt flag can't wait for something that never happens. The event checks do the same for
+ * the flags scripts read and set.
+ */
+export function checkStory({
+  story,
+  maps,
+  characters,
+}: {
+  readonly story: readonly StoryPoint[];
+  readonly maps: Readonly<Record<string, MapDef>>;
+  readonly characters: Readonly<Record<string, CharacterDef>>;
+}): string[] {
+  const problems: string[] = [];
+  const flags = new Set<string>();
+  story.forEach(({ flag, name }, index) => {
+    const at = `The story: point ${index}`;
+    if (!isNamespacedId(flag) || !flag.startsWith(STORY_NAMESPACE)) {
+      problems.push(`${at} has the flag "${flag}"; story flags look like story.beacon-out`);
+    }
+    if (flags.has(flag)) problems.push(`${at} has the flag ${flag}, as an earlier point does`);
+    if (name.trim() === '') problems.push(`${at} has no name`);
+    flags.add(flag);
+  });
+  const unknown = (flag: string): boolean => flag.startsWith(STORY_NAMESPACE) && !flags.has(flag);
+  const notInStory = (flag: string): string => `${flag}, which isn't one of the story's points`;
+
+  for (const map of Object.values(maps)) {
+    for (const object of map.objects ?? []) {
+      const when: Condition | undefined = 'when' in object ? object.when : undefined;
+      for (const flag of when === undefined ? [] : conditionFlags(when).filter(unknown)) {
+        const who = object.type === 'npc' ? `npc ${object.id}` : `its ${object.type} trigger`;
+        problems.push(`Map ${map.id}: ${who} waits on ${notInStory(flag)}`);
+      }
+    }
+  }
+  for (const [id, character] of Object.entries(characters)) {
+    for (const { skill, flag } of character.skills) {
+      if (flag !== undefined && unknown(flag)) {
+        problems.push(`Character ${id}: learns ${skill} by ${notInStory(flag)}`);
+      }
+    }
+  }
+  return problems;
 }
 
 /**

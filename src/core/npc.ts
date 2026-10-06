@@ -1,3 +1,4 @@
+import type { Condition } from './conditions';
 import { DIRECTIONS, STEP, directionTowards, type Direction } from './direction';
 import type { Rng } from './rng';
 import { standingWalker, updateWalker, type Walker, type WalkWorld } from './walker';
@@ -25,6 +26,8 @@ export interface NpcPlacement {
   readonly wander: number;
   /** The event script talking to it runs, if any (an ID in src/data/events). */
   readonly script?: string;
+  /** Only there while this holds, as the player arrives on the map; always, without it. */
+  readonly when?: Condition;
 }
 
 export interface Npc {

@@ -14,6 +14,7 @@ import { NEW_GAME } from '../src/data/new-game';
 import { SHOPS } from '../src/data/shops';
 import { SKILLS } from '../src/data/skills';
 import { SPEAKERS } from '../src/data/speakers';
+import { STORY } from '../src/data/story';
 import { MAP_CONTENT, PREFABS, TERRAINS } from '../src/data/terrain';
 import { ASSETS } from '../src/systems/asset-manifest';
 import {
@@ -25,6 +26,7 @@ import {
   checkMapEncounters,
   checkNewGame,
   checkShops,
+  checkStory,
   type AreaSources,
   type CharacterSources,
   type ContentSources,
@@ -992,6 +994,60 @@ describe('checkEncounters', () => {
 
   test('the real encounter tables check out', () => {
     expect(checkEncounters({ encounters: ENCOUNTERS, enemies: ENEMIES })).toEqual([]);
+  });
+});
+
+describe('checkStory', () => {
+  const ROWAN = CHARACTERS.rowan;
+
+  test('reports story points that aren’t story flags, repeats, and nameless ones', () => {
+    expect(
+      checkStory({
+        story: [
+          { flag: 'story.dawn', name: 'Dawn' },
+          { flag: 'chest.town-01', name: 'A chest' },
+          { flag: 'story.dawn', name: 'Dawn again' },
+          { flag: 'story.dusk', name: ' ' },
+        ],
+        maps: {},
+        characters: {},
+      }),
+    ).toEqual([
+      'The story: point 1 has the flag "chest.town-01"; story flags look like story.beacon-out',
+      'The story: point 2 has the flag story.dawn, as an earlier point does',
+      'The story: point 3 has no name',
+    ]);
+  });
+
+  test('reports story flags maps and characters wait on that aren’t in the story', () => {
+    const town: MapDef = {
+      id: 'town',
+      name: 'Town',
+      terrain: '...',
+      legend: { '.': 'grass' },
+      objects: [
+        { type: 'npc', id: 'ada', sprite: 'ada', at: [0, 0], facing: 'down', when: '!story.dusk' },
+        { type: 'enter', script: 'town/hello', when: ['story.dawn', 'town.visited'] },
+        { type: 'touch', at: [1, 0], script: 'town/step', when: 'story.noon' },
+      ],
+    };
+    expect(
+      checkStory({
+        story: [{ flag: 'story.dawn', name: 'Dawn' }],
+        maps: { town },
+        characters: ROWAN
+          ? { rowan: { ...ROWAN, skills: [{ skill: 'tide-edge', flag: 'story.tide' }] } }
+          : {},
+      }),
+    ).toEqual([
+      "Map town: npc ada waits on story.dusk, which isn't one of the story's points",
+      "Map town: its touch trigger waits on story.noon, which isn't one of the story's points",
+      "Character rowan: learns tide-edge by story.tide, which isn't one of the story's points",
+    ]);
+  });
+
+  test('the real story, maps and characters check out', () => {
+    expect(checkStory({ story: STORY, maps: MAPS, characters: CHARACTERS })).toEqual([]);
   });
 });
 

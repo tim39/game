@@ -21,6 +21,7 @@ import type { Speaker } from '../src/core/schema';
 import type { AssetEntry } from '../src/systems/asset-manifest';
 import { CHOICE_BOX, MAX_CHOICES, MAX_LINES, lineWidth } from '../src/ui/dialogue-layout';
 import { wrapText } from '../src/ui/text-wrap';
+import { STORY_NAMESPACE } from './content-checks';
 import type { MeasuredFont } from './font-metrics';
 
 export interface EventSources {
@@ -39,6 +40,8 @@ export interface EventSources {
   readonly font: MeasuredFont;
   /** What opening a chest says, as in src/data/ui-text.ts. */
   readonly chestText: ChestText;
+  /** The main story's points, as in src/data/story.ts: the only `story.` flags there are. */
+  readonly story: readonly { readonly flag: string }[];
 }
 
 export interface EventReport {
@@ -71,8 +74,8 @@ class LongPath extends Error {}
  *   choice the player picks, whether a flag it hasn't set itself is set, whether the party has an
  *   item, or gold. It starts on each map that runs it, and must only name speakers, items and
  *   characters that exist, move and turn people who are on the map it's on, teleport to spawns
- *   that exist, wait and fade for real lengths of time, and play music and sound effects that are
- *   in the asset manifest;
+ *   that exist, wait and fade for real lengths of time, play music and sound effects that are in
+ *   the asset manifest, and only read and set `story.` flags that are the story's points;
  * - every line it says fits in the dialogue box (three lines, narrower beside a portrait), every
  *   choice it offers fits the choice box, it offers one to four at a time, and the font has every
  *   character they use;
@@ -91,8 +94,10 @@ export async function checkEvents({
   manifest,
   font,
   chestText,
+  story,
 }: EventSources): Promise<EventReport> {
   const problems: string[] = [];
+  const storyFlags = new Set(story.map(({ flag }) => flag));
   const teleports = new Map<string, Set<string>>();
   // Which maps run each script.
   const runBy = new Map<string, string[]>();
@@ -205,6 +210,12 @@ export async function checkEvents({
       if (!Object.hasOwn(items, item)) report(`it ${verb} ${item}, which isn't an item`);
     };
 
+    const checkFlag = (flag: string, verb: string): void => {
+      if (flag.startsWith(STORY_NAMESPACE) && !storyFlags.has(flag)) {
+        report(`it ${verb} ${flag}, which isn't one of the story's points`);
+      }
+    };
+
     // Each run follows a path: the answer to each question, 0 past its end. Reaching a question
     // past the end for the first time queues the paths that answer it the other ways.
     for (const startMap of startMaps) {
@@ -295,6 +306,7 @@ export async function checkEvents({
           },
           sfx: (sound) => checkSound(sound, 'sfx.'),
           flag: (name) => {
+            checkFlag(name, 'reads');
             if (!settled.flags.has(name)) {
               settled.flags.add(name);
               state = setFlag(state, name, ask(2) === 1);
@@ -302,6 +314,7 @@ export async function checkEvents({
             return hasFlag(state, name);
           },
           setFlag: (name, on = true) => {
+            checkFlag(name, 'sets');
             state = setFlag(state, name, on);
             settled.flags.add(name);
           },

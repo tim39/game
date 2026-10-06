@@ -6,9 +6,23 @@ import type { ShopDef } from '../core/schema';
  * docs/DESIGN.md). A script opens one with `ev.shop(id)`.
  */
 export const SHOPS: Readonly<Record<string, ShopDef>> = {
-  // The market stall on Kindling day: supplies for the road north, and Fire Bombs for its wolves.
+  // Corin's stall in Saltmere: supplies for the road north, and bombs for its wolves (fire) and
+  // for whatever has wings (wind) or a shell (earth).
   'saltmere-market': {
-    items: ['potion', 'antidote', 'eye-drops', 'fire-bomb', 'smoke-pellet'],
+    items: [
+      'potion',
+      'antidote',
+      'eye-drops',
+      'fire-bomb',
+      'wind-bomb',
+      'earth-bomb',
+      'smoke-pellet',
+    ],
+  },
+  // Hal's forge in Saltmere: plain blades and armor for the village's first adventurers. The
+  // Leather Vest is the one step up; the next tier is Wardenhold's, or in the Tide Caves' chests.
+  'saltmere-forge': {
+    items: ['bronze-sword', 'hand-axe', 'travel-clothes', 'leather-vest', 'chain-mail'],
   },
   // A bit of everything, for the tests and the debug menu: more than a page of it.
   'test-shop': {

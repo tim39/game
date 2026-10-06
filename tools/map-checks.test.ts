@@ -11,6 +11,7 @@ import { MAPS } from '../src/data/maps';
 import { NEW_GAME } from '../src/data/new-game';
 import { SHOPS } from '../src/data/shops';
 import { SPEAKERS } from '../src/data/speakers';
+import { STORY } from '../src/data/story';
 import { MAP_CONTENT } from '../src/data/terrain';
 import { CHEST_TEXT } from '../src/data/ui-text';
 import { ASSETS, type AssetEntry } from '../src/systems/asset-manifest';
@@ -227,6 +228,7 @@ describe('reaching maps', () => {
       manifest: ASSETS,
       font,
       chestText: CHEST_TEXT,
+      story: STORY,
     });
     expect(checkReachable({ maps: MAPS, start: NEW_GAME.location.map, teleports })).toEqual([]);
   });

@@ -10,6 +10,7 @@ import { ITEMS } from '../src/data/items';
 import { MAPS } from '../src/data/maps';
 import { SHOPS } from '../src/data/shops';
 import { SPEAKERS } from '../src/data/speakers';
+import { STORY } from '../src/data/story';
 import { CHEST_TEXT } from '../src/data/ui-text';
 import { ASSETS, type AssetEntry } from '../src/systems/asset-manifest';
 import { checkEvents, type EventSources } from './event-checks';
@@ -68,6 +69,7 @@ const sources = (overrides: Partial<EventSources>): EventSources => ({
   manifest: MANIFEST,
   font: FONT,
   chestText: CHEST_TEXT_ADA,
+  story: [{ flag: 'story.dawn' }],
   ...overrides,
 });
 
@@ -200,13 +202,13 @@ test('follows both ways a flag can be, but remembers what the script set itself'
   const problems = await check({
     events: {
       either: defineEvent(async (ev) => {
-        if (ev.flag('story.beacon-out')) await ev.say('nobody', 'Only once the Beacon is out.');
+        if (ev.flag('test.beacon-out')) await ev.say('nobody', 'Only once the Beacon is out.');
       }),
       remembers: defineEvent(async (ev) => {
-        ev.setFlag('story.told');
-        if (!ev.flag('story.told')) await ev.say('nobody', 'Never said.');
+        ev.setFlag('test.told');
+        if (!ev.flag('test.told')) await ev.say('nobody', 'Never said.');
         // Reading it again gives the same answer.
-        if (ev.flag('story.other') !== ev.flag('story.other')) await ev.say('nobody', 'Never.');
+        if (ev.flag('test.other') !== ev.flag('test.other')) await ev.say('nobody', 'Never.');
       }),
     },
   });
@@ -340,7 +342,7 @@ test('reports where the scripts each map runs can take the player', async () => 
       events: {
         // From a, to b if a flag is set, then on to c; or to d, but not to anywhere that isn't.
         tour: defineEvent(async (ev) => {
-          if (ev.flag('story.left')) {
+          if (ev.flag('test.left')) {
             await ev.teleport('b', 'gate');
             await ev.teleport('c', 'gate');
           } else await ev.teleport('d', 'gate');
@@ -470,6 +472,18 @@ test('runs every chest, which must say what it holds in a line that fits', async
   ]);
 });
 
+test('a script only reads and sets story flags that are the story’s points', async () => {
+  const story = defineEvent(async (ev) => {
+    if (ev.flag('story.dawn') && !ev.flag('story.dusk')) ev.setFlag('story.noon');
+    ev.setFlag('errand.milk');
+    await ev.say('ada', 'Hello.');
+  });
+  expect(await check({ events: { story } })).toEqual([
+    "Event story: it reads story.dusk, which isn't one of the story's points",
+    "Event story: it sets story.noon, which isn't one of the story's points",
+  ]);
+});
+
 // The same check as `npm run validate`, so it also runs with the unit tests.
 test('the real event scripts, speakers and maps check out', async () => {
   const { problems } = await checkEvents({
@@ -484,6 +498,7 @@ test('the real event scripts, speakers and maps check out', async () => {
       readFileSync(join(import.meta.dirname, '../public', ASSETS['font.body'].url)),
     ),
     chestText: CHEST_TEXT,
+    story: STORY,
   });
   expect(problems).toEqual([]);
 });

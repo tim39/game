@@ -8,6 +8,7 @@ import {
   exitAt,
   isBlocked,
   isOutOfBounds,
+  npcsAbout,
   scriptAt,
   terrainRows,
   touchAt,
@@ -355,6 +356,34 @@ describe('npcs', () => {
   test('can’t be called what scripts call the player, or a direction', () => {
     expect(() => compile('..', [npc('player', 0, 0)])).toThrow("an npc can't be called player");
     expect(() => compile('..', [npc('up', 0, 0)])).toThrow("an npc can't be called up");
+  });
+
+  test('are about while their condition holds, as the player arrives', () => {
+    const start = createGameState({
+      location: { map: 'test', x: 0, y: 0, facing: 'down' },
+      party: ['rowan'],
+    });
+    const when = (id: string, x: number, condition: string): MapObject => ({
+      type: 'npc',
+      id,
+      sprite: 'villager',
+      at: [x, 0],
+      facing: 'down',
+      when: condition,
+    });
+    const compiled = compile('...', [
+      when('by-day', 0, '!story.beacon-out'),
+      when('by-night', 1, 'story.beacon-out'),
+      npc('always', 2, 0),
+    ]);
+    expect(compiled.npcs.map(({ id }) => id)).toEqual(['by-day', 'by-night', 'always']);
+    expect(compiled.npcs[0]).toMatchObject({ id: 'by-day', when: '!story.beacon-out' });
+    const about = (state: typeof start): string[] => npcsAbout(compiled, state).map(({ id }) => id);
+    expect(about(start)).toEqual(['by-day', 'always']);
+    expect(about(setFlag(start, 'story.beacon-out'))).toEqual(['by-night', 'always']);
+    expect(() => compile('..', [when('a', 0, 'night')])).toThrow(
+      'npc a has "night" in its condition, which isn\'t a flag',
+    );
   });
 });
 

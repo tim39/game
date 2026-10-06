@@ -4,7 +4,7 @@ import type { GameDb } from '../core/db';
 import type { EncounterRate } from '../core/encounters';
 import type { ExpCurve } from '../core/levels';
 import { defineMap, type MapDef } from '../core/map/types';
-import { setVitals, type GameState } from '../core/state';
+import { hasFlag, setFlag, setVitals, type GameState } from '../core/state';
 import { MAPS } from '../data/maps';
 import type { DebugSwitches } from '../systems/debug-switches';
 import type { SaveSlot } from '../systems/saves';
@@ -13,6 +13,8 @@ import {
   debugBattles,
   debugRootPage,
   putOn,
+  storyAt,
+  storyReached,
   type DebugBattle,
   type DebugBattlePlan,
   type DebugMenuContext,
@@ -74,6 +76,13 @@ const SLOTS: readonly DebugSlot[] = [
   { slot: 3, label: 'Slot 3', detail: 'damaged', empty: false },
 ];
 
+/** A short story, for the Story page. */
+const STORY = [
+  { flag: 'story.dawn', name: 'Dawn' },
+  { flag: 'story.noon', name: 'Noon' },
+  { flag: 'story.dusk', name: 'Dusk' },
+];
+
 const BATTLES: readonly DebugBattle[] = [
   { label: 'Wolf x2', detail: 'north-road', enemies: ['wolf', 'wolf'], backdrop: 'meadow' },
   { label: 'Warden', detail: 'boss', enemies: ['warden'], backdrop: 'shore' },
@@ -90,6 +99,8 @@ function setUp(maps: Record<string, MapDef> = {}) {
   const importing: [SaveSlot, (notice: string) => void][] = [];
   const game = { state: gameWith(['rowan', 'bram'], { potion: 2 }) };
   const plan: DebugBattlePlan = { enemies: [], backdrop: 'meadow', start: null };
+  /** How many times the field has been started over. */
+  const field = { restarts: 0 };
   const context: DebugMenuContext = {
     maps,
     switches,
@@ -113,6 +124,8 @@ function setUp(maps: Record<string, MapDef> = {}) {
         ['bram', 'Bram'],
       ].map(([id = '', name = '']) => ({ id, name, joined: party.includes(id) })),
     join: (id) => void party.push(id),
+    story: STORY,
+    restartField: () => void field.restarts++,
     saves: {
       slots: () => SLOTS,
       exportSlot: (slot) => {
@@ -124,7 +137,19 @@ function setUp(maps: Record<string, MapDef> = {}) {
     notify: (notice) => menu.notify(notice),
   };
   const menu = new DebugMenu(debugRootPage(context), 10);
-  return { menu, switches, settings, warps, battles, party, exported, importing, game, plan };
+  return {
+    menu,
+    switches,
+    settings,
+    warps,
+    battles,
+    party,
+    exported,
+    importing,
+    game,
+    plan,
+    field,
+  };
 }
 
 /** Moves the cursor to the item called `label` on the open page, and chooses it. */
@@ -151,6 +176,7 @@ test('the first page warps, and flips noclip and the collision view', () => {
     { label: 'Warp to a map', detail: undefined, on: undefined, enabled: true },
     { label: 'Start a battle', detail: undefined, on: undefined, enabled: true },
     { label: 'Party', detail: undefined, on: undefined, enabled: true },
+    { label: 'Story', detail: 'The start', on: undefined, enabled: true },
     { label: 'Noclip', detail: undefined, on: false, enabled: true },
     { label: 'Show collision', detail: undefined, on: false, enabled: true },
     { label: 'Battle speed', detail: '1x', on: undefined, enabled: true },
@@ -159,41 +185,41 @@ test('the first page warps, and flips noclip and the collision view', () => {
     { label: 'Import a save', detail: undefined, on: undefined, enabled: true },
   ]);
 
-  menu.move(3);
+  menu.move(4);
   menu.choose();
   expect(switches).toEqual({ noclip: true, showCollision: false });
-  expect(lines(menu)[3]?.on).toBe(true);
+  expect(lines(menu)[4]?.on).toBe(true);
   menu.move(1);
   menu.choose();
   menu.choose();
   menu.choose();
   expect(switches).toEqual({ noclip: true, showCollision: true });
-  expect(lines(menu)[4]?.on).toBe(true);
+  expect(lines(menu)[5]?.on).toBe(true);
 });
 
 test('the encounter rate goes round Off, Low, Normal and High', () => {
   const { menu, settings } = setUp({});
-  menu.move(6);
+  menu.move(7);
   const rates: string[] = [];
   for (let press = 0; press < 4; press++) {
     menu.choose();
-    rates.push(`${settings.encounterRate} ${lines(menu)[6]?.detail ?? ''}`);
+    rates.push(`${settings.encounterRate} ${lines(menu)[7]?.detail ?? ''}`);
   }
   expect(rates).toEqual(['high High', 'off Off', 'low Low', 'normal Normal']);
 });
 
 test('the battle speed goes round 1x, 2x, 3x and 4x', () => {
   const { menu, settings } = setUp({});
-  menu.move(5);
+  menu.move(6);
   const speeds: string[] = [];
   for (let press = 0; press < 4; press++) {
     menu.choose();
-    speeds.push(`${settings.battleSpeed} ${lines(menu)[5]?.detail ?? ''}`);
+    speeds.push(`${settings.battleSpeed} ${lines(menu)[6]?.detail ?? ''}`);
   }
   expect(speeds).toEqual(['2 2x', '3 3x', '4 4x', '1 1x']);
   // A speed set some other way goes back to 1x.
   settings.battleSpeed = 1.5;
-  expect(lines(menu)[5]?.detail).toBe('1.5x');
+  expect(lines(menu)[6]?.detail).toBe('1.5x');
   menu.choose();
   expect(settings.battleSpeed).toBe(1);
 });
@@ -243,8 +269,7 @@ test('every real map can be warped to', () => {
 
 test('a slot with something in it can be exported, and says it was', () => {
   const { menu, exported } = setUp({});
-  menu.move(7);
-  menu.choose();
+  choose(menu, 'Export a save');
   expect(menu.view().title).toBe('Export');
   expect(lines(menu).map(({ label, detail, enabled }) => [label, detail, enabled])).toEqual([
     ['Autosave', 'empty', false],
@@ -266,8 +291,7 @@ test('a slot with something in it can be exported, and says it was', () => {
 
 test('a save file can be imported into any slot, and says how that went once it has', () => {
   const { menu, importing } = setUp({});
-  menu.move(8);
-  menu.choose();
+  choose(menu, 'Import a save');
   expect(menu.view().title).toBe('Import into');
   expect(lines(menu).map(({ label, enabled }) => [label, enabled])).toEqual([
     ['Autosave', true],
@@ -552,4 +576,45 @@ test('someone not in the party yet can join it', () => {
   menu.choose();
   expect(party).toEqual(['rowan', 'bram']);
   expect(lines(menu)[1]).toMatchObject({ detail: 'in the party', enabled: false });
+});
+
+test('the story page jumps to any point in the story, and starts the field over there', () => {
+  const { menu, game, field } = setUp({});
+  choose(menu, 'Story');
+  expect(menu.view().title).toBe('Story');
+  expect(lines(menu).map(({ label, detail }) => [label, detail])).toEqual([
+    ['The start', 'now'],
+    ['Dawn', 'story.dawn'],
+    ['Noon', 'story.noon'],
+    ['Dusk', 'story.dusk'],
+  ]);
+
+  // Noon sets its flag and Dawn's, as if the story had got there.
+  choose(menu, 'Noon');
+  const flags = () => STORY.map(({ flag }) => hasFlag(game.state, flag));
+  expect(flags()).toEqual([true, true, false]);
+  expect(menu.view().notice).toBe('The story is at Noon.');
+  expect(field.restarts).toBe(1);
+  expect(lines(menu)[2]).toMatchObject({ label: 'Noon', detail: 'now' });
+
+  // Going back clears the later flags; the start clears them all.
+  choose(menu, 'Dawn');
+  expect(flags()).toEqual([true, false, false]);
+  choose(menu, 'The start');
+  expect(flags()).toEqual([false, false, false]);
+  expect(field.restarts).toBe(3);
+  menu.back();
+  expect(lines(menu)[3]).toMatchObject({ label: 'Story', detail: 'The start' });
+});
+
+test('how far the story has got is its latest point whose flag is set', () => {
+  const { game } = setUp({});
+  expect(storyReached(game.state, STORY)).toBe(-1);
+  expect(storyReached(setFlag(game.state, 'story.noon'), STORY)).toBe(1);
+  const all = storyAt(game.state, STORY, 2);
+  expect(storyReached(all, STORY)).toBe(2);
+  // Other flags are left as they are.
+  const opened = setFlag(game.state, 'chest.test-01');
+  expect(hasFlag(storyAt(opened, STORY, 0), 'chest.test-01')).toBe(true);
+  expect(storyAt(all, STORY, -1).flags).toEqual({});
 });

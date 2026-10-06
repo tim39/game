@@ -175,6 +175,19 @@ export const PREFABS = definePrefabs({
   'basket-fruit': { sheet: 'tiles.house', origin: [18, 13], layout: ['#'] },
   fence: { sheet: 'tiles.house', origin: [10, 5], layout: ['####'] },
   rock: { sheet: 'tiles.nature', origin: [13, 8], layout: ['##', '##'] },
+  // The inn: a tavern hung with lanterns, its door one cell in from the right.
+  inn: { sheet: 'tiles.house', origin: [19, 0], layout: ['^^^^', '####', '##D#'] },
+  // The forge: a round stone smithy. A signboard with a sword on it, for outside.
+  forge: { sheet: 'tiles.house', origin: [23, 0], layout: ['^^^', '###', '#D#'] },
+  'sword-sign': { sheet: 'tiles.house', origin: [6, 4], layout: ['##'] },
+  // The village's notice board, on its legs.
+  'notice-board': { sheet: 'tiles.element', origin: [11, 1], layout: ['###'] },
+  // A washing line: its posts, and the laundry hung between them.
+  'line-post': { sheet: 'tiles.element', origin: [11, 2], layout: ['^', '#'] },
+  'line-post-end': { sheet: 'tiles.element', origin: [13, 2], layout: ['^', '#'] },
+  laundry: { sheet: 'tiles.element', origin: [14, 2], layout: ['^^', '##'] },
+  // Fish drying on a rack, by the shore.
+  'fish-rack': { sheet: 'tiles.camp', origin: [8, 3], layout: ['##', '##'] },
 
   // Indoors. Tall furniture stands against the back wall, its top over the wall.
   bed: { sheet: 'tiles.bed', origin: [5, 0], layout: ['#', '#'] },
@@ -188,6 +201,21 @@ export const PREFABS = definePrefabs({
   plant: { sheet: 'tiles.element', origin: [0, 7], layout: ['#', '#'] },
   pot: { sheet: 'tiles.element', origin: [2, 9], layout: ['#'] },
   oven: { sheet: 'tiles.house', origin: [29, 11], layout: ['##', '##'] },
+  'bed-red': { sheet: 'tiles.bed', origin: [5, 3], layout: ['#', '#'] },
+  'bed-blue': { sheet: 'tiles.bed', origin: [12, 3], layout: ['#', '#'] },
+  // A round table cut from a stump, a stool and a log bench, for the inn.
+  'round-table': { sheet: 'tiles.camp', origin: [1, 5], layout: ['##', '##'] },
+  stool: { sheet: 'tiles.camp', origin: [3, 5], layout: ['#'] },
+  bench: { sheet: 'tiles.camp', origin: [0, 7], layout: ['##'] },
+  // An old sea chart, spread on the floor like a rug.
+  'sea-chart': { sheet: 'tiles.camp', origin: [10, 5], layout: ['..', '..'] },
+  // The smithy's: a clay kiln with its chimney, an anvil, a workbench with a saw on it, and
+  // planks.
+  kiln: { sheet: 'tiles.house', origin: [31, 12], layout: ['##', '##', '##'] },
+  anvil: { sheet: 'tiles.house', origin: [29, 15], layout: ['#'] },
+  workbench: { sheet: 'tiles.house', origin: [31, 15], layout: ['##'] },
+  planks: { sheet: 'tiles.house', origin: [31, 16], layout: ['##'] },
+  crate: { sheet: 'tiles.element', origin: [6, 0], layout: ['#'] },
   // The Tide Beacon's flame, at the top of the lighthouse.
   beacon: { sheet: 'tiles.dungeon', origin: [2, 2], layout: ['#'] },
   // A Light Shrine: a gold orb on a stone, which heals the party (see src/data/events/rest.ts).

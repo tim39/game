@@ -108,6 +108,7 @@ test('the backtick opens the menu over the field, which waits until it closes', 
     ['Warp to a map', null],
     ['Start a battle', null],
     ['Party', null],
+    ['Story', null],
     ['Noclip', false],
     ['Show collision', false],
     ['Battle speed', null],
@@ -346,7 +347,7 @@ test('a battle can be built against anyone, in front of any backdrop, with a fir
   // Battles at 4x: the speed goes round from 1x.
   for (const speed of ['2x', '3x', '4x']) {
     await choose(page, 'Battle speed');
-    expect((await menu(page)).items[5]).toMatchObject({ label: 'Battle speed', detail: speed });
+    expect((await menu(page)).items[6]).toMatchObject({ label: 'Battle speed', detail: speed });
   }
 
   await choose(page, 'Start a battle');
@@ -394,5 +395,45 @@ test('a battle can be built against anyone, in front of any backdrop, with a fir
     label: 'Fight',
     detail: 'Cave Bat x2, Wolf',
   });
+  expect(errors).toEqual([]);
+});
+
+test('the story page jumps to a point in the story, and the field starts over with who’s about', async ({
+  page,
+}) => {
+  const errors = watchErrors(page);
+  // In Saltmere's square, where Pip plays until the Beacon goes out.
+  await warp(page, 'saltmere', 12, 10, 'up');
+  const about = async (): Promise<string[]> =>
+    ((await field(page))?.npcs as { id: string }[]).map(({ id }) => id);
+  expect(await about()).toContain('pip');
+
+  await openMenu(page);
+  await choose(page, 'Story');
+  expect((await menu(page)).items.map(({ label, detail }) => [label, detail])).toEqual([
+    ['The start', 'now'],
+    ['Lamp duty', 'story.lamp-duty'],
+    ['Lamps lit', 'story.lamps-lit'],
+    ['Bram arrives', 'story.bram-arrived'],
+    ['The Kindling', 'story.kindling'],
+    ['Beacon out', 'story.beacon-out'],
+    ['Tide spark', 'story.tide-spark'],
+  ]);
+  await page.screenshot({ path: 'test-results/screenshots/debug-menu-story.png' });
+  await choose(page, 'Beacon out');
+  await waitForField(page);
+  expect(await field(page)).toMatchObject({ map: 'saltmere', x: 12, y: 10, facing: 'up' });
+  expect(await about()).not.toContain('pip');
+  const flags = (await page.evaluate(() => window.__game?.state().flags)) ?? {};
+  expect(Object.keys(flags).filter((flag) => flag.startsWith('story.'))).toEqual([
+    'story.lamp-duty',
+    'story.lamps-lit',
+    'story.bram-arrived',
+    'story.kindling',
+    'story.beacon-out',
+  ]);
+
+  await openMenu(page);
+  expect((await menu(page)).items[3]).toMatchObject({ label: 'Story', detail: 'Beacon out' });
   expect(errors).toEqual([]);
 });

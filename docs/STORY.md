@@ -69,6 +69,25 @@ The Gloam is the smoke of everything the Beacons have burned, and it feeds **the
 
 The other two mini-bosses are still to be placed (one in Act 2, one in Act 3).
 
+## Saltmere's people
+
+A draft, like everything here: the villagers of Saltmere, who all have something new to say at each turn of Act 1 (the Kindling's morning, the evening after it, the night the Beacon goes out, and once Rowan is back up with its spark). Their lines plant the twist: everyone forgets what they gave the Beacon, and calls that a sign it took it.
+
+| | |
+|---|---|
+| **Hob** | An old fisher, out on the dock until the mist comes in. Gave the Beacon "the smell of tar on my first boat", or so his daughter tells him. |
+| **Nell** | Hob's daughter, who keeps their cottage spotless. Jory is sweet on her. |
+| **Jory** | A young fisher, stacking the Kindling pyre. Means to ask Nell to the festival, and talks about the weather instead. |
+| **Corin** | Keeps the market stall, and won't shut it for a bit of mist. |
+| **Hal** | The smith. Mostly mends anchors and hooks; sells the odd blade and vest. |
+| **Gwen** | Keeps the inn, the Gull's Rest. Teases Rowan about Tamsin's snoring. |
+| **Aled** | A pilgrim at the inn, who walked three weeks to give the Tide Beacon a precious memory, and can't say what it was. |
+| **Rhona** and **Pip** | A mother and her boy. Pip gives the Beacon the taste of honey cake, then can't think why he wants some. |
+| **Ewan** | An old sailor long ashore, who knows the caves under the lighthouse: they fill and drain with the tide. |
+| **Dai** | The village grump, who'd rather keep his memories, thanks. Gives the Beacon the taste of bad ale. |
+
+Rowan's gender isn't settled yet, so nobody uses a pronoun for Rowan; nor for Bram, whose isn't written down either.
+
 ## Memory Shards (side content)
 
 Memory Shards, fragments of things the Beacons burned, are scattered through the world. Returning one to the right person restores a forgotten memory (a short story vignette) and gives a reward. v1 has 5–8 shard quests, and each restored memory adds a line to the epilogue.

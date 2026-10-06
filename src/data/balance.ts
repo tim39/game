@@ -90,7 +90,7 @@ export const REST_FADE_MS = 500;
 export const AREA_BANNER_MS = { fadeIn: 300, hold: 2000, fadeOut: 500 } as const;
 
 /** What a night at each inn costs (see Items and economy in docs/DESIGN.md). */
-export const INN_PRICES = { test: 20 } as const;
+export const INN_PRICES = { saltmere: 10, test: 20 } as const;
 
 /**
  * How long the battle screen takes over what it shows, in milliseconds: a party member stepping
@@ -175,8 +175,9 @@ export const AREAS: Readonly<Record<string, AreaBalance>> = {
     boss: ['drowned-warden'],
     // On arrival, in the gear they started in, with a couple of Potions.
     arrival: { level: 1, items: { potion: 2 } },
-    // At the Warden, Rowan has the Iron Sword from one of the caves' chests.
-    atBoss: { level: 5, gear: { rowan: ['iron-sword'] }, items: { potion: 4 } },
+    // At the Warden, Rowan has the Iron Sword from one of the caves' chests, and the Leather Vest
+    // from Hal's forge in Saltmere, bought with what the caves paid.
+    atBoss: { level: 5, gear: { rowan: ['iron-sword', 'leather-vest'] }, items: { potion: 4 } },
   },
 };
 

@@ -60,6 +60,7 @@ export interface CompiledMap {
   /** Where walking off each edge leads, if anywhere. */
   readonly edges: Readonly<Partial<Record<Side, WarpTarget>>>;
   readonly spawns: Readonly<Record<string, Spawn>>;
+  /** Everyone the map places, whether or not they're about (see `npcsAbout`). */
   readonly npcs: readonly NpcPlacement[];
   /** The event script that facing each cell and pressing Confirm runs, if any. */
   readonly scripts: readonly (string | null)[];
@@ -118,6 +119,10 @@ export function touchAt(
 /** What arriving on the map sets off: the first enter trigger whose condition holds. */
 export const enterTrigger = (map: CompiledMap, state: GameState): Trigger | null =>
   map.enters.find((enter) => conditionHolds(enter.when, state)) ?? null;
+
+/** The people on the map as the player arrives on it: everyone whose condition holds. */
+export const npcsAbout = (map: CompiledMap, state: GameState): NpcPlacement[] =>
+  map.npcs.filter((npc) => conditionHolds(npc.when, state));
 
 /**
  * The auto trigger to run now: the first whose condition holds, of those that haven't run since
@@ -367,6 +372,9 @@ export function compileMap(def: MapDef, content: MapContent): CompiledMap {
         if (npcs.some((npc) => npc.id === object.id)) fail(`two npcs are called ${object.id}`);
         if (!Number.isInteger(wander) || wander < 0)
           fail(`npc ${object.id} can't wander ${wander}`);
+        for (const term of object.when === undefined ? [] : badConditionTerms(object.when)) {
+          fail(`npc ${object.id} has "${term}" in its condition, which isn't a flag`);
+        }
         npcs.push({
           id: object.id,
           sprite: object.sprite,
@@ -375,6 +383,7 @@ export function compileMap(def: MapDef, content: MapContent): CompiledMap {
           facing: object.facing,
           wander,
           ...(object.script ? { script: object.script } : {}),
+          ...(object.when === undefined ? {} : { when: object.when }),
         });
         break;
       }

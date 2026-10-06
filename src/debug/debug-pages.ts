@@ -9,8 +9,10 @@ import {
   addGold,
   addItem,
   equip,
+  hasFlag,
   itemCount,
   restoreParty,
+  setFlag,
   setLevel,
   unequip,
   type CharacterId,
@@ -18,6 +20,7 @@ import {
   type ItemId,
 } from '../core/state';
 import { STATS } from '../core/stats';
+import type { StoryPoint } from '../data/story';
 import type { DebugSwitches } from '../systems/debug-switches';
 import type { SaveSlot } from '../systems/saves';
 import type { DebugItem, DebugPage } from './debug-menu';
@@ -48,6 +51,13 @@ export interface DebugMenuContext {
   recruits(): readonly { readonly id: string; readonly name: string; readonly joined: boolean }[];
   /** Has someone join the party, at level 1 in the gear they start with. */
   join(id: string): void;
+  /** The main story's points, in order (src/data/story.ts), which the Story page jumps between. */
+  readonly story: readonly StoryPoint[];
+  /**
+   * Starts the field over where the player stands, if the menu is over it, so who's about is as the
+   * story now has them.
+   */
+  restartField(): void;
   readonly saves: DebugSaves;
   /** Says something at the bottom of the menu: how an export or an import went. */
   notify(notice: string): void;
@@ -78,8 +88,8 @@ export const DEBUG_GOLD = 1000;
 export const DEBUG_BATTLE_SPEEDS = [1, 2, 3, 4] as const;
 
 /**
- * The debug menu's first page: warping, battles, the party, the switches, the battle speed and
- * encounter rate, and exporting and importing saves.
+ * The debug menu's first page: warping, battles, the party, the story, the switches, the battle
+ * speed and encounter rate, and exporting and importing saves.
  */
 export function debugRootPage(context: DebugMenuContext): DebugPage {
   const { switches, settings } = context;
@@ -96,6 +106,11 @@ export function debugRootPage(context: DebugMenuContext): DebugPage {
       { label: 'Warp to a map', choose: () => warpPage(context) },
       { label: 'Start a battle', choose: () => battlePage(context) },
       { label: 'Party', choose: () => partyPage(context) },
+      {
+        label: 'Story',
+        detail: storyPointName(context.story, storyReached(context.game.get(), context.story)),
+        choose: () => storyPage(context),
+      },
       toggle('Noclip', 'noclip'),
       toggle('Show collision', 'showCollision'),
       {
@@ -457,6 +472,45 @@ function joinPage(context: DebugMenuContext): DebugPage {
         detail: joined ? 'in the party' : id,
         choose: joined ? undefined : () => context.join(id),
       })),
+  };
+}
+
+/** How far the story has got: the latest of its points whose flag is set, or -1 before the first. */
+export function storyReached(state: GameState, story: readonly StoryPoint[]): number {
+  return story.reduce((reached, { flag }, index) => (hasFlag(state, flag) ? index : reached), -1);
+}
+
+/**
+ * The game with the story at one of its points, as if it had got there: that point's flag and those
+ * before it set, and those after it clear. Point -1 is the start, before any of them.
+ */
+export function storyAt(state: GameState, story: readonly StoryPoint[], point: number): GameState {
+  return story.reduce((next, { flag }, index) => setFlag(next, flag, index <= point), state);
+}
+
+const storyPointName = (story: readonly StoryPoint[], point: number): string =>
+  story[point]?.name ?? 'The start';
+
+/**
+ * The story: the start, then each of its points, which choosing jumps to. The field then starts
+ * over where the player stands, so whoever's about is as the story has them.
+ */
+function storyPage(context: DebugMenuContext): DebugPage {
+  const { game, story } = context;
+  return {
+    title: 'Story',
+    items: () => {
+      const reached = storyReached(game.get(), story);
+      return [-1, ...story.keys()].map((point) => ({
+        label: storyPointName(story, point),
+        detail: point === reached ? 'now' : (story[point]?.flag ?? 'no story flags'),
+        choose: () => {
+          game.set(storyAt(game.get(), story, point));
+          context.notify(`The story is at ${storyPointName(story, point)}.`);
+          context.restartField();
+        },
+      }));
+    },
   };
 }
 

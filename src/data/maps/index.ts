@@ -3,8 +3,12 @@ import type { MapDef } from '../../core/map/types';
 import northRoad from './north-road';
 import saltmere from './saltmere';
 import saltmereCottage from './saltmere-cottage';
+import saltmereEwan from './saltmere-ewan';
+import saltmereForge from './saltmere-forge';
+import saltmereInn from './saltmere-inn';
 import saltmereLighthouse from './saltmere-lighthouse';
 import saltmereLighthouseTop from './saltmere-lighthouse-top';
+import saltmereRhona from './saltmere-rhona';
 import saltmereTamsin from './saltmere-tamsin';
 import testCellar from './test-cellar';
 import testHouse from './test-house';
@@ -20,6 +24,10 @@ export const MAPS: Readonly<Record<string, MapDef>> = recordById(
     saltmere,
     saltmereTamsin,
     saltmereCottage,
+    saltmereForge,
+    saltmereInn,
+    saltmereRhona,
+    saltmereEwan,
     saltmereLighthouse,
     saltmereLighthouseTop,
     northRoad,

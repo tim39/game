@@ -20,6 +20,17 @@ By **Pixel-boy** and **AAA**: https://pixel-boy.itch.io/ninja-adventure-asset-pa
 | `public/assets/portraits/old-woman.png` | Tamsin's portrait | `Actor/Character/OldWoman/Faceset.png` | None |
 | `public/assets/portraits/hunter.png` | Rowan's portrait (a placeholder look) | `Actor/Character/Hunter/Faceset.png` | None |
 | `public/assets/portraits/knight.png` | Bram's portrait | `Actor/Character/Knight/Faceset.png` | None |
+| `public/assets/portraits/old-man-3.png` | Hob's portrait | `Actor/Character/OldMan3/Faceset.png` | None |
+| `public/assets/portraits/woman.png` | Nell's portrait | `Actor/Character/Woman/Faceset.png` | None |
+| `public/assets/portraits/villager-3.png` | Corin's portrait | `Actor/Character/Villager3/Faceset.png` | None |
+| `public/assets/portraits/child.png` | Pip's portrait | `Actor/Character/Child/Faceset.png` | None |
+| `public/assets/portraits/villager-4.png` | Gwen's portrait | `Actor/Character/Villager4/Faceset.png` | None |
+| `public/assets/portraits/monk.png` | Aled's portrait | `Actor/Character/Monk/Faceset.png` | None |
+| `public/assets/portraits/monk-2.png` | Hal's portrait | `Actor/Character/Monk2/Faceset.png` | None |
+| `public/assets/portraits/old-man-2.png` | Ewan's portrait | `Actor/Character/OldMan2/Faceset.png` | None |
+| `public/assets/portraits/princess.png` | Rhona's portrait | `Actor/Character/Princess/Faceset.png` | None |
+| `public/assets/portraits/villager-5.png` | Jory's portrait | `Actor/Character/Villager5/Faceset.png` | None |
+| `public/assets/portraits/villager-2.png` | Dai's portrait | `Actor/Character/Villager2/Faceset.png` | None |
 | `public/assets/sprites/hunter.png` | Rowan (a placeholder look) | `Actor/Character/Hunter/SpriteSheet.png` | None |
 | `public/assets/sprites/knight.png` | Bram | `Actor/Character/Knight/SpriteSheet.png` | None |
 | `public/assets/sprites/old-woman.png` | Tamsin | `Actor/Character/OldWoman/SpriteSheet.png` | None |
@@ -31,6 +42,10 @@ By **Pixel-boy** and **AAA**: https://pixel-boy.itch.io/ninja-adventure-asset-pa
 | `public/assets/sprites/woman.png` | Villagers | `Actor/Character/Woman/SpriteSheet.png` | None |
 | `public/assets/sprites/old-man.png` | Villagers | `Actor/Character/OldMan/SpriteSheet.png` | None |
 | `public/assets/sprites/old-man-3.png` | Villagers | `Actor/Character/OldMan3/SpriteSheet.png` | None |
+| `public/assets/sprites/old-man-2.png` | Villagers | `Actor/Character/OldMan2/SpriteSheet.png` | None |
+| `public/assets/sprites/monk.png` | Villagers | `Actor/Character/Monk/SpriteSheet.png` | None |
+| `public/assets/sprites/monk-2.png` | Villagers | `Actor/Character/Monk2/SpriteSheet.png` | None |
+| `public/assets/sprites/princess.png` | Villagers | `Actor/Character/Princess/SpriteSheet.png` | None |
 | `public/assets/sprites/child.png` | Villagers | `Actor/Character/Child/SpriteSheet.png` | None |
 | `public/assets/sprites/shadow.png` | Shadow under characters | `Actor/Character/Shadow.png` | None |
 | `public/assets/sprites/treasure-chest.png` | Treasure chests, shut and open | `Items/Treasure/BigTreasureChest.png` | None |

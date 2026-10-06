@@ -113,6 +113,11 @@ export interface NpcObject {
   readonly wander?: number;
   /** The event script that runs when the player talks to it. */
   readonly script?: string;
+  /**
+   * Only there while `when` holds, as the player arrives on the map: people come and go with the
+   * story. Without it, always there.
+   */
+  readonly when?: Condition;
 }
 
 /**

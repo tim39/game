@@ -200,12 +200,12 @@ test('a step into something fails the script, and the game carries on', async ({
   await page.waitForFunction(() => window.__game?.inspect('field')?.y === 5);
 });
 
-test('Saltmere: once Tamsin has put you on lamp duty, the kid knows', async ({ page }) => {
+test('Saltmere: once Tamsin has put you on lamp duty, Pip knows', async ({ page }) => {
   await toTitle(page);
   await page.evaluate(() => window.__game?.setFlag('story.lamp-duty'));
-  // The kid wanders the square, so the test runs the kid's script rather than chasing them.
+  // Pip wanders the square, so the test runs Pip's script rather than chasing him.
   await warp(page, 'saltmere', 20, 17, 'up');
-  await page.evaluate(() => window.__game?.run('saltmere/kid'));
+  await page.evaluate(() => window.__game?.run('saltmere/pip'));
   await untilSaid(
     page,
     "Tamsin's got you on lamp duty? Do the ones round the pyre first. They're the prettiest!",

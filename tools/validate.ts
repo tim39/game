@@ -14,6 +14,7 @@ import { NEW_GAME } from '../src/data/new-game';
 import { SHOPS } from '../src/data/shops';
 import { SKILLS } from '../src/data/skills';
 import { SPEAKERS } from '../src/data/speakers';
+import { STORY } from '../src/data/story';
 import { MAP_CONTENT, PREFABS, TERRAINS } from '../src/data/terrain';
 import { CHEST_TEXT } from '../src/data/ui-text';
 import { ASSETS } from '../src/systems/asset-manifest';
@@ -29,6 +30,7 @@ import {
   checkMapEncounters,
   checkNewGame,
   checkShops,
+  checkStory,
 } from './content-checks';
 import { checkEvents } from './event-checks';
 import { measureBodyFont, measureDisplayFont } from './font-metrics';
@@ -92,6 +94,7 @@ const events = await checkEvents({
   manifest: ASSETS,
   font,
   chestText: CHEST_TEXT,
+  story: STORY,
 });
 const problems = [
   ...assetProblems,
@@ -129,6 +132,7 @@ const problems = [
   ...checkEncounters({ encounters: ENCOUNTERS, enemies: ENEMIES }),
   ...checkMapEncounters({ maps: MAPS, encounters: ENCOUNTERS, backdrops: BACKDROPS }),
   ...checkShops({ shops: SHOPS, items: ITEMS }),
+  ...checkStory({ story: STORY, maps: MAPS, characters: CHARACTERS }),
   ...checkAreas({
     areas: AREAS,
     characters: CHARACTERS,
@@ -197,6 +201,10 @@ console.log(
     'exist, at levels there are.',
 );
 console.log("Shops: everything they sell exists, and isn't a key item.");
+console.log(
+  `Story: ${some(STORY.length, 'point')}, each with a story flag of its own; and every story ` +
+    'flag a map, a script or a character names is one of them.',
+);
 console.log(
   'Enemies: each has a sprite to fight as, every skill they use exists, only actions aimed at ' +
     'one fighter pick a target, every item they drop exists, and ' +

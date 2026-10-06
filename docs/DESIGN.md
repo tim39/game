@@ -39,8 +39,8 @@ Town (story, shops, inn) → overworld → dungeon (explore, fight, treasure, a 
 
 - **Grid movement** in 4 directions on 16×16 tiles, with smooth steps between tiles: about 4 tiles a second walking. Hold Run to go twice as fast; an *Always run* option flips this. A step always finishes, and taps during a step aren't lost. The camera follows the player and stops at the map's edges; a map smaller than the screen sits in the middle of it.
 - **Trees, water and walls block the way**, but you can walk behind treetops and the tops of roofs, which are drawn over you.
-- **People** stand still or wander a little way from home, and block the way too. Walk into one and they turn to look at you.
-- **Interact** by facing something and pressing Confirm: NPCs, signs, chests, doors, switches. People turn to face you when you talk to them, and everyone waits while the conversation lasts, so nobody wanders off mid-sentence. Some events fire when you step on a tile (your walk stops there), when you arrive on a map, or as soon as something has happened; cutscenes can walk people about, fade to black and take you somewhere else.
+- **People** stand still or wander a little way from home, and block the way too. Walk into one and they turn to look at you. They have something new to say at each turn of the story, and some come and go with it: once the Beacon is out, Saltmere's fisher and its kid are indoors. Who's about changes as you arrive somewhere, never in front of you.
+- **Interact** by facing something and pressing Confirm: NPCs, signs, chests, doors, switches. Shopkeepers and innkeepers can be talked to across their counters. People turn to face you when you talk to them, and everyone waits while the conversation lasts, so nobody wanders off mid-sentence. Some events fire when you step on a tile (your walk stops there), when you arrive on a map, or as soon as something has happened; cutscenes can walk people about, fade to black and take you somewhere else.
 - **Map kinds:** town, interior, dungeon floor, overworld. Doors, stairs and paths off a map's edge lead to other maps; transitions fade through black (about 250 ms each way), and you arrive at a fixed spot just inside, facing into the new place.
 - **Chests** hold an item or some gold. Face one from any side and press Confirm: it opens, and a line says what was inside ("Found Potion!"). It stays open for good (each has a flag), and after that it only says it's empty. Chests block the way, like furniture. **Signs** are read the same way, and say what they say in the plain box, with no name.
 - **HP and MP carry over between battles.** **Light Shrines** at each dungeon's entrance and before each boss fully heal the party, so a dungeon is about managing resources between shrines: Confirm at one heals everyone, KO'd or not, at once and for nothing. Inns heal the party too, for a price, and so does Rowan's bed at Tamsin's house, for nothing. A night's rest fades to black, plays the morning jingle and fades back in.
@@ -244,7 +244,8 @@ The simulator's party plays as a sensible but unadventurous player would. It get
 - **Key items:** story items and Memory Shards.
 - **Gold** comes from battles and chests. Items sell for half their price, rounded down. Shops buy back anything but key items, though not gear someone is wearing, and sell no more of a thing than makes 99.
 - **Shops** in each new town sell gear about one tier above the last. Outfitting the whole party in a new tier should cost roughly what the previous dungeon paid out at Normal encounter rate. Chests sometimes hold gear a tier ahead.
-- **Inns** cost 10–80 gold depending on the town.
+- **Inns** cost 10–80 gold depending on the town: Saltmere's, the Gull's Rest, is 10.
+- **Saltmere**, where the game starts, has Corin's stall (Potions, cures, Smoke Pellets, and Fire, Wind and Earth Bombs, for the wolves on the road and what lives in the Tide Caves) and Hal's forge (the gear the party starts in, and a Leather Vest, the one step up). Its chests hold some gold, a Fire Bomb, an Ether and an Ember Feather.
 
 ## Screens
 

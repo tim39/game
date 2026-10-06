@@ -236,6 +236,15 @@ export function installDebugMenu(
       paused = [];
       context.battle(chosen);
     });
+  // So does starting the field over, which only happens with the field under the menu, running or
+  // paused (by the main menu, say), and not asleep under a battle.
+  const restartField = (): void => {
+    if (!game.scene.isActive('field') && !game.scene.isPaused('field')) return;
+    nextFrame(() => {
+      paused = [];
+      context.restartField();
+    });
+  };
   const open = (): void => {
     // There's nothing to draw with until the fonts have loaded.
     if (isOpen() || !game.cache.bitmapFont.exists(FONT.body)) return;
@@ -244,7 +253,7 @@ export function installDebugMenu(
     const notify = (notice: string): void =>
       (game.scene.getScene(DEBUG_MENU) as DebugMenuScene).notify(notice);
     game.scene.start(DEBUG_MENU, {
-      root: debugRootPage({ ...context, warp, battle, notify }),
+      root: debugRootPage({ ...context, warp, battle, restartField, notify }),
       close: () => nextFrame(close),
     } satisfies DebugMenuStart);
   };

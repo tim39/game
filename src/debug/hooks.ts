@@ -9,6 +9,7 @@ import { DB } from '../data/db';
 import { ENCOUNTERS } from '../data/encounters';
 import { ENEMIES } from '../data/enemies';
 import { MAPS } from '../data/maps';
+import { STORY } from '../data/story';
 import { BATTLE_SCENE, type BattleStart } from '../scenes/battle';
 import type { FieldScene, FieldStart } from '../scenes/field';
 import { ASSETS } from '../systems/asset-manifest';
@@ -101,6 +102,8 @@ export function installDebugHooks(game: Phaser.Game): void {
     join: (id) => {
       session.state = recruit(session.state, id, DB);
     },
+    story: STORY,
+    restartField: () => startScene('field', session.state.location satisfies FieldStart),
     saves: debugSaves(saveSlots),
   });
 
