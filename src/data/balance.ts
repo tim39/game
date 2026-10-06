@@ -102,8 +102,14 @@ export const BATTLE_PACING = {
 /** Music crossfades this long: the new track fades in as the old one fades out. */
 export const MUSIC_FADE_MS = 1000;
 
-/** Once a battle is won, its music fades out this fast, as the victory jingle plays. */
-export const VICTORY_FADE_MS = 250;
+/** Once a battle is won or lost, its music fades out this fast, as the jingle plays. */
+export const JINGLE_FADE_MS = 250;
+
+/**
+ * The Game Over screen fades in from black this slowly, and takes no choice until it has, so a
+ * press meant for the battle's last words can't pick one.
+ */
+export const GAME_OVER_FADE_MS = 1000;
 
 /**
  * A sound effect asked for again within this long of the last time plays only once, so a cursor

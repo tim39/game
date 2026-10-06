@@ -53,7 +53,7 @@ Town (story, shops, inn) → overworld → dungeon (explore, fight, treasure, a 
 - Random encounters happen on dungeon floors and dangerous overworld terrain. Steps until the next one: random 24–40, scaled by the **Encounter rate** option: Off, Low (half as often), Normal, High (twice as often). Off is a legitimate way to play for the story. The count carries on across maps and battles (changing the rate keeps the steps already taken), and starts afresh after each battle; it isn't saved, so loading a game starts it afresh too. Stepping onto a way out or a cell that runs a script doesn't count.
 - Each area has an encounter table of weighted enemy groups, and a backdrop its battles are fought in front of. Bosses and mini-bosses are visible, fixed encounters. So far there's the North Road out of Saltmere, where wolves prowl: one at a time twice as often as a pair.
 - 8% chance of a **preemptive strike** (the party acts first) and 4% of an **ambush** (enemies act first); the battle says which as it starts.
-- **Going into battle:** the walk stops on the step that brings it, the battle music starts, the screen flashes and breaks up into black, and the battle fades in. Afterwards the field fades back in where the player stood, and its music carries on from where it was. Until the Game Over screen exists, a lost battle goes back to the title screen.
+- **Going into battle:** the walk stops on the step that brings it, the battle music starts, the screen flashes and breaks up into black, and the battle fades in. Won or fled, the field then fades back in where the player stood, and its music carries on from where it was. Lost, it's the Game Over screen (see [Winning and losing](#winning-and-losing)), and the field waits, its music paused, until the battle is fought again and won or fled.
 - **Flee** is a command on any party member's turn. Chance = 50% + 2% × (average party SPD − average enemy SPD), clamped to 20–95%, counting only those still standing. A failed attempt uses up the turn, as a Normal action. You can't flee from bosses.
 
 ## Battle system
@@ -182,7 +182,9 @@ Enemies choose from a data-defined, weighted list of actions (Attack, Guard or a
   - The battle music fades out for the victory jingle, and the **victory panel** takes the place of the command window and the party's status, a page at a time: the EXP, gold and items won ("Gained 12 EXP.", "Found 10 gold.", "Found Potion x2 and Eye Drops."), then a page for each member who levelled up, with the level jingle: the level they reached, what it raised each stat by, and any skills they learned. Confirm turns the pages.
   - Everyone keeps the HP and MP the battle left them, and what's been used is gone. A level-up raises the most HP and MP someone can have, not what they have, unless they were full.
 - **Fleeing** keeps what the battle did (HP and MP lost, items used, weaknesses learned), but gives nothing, and anyone KO'd stays down until revived or rested. They come into the next battle down, off the timeline.
-- **Defeat:** the Game Over screen offers **Retry battle** (restart the fight from its first turn), **Load save** or **Title**.
+- **Defeat:** the banner says the party has fallen, the battle's music fades out for the Game Over jingle, and after Confirm the Game Over screen offers **Retry battle**, **Load save** or **Title**, the cursor on Retry battle.
+  - **Retry battle** starts the fight again from its first turn, just as it began: the same enemies, who gets the jump, the same luck (so the same first turns), and the party as it went in. A battle lost changes nothing, so the HP, MP and items it used up are all back, and what it showed of the enemies' weaknesses is forgotten again. Won or fled, the game carries on as after any battle; lost, it's the Game Over screen again.
+  - **Load save** opens the save menu, as Continue does on the title screen, and can be chosen once there's a save; Cancel goes back to the Game Over screen. **Title** goes back to the title screen.
 
 ## Characters and progression
 
@@ -256,7 +258,7 @@ The simulator's party plays as a sensible but unadventurous player would. It get
 - **Inn:** "Rest for N gold?" → fade out, heal, morning jingle.
 - **Battle:** as shown above: the party's HP with a gauge, the MP they have left and up to two status tags; the command window only on a party member's turn, as they step forward. Skill and Item open their lists in the status panel's place. A banner under the timeline says what the skill or item under the cursor does, whom an action is aimed at (a ▼ marks them too), and what's being done. Numbers and words rise over whoever's hit (Miss, Critical!, Weak, Stagger!, a status's name), and a ! hangs over an enemy that has telegraphed. Winning or losing says so and waits for Confirm; winning brings up the victory panel (see [Winning and losing](#winning-and-losing)).
 - **Battle timeline:** along the top of the battle screen, whose turn it is, then a ▸ and the next 10 turns, each a little picture of the fighter in a frame, blue for the party and red for enemies (enemies of a kind are lettered, as in Wolf A and Wolf B). Turns the preview changes light up in gold, and a ! marks the turn a telegraphed attack comes on. Turns slide along to their new places as the order changes, and the timeline clears once the battle is over.
-- **Game Over:** Retry battle, Load save, Title.
+- **Game Over:** "Game Over" in the Gloam's violet-grey over Retry battle, Load save and Title, laid out like the title screen. It fades in from the battle's black, and takes no choice until it has, so a press meant for the battle's last words can't pick one. Load save is greyed out until there's a save. Retry battle and Title fade it back out.
 - **Options:** text speed, battle speed (1×, 2×, 3×), encounter rate, always run, music and sound volume, screen shake on/off, reduce flashing.
 
 ## Controls
@@ -278,7 +280,7 @@ The on-screen controls appear only on touch devices: phones and tablets from the
 - **Battles** reuse the field sprites at 2× scale, animated with tweens (step forward, lunge, flash, shake, KO fade), so no separate battle art is needed. Spells use particles and the pack's effects, colored by element. Bosses are drawn larger.
 - **Portraits** (the pack's facesets) appear in dialogue and battle status.
 - **Mood:** warm gold for Beacon light and towns; desaturated violet-grey for the Gloam. Act 3 reuses existing maps with a Gloam tint and a fog overlay.
-- **Music:** title, town, overworld, two dungeon themes, battle, boss, final boss, victory fanfare, a sorrow theme and the ending. Each map has its own music, and field music crossfades between maps (about a second); a town's houses share its music, which plays on as you go in and out. Cutscenes can change the music until you next arrive somewhere. Battle music interrupts it, and the field track resumes where it left off. A battle won fades its music out for the victory jingle. Browsers stay silent until the first key press or touch, so the title music starts then.
+- **Music:** title, town, overworld, two dungeon themes, battle, boss, final boss, victory fanfare, a sorrow theme and the ending. Each map has its own music, and field music crossfades between maps (about a second); a town's houses share its music, which plays on as you go in and out. Cutscenes can change the music until you next arrive somewhere. Battle music interrupts it, and the field track resumes where it left off. A battle won fades its music out for the victory jingle, and one lost for the Game Over jingle; the field's music stays paused through the Game Over screen and a retry, until the battle is won or fled, and gives way to the title's or the save's if the player leaves. Browsers stay silent until the first key press or touch, so the title music starts then.
 - **Sound effects:** cursor, confirm, cancel, buzzer, hits for each element, critical hit, heal, status, KO, level up, chest, door. They play over the music; the same sound asked for twice at once plays once.
 
 ### Draft soundtrack
@@ -306,6 +308,7 @@ Picked from the pack's 41 tracks by title only. Listen and swap freely.
 | Ending | 8 - End Theme |
 | Credits | 15 - Credit Theme |
 | Victory, level up | Jingles: Success3 (picked from its spectrogram, unheard: notes rising to a held one; Success1 is three short beeps), LevelUp1 |
+| Game Over | Jingles: GameOver3 (picked from its spectrogram, unheard: three falling chords, then a long low one; GameOver4 slides down a semitone at a time, which can sound comic) |
 | Opening a chest | Jingles: Secret2 (picked from its spectrogram, unheard) |
 
 ## Accessibility

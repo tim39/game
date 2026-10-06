@@ -56,7 +56,7 @@ import { DEPTH, TILE, createTilemap } from '../systems/tilemap';
 import { playBattleTransition } from '../ui/battle-transition';
 import type { DialogueLine } from '../ui/dialogue-box';
 import { MAX_CHOICES } from '../ui/dialogue-layout';
-import { BATTLE_MUSIC, BATTLE_SCENE, type BattleResult, type BattleStart } from './battle';
+import { BATTLE_MUSIC, BATTLE_SCENE, type BattleStart } from './battle';
 import type { DialogueRequest } from './dialogue';
 import { SAVE_MENU_SCENE, type SaveMenuStart } from './save-menu';
 
@@ -438,7 +438,8 @@ export class FieldScene extends Phaser.Scene {
   /**
    * A random battle from the map's encounter table, with a fresh countdown to the next: the battle
    * music starts, the screen breaks up into black, and the battle starts over the field, which
-   * sleeps until it's over.
+   * sleeps until it's won or fled. Lost, the Game Over screen takes over from the battle, and the
+   * field sleeps on through any retry, until it's won or fled, or the screen leaves it for good.
    */
   private encounter(map: CompiledMap): void {
     const area = map.encounters;
@@ -465,21 +466,14 @@ export class FieldScene extends Phaser.Scene {
         setup,
         backdrop: area.backdrop,
         seed,
-        onEnd: (result) => this.afterBattle(result),
+        onEnd: () => this.afterBattle(),
       } satisfies BattleStart);
       this.scene.sleep();
     });
   }
 
-  /**
-   * Once a battle is over, the field wakes and fades back in where it was. Lost, it's back to the
-   * title screen, until the Game Over screen (M4).
-   */
-  private afterBattle(result: BattleResult): void {
-    if (result === 'defeat') {
-      this.scene.start('title');
-      return;
-    }
+  /** Once a battle is won or fled, the field wakes and fades back in where it was. */
+  private afterBattle(): void {
     this.events.once(Phaser.Scenes.Events.WAKE, () => {
       this.curtain?.destroy();
       this.curtain = undefined;

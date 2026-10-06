@@ -157,6 +157,7 @@ export const ASSETS = {
   'sfx.chest': sound('sfx/secret-2'),
   'sfx.victory': sound('sfx/success-3'),
   'sfx.level-up': sound('sfx/level-up-1'),
+  'sfx.game-over': sound('sfx/game-over-3'),
 } as const satisfies Record<string, AssetEntry>;
 
 export type AssetKey = keyof typeof ASSETS;

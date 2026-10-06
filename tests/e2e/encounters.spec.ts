@@ -207,18 +207,29 @@ test('a preemptive strike and an ambush each say so as the battle starts', async
   expect(errors).toEqual([]);
 });
 
-test('a random battle lost goes back to the title screen, until there’s a Game Over', async ({
+test('a random battle lost ends in the Game Over screen, and Title goes back to the title', async ({
   page,
 }) => {
   const errors = watchErrors(page);
-  // Rowan alone, guarding every turn, against the pair of wolves this seed brings.
+  // Rowan alone, worn down and guarding every turn, against the pair of wolves this seed brings.
   await startOn(page, ['north-road', 11, 15, 'up'], true);
-  await page.evaluate(() => window.__game?.encounters({ seed: 1, countdown: 1, rate: 'normal' }));
+  await page.evaluate(() => {
+    window.__game?.vitals('rowan', { hp: 10 });
+    window.__game?.encounters({ seed: 1, countdown: 1, rate: 'normal' });
+  });
   await step(page, 'ArrowUp');
   const lost = await fightUntilOver(page, 'ArrowUp');
   expect(lost).toMatchObject({ outcome: 'defeat', banner: 'The party has fallen...' });
   await page.keyboard.press('KeyZ');
+  await page.waitForFunction(() => window.__game?.inspect('game-over')?.ready === true);
+  // The field sleeps on under the Game Over screen, its music paused, until it's left for good.
+  expect(await audio(page)).toMatchObject({ music: null, paused: ['bgm.saltmere'] });
+  // Title is the last choice, round from the first.
+  await page.keyboard.press('ArrowUp');
+  await nextFrames(page);
+  expect(await page.evaluate(() => window.__game?.inspect('game-over')?.selected)).toBe('Title');
+  await page.keyboard.press('KeyZ');
   await page.waitForFunction(() => window.__game?.activeScenes().join() === 'title');
-  expect((await audio(page))?.music).toBe('bgm.title');
+  expect(await audio(page)).toMatchObject({ music: 'bgm.title', paused: [] });
   expect(errors).toEqual([]);
 });

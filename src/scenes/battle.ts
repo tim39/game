@@ -18,7 +18,7 @@ import { compileBackdrop } from '../core/map/backdrop';
 import { Rng } from '../core/rng';
 import { addPlayTime } from '../core/state';
 import { BACKDROPS } from '../data/backdrops';
-import { BATTLE_PACING, BATTLE_TUNING, EXP_CURVE, VICTORY_FADE_MS } from '../data/balance';
+import { BATTLE_PACING, BATTLE_TUNING, EXP_CURVE, JINGLE_FADE_MS } from '../data/balance';
 import { DB } from '../data/db';
 import { MAP_CONTENT } from '../data/terrain';
 import { BATTLE_TEXT } from '../data/ui-text';
@@ -66,6 +66,7 @@ import { applyEvent, fighterView, viewOf, type BattleView } from '../ui/battle-v
 import { FONT, textMeasurer } from '../ui/fonts';
 import { TimelineStrip, type TimelineFigure } from '../ui/timeline-strip';
 import { victoryPages, type VictoryPage } from '../ui/victory-pages';
+import { GAME_OVER_JINGLE, GAME_OVER_SCENE, type GameOverStart } from './game-over';
 
 export const BATTLE_SCENE = 'battle';
 
@@ -84,12 +85,14 @@ export interface BattleStart {
   /** Where its luck comes from: the same seed, and the same choices, play the same battle. */
   readonly seed: number | string;
   /**
-   * Called once it has ended and the screen has faded out, after the scene has stopped, with how
-   * it ended and the battle as it was then: who's standing, with what HP and MP, and what's left of
-   * the party's items. By then, a battle won or fled has left its mark on the game state (see
-   * src/core/battle/aftermath.ts); one lost hasn't.
+   * Called once it has been won or fled and the screen has faded out, after the scene has stopped,
+   * with how it ended and the battle as it was then: who's standing, with what HP and MP, and
+   * what's left of the party's items. By then, the battle has left its mark on the game state (see
+   * src/core/battle/aftermath.ts). A battle lost goes to the Game Over screen instead, and leaves
+   * the game state as it was: fought again from there (Retry battle), this is called once that
+   * fight is won or fled; left for the title or a save, it never is.
    */
-  readonly onEnd: (result: BattleResult, battle: BattleState) => void;
+  readonly onEnd: (result: Exclude<BattleResult, 'defeat'>, battle: BattleState) => void;
 }
 
 type ActionEvent = Extract<BattleEvent, { type: 'action' }>;
@@ -211,6 +214,8 @@ export class BattleScene extends Phaser.Scene {
   private result: BattleResult | null = null;
   /** What the battle left behind, once it's over: none for a battle lost. */
   private aftermath: Aftermath | null = null;
+  /** Lost, and handed over to the Game Over screen, which keeps the music the battle paused. */
+  private gameOver = false;
   /** The words and numbers that have risen over fighters, the latest last, for the debug info. */
   private popped: string[] = [];
 
@@ -220,13 +225,15 @@ export class BattleScene extends Phaser.Scene {
 
   create(start: BattleStart): void {
     const run = ++this.run;
+    this.gameOver = false;
     // Stopped, it has nothing to show or report, and a battle left playing out stops where it is.
+    // The music it paused comes back, unless the Game Over screen takes over.
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.run++;
       this.menu = null;
       this.battle = undefined;
       this.anims.globalTimeScale = 1;
-      audio.resumeMusic();
+      if (!this.gameOver) audio.resumeMusic();
     });
     this.start = start;
     audio.interruptMusic(BATTLE_MUSIC);
@@ -386,7 +393,7 @@ export class BattleScene extends Phaser.Scene {
   /**
    * Says how the battle ended, and once the player has seen it, fades out and hands it back. Won
    * or fled, what the battle left goes into the game state first; won, the victory panel shows
-   * what the party gained, a page at a time.
+   * what the party gained, a page at a time. Lost, it goes to the Game Over screen instead.
    */
   private async finish(outcome: BattleResult, run: number): Promise<void> {
     const panels = this.panels;
@@ -401,7 +408,7 @@ export class BattleScene extends Phaser.Scene {
       case 'victory': {
         panels?.banner(BATTLE_TEXT.victory);
         for (const figure of this.standing('party')) this.cheer(figure);
-        audio.interruptMusic(null, VICTORY_FADE_MS);
+        audio.interruptMusic(null, JINGLE_FADE_MS);
         audio.playSound('sfx.victory');
         const pages = this.aftermath ? this.victoryPages(this.aftermath) : [];
         for (const page of pages) {
@@ -420,6 +427,9 @@ export class BattleScene extends Phaser.Scene {
       }
       case 'defeat':
         panels?.banner(BATTLE_TEXT.defeat);
+        // The battle's music fades out for the Game Over jingle, as a win's does for its own.
+        audio.interruptMusic(null, JINGLE_FADE_MS);
+        audio.playSound(GAME_OVER_JINGLE);
         await this.confirm();
         break;
       case 'fled':
@@ -428,14 +438,23 @@ export class BattleScene extends Phaser.Scene {
     }
     if (!this.live(run)) return;
     await this.fade('out');
-    if (!this.live(run)) return;
-    const { onEnd } = this.start ?? {};
+    const start = this.start;
+    if (!this.live(run) || !start) return;
     const battle = this.current();
+    this.gameOver = outcome === 'defeat';
     // Stopped at once: `this.scene.stop()` would wait for the next frame, and stop a battle started
     // straight after this one too (from the debug hooks, say).
     this.game.scene.stop(this.scene.key);
+    if (outcome === 'defeat') {
+      // Retry battle starts it over just as it began: the same enemies, backdrop and luck, and the
+      // party as it came in, as a battle lost leaves the game state alone.
+      this.game.scene.start(GAME_OVER_SCENE, {
+        retry: () => this.scene.restart(start),
+      } satisfies GameOverStart);
+      return;
+    }
     audio.resumeMusic();
-    onEnd?.(outcome, battle);
+    start.onEnd(outcome, battle);
   }
 
   /** The victory panel's pages for a battle won, wrapped to fit it. */

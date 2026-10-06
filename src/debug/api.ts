@@ -41,7 +41,8 @@ export interface DebugApi {
   audio(): AudioInfo;
   /**
    * Stops every running scene and starts a battle against `enemies`, left to right, with the party
-   * as the game has it. Once it's over, the field starts where the game says the player is.
+   * as the game has it. Once it's won or fled, the field starts where the game says the player is;
+   * lost, the Game Over screen comes up, as after any battle.
    */
   battle(enemies: readonly string[], options?: DebugBattleOptions): void;
   /** How fast battles play out: 1 is normal, 4 is the debug menu's fast. */

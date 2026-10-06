@@ -6,7 +6,7 @@ import { itemName } from './items';
 
 /** Player-facing text that isn't dialogue: prompts, hints and system messages. */
 export const UI_TEXT = {
-  /** Under the title screen's menu, for a keyboard and for the touch controls. */
+  /** Under the title screen's menu and the Game Over's, for a keyboard and for the touch controls. */
   chooseWithKeys: 'Z or Enter to choose',
   chooseWithTouch: 'A to choose',
   /** Covers the game on a phone held upright, where the game is too small to play. */
@@ -36,6 +36,12 @@ export const SAVE_MENU_TEXT = {
     keys: { save: 'Z: save   X: back', load: 'Z: load   X: back' },
     touch: { save: 'A: save   B: back', load: 'A: load   B: back' },
   },
+} as const;
+
+/** The Game Over screen, once a battle is lost: what it says, and what it offers. */
+export const GAME_OVER_TEXT = {
+  heading: 'Game Over',
+  choices: { retry: 'Retry battle', load: 'Load save', title: 'Title' },
 } as const;
 
 /** What opening a chest says, in the plain box signs use: what was inside, or that it's empty. */

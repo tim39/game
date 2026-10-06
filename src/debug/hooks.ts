@@ -45,7 +45,8 @@ export function installDebugHooks(game: Phaser.Game): void {
     game.scene.start(key, data);
   };
 
-  // A battle over nothing, which goes back to the field where the player is once it's over.
+  // A battle over nothing, which goes to the field where the player is once it's won or fled, and
+  // to the Game Over screen if it's lost.
   const battle: DebugApi['battle'] = (enemies, options: DebugBattleOptions = {}) => {
     const unknown = enemies.find((id) => !Object.hasOwn(ENEMIES, id));
     if (unknown !== undefined) throw new Error(`There's no enemy called ${unknown}`);

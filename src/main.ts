@@ -4,6 +4,7 @@ import { BootScene } from './scenes/boot';
 import { DialogueScene } from './scenes/dialogue';
 import { DialogueSampleScene } from './scenes/dialogue-sample';
 import { FieldScene } from './scenes/field';
+import { GameOverScene } from './scenes/game-over';
 import { PreloadScene } from './scenes/preload';
 import { SaveMenuScene } from './scenes/save-menu';
 import { TitleScene } from './scenes/title';
@@ -32,7 +33,7 @@ const game = new Phaser.Game({
     zoom: zoomForContainer(),
   },
   // Later scenes draw over earlier ones: a battle over the field, the dialogue box over either,
-  // and the save menu over the field or the title screen.
+  // and the save menu over the field, the title screen or the Game Over screen.
   scene: [
     BootScene,
     PreloadScene,
@@ -40,6 +41,7 @@ const game = new Phaser.Game({
     DialogueSampleScene,
     FieldScene,
     BattleScene,
+    GameOverScene,
     DialogueScene,
     SaveMenuScene,
   ],

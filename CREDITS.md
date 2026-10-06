@@ -72,4 +72,5 @@ By **Pixel-boy** and **AAA**: https://pixel-boy.itch.io/ninja-adventure-asset-pa
 | `public/assets/sfx/secret-2.ogg`, `public/assets/sfx/secret-2.m4a` | A chest opening | `Audio/Jingles/Secret2.wav` | Encoded as Ogg Vorbis (quality 4) and AAC (128 kbps) |
 | `public/assets/sfx/success-3.ogg`, `public/assets/sfx/success-3.m4a` | Winning a battle | `Audio/Jingles/Success3.wav` | Encoded as Ogg Vorbis (quality 4) and AAC (128 kbps) |
 | `public/assets/sfx/level-up-1.ogg`, `public/assets/sfx/level-up-1.m4a` | A level-up | `Audio/Jingles/LevelUp1.wav` | Encoded as Ogg Vorbis (quality 4) and AAC (128 kbps) |
+| `public/assets/sfx/game-over-3.ogg`, `public/assets/sfx/game-over-3.m4a` | Losing a battle | `Audio/Jingles/GameOver3.wav` | Encoded as Ogg Vorbis (quality 4) and AAC (128 kbps) |
 | `public/assets/tiles/lighthouse.png` | Saltmere's lighthouse | `Backgrounds/Tilesets/TilesetDesert.png`, the domed tower (columns 3–5, rows 0–4) | Cut out; the dome recoloured from greens to the pack's reds, and the two windows lit in its yellows |
