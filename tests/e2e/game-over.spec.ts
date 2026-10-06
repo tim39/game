@@ -206,11 +206,15 @@ test('Load save carries on from a save, and Cancel there goes back to the Game O
 }) => {
   const errors = watchErrors(page);
   await toTitle(page);
-  // Saved in Slot 1, by Tamsin's door.
+  // Saved in Slot 1, by Tamsin's door: Menu, then Save, at the bottom of the main menu.
   await warp(page, ['saltmere', 7, 6, 'down']);
   await press(page, 'KeyC');
+  await page.waitForFunction(() => window.__game?.activeScenes().join() === 'main-menu');
+  await press(page, 'ArrowUp', 'KeyZ');
   await page.waitForFunction(() => window.__game?.activeScenes().join() === 'save-menu');
   await press(page, 'KeyZ', 'KeyX');
+  await page.waitForFunction(() => window.__game?.activeScenes().join() === 'main-menu');
+  await press(page, 'KeyX');
   await arrivedOn(page, 'saltmere');
 
   // Then a fight with two Wolves and 1 HP, which doesn't go well.

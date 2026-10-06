@@ -1,3 +1,4 @@
+import { wrapText } from '../src/ui/text-wrap';
 import type { MeasuredFont } from './font-metrics';
 
 /** A collection of things with text the game shows: a name, and maybe a description. */
@@ -93,4 +94,62 @@ export function checkBattleText(
     ]),
   );
   return [...characters, ...listed];
+}
+
+/** How wide the main menu's text can be, in font pixels (MENU_LAYOUT.room), and its info lines. */
+export interface MenuTextRoom {
+  /** A party member's name, beside their portrait, before their level. */
+  readonly name: number;
+  /** An item's or skill's name, in its list, before its count or MP cost. */
+  readonly listLabel: number;
+  /** A line of the info panel, which a description wraps over. */
+  readonly info: number;
+  /** How many lines the info panel holds. */
+  readonly infoLines: number;
+}
+
+/**
+ * Checks that the main menu has room for the text it shows: each character's name in the party's
+ * rows, each item's and skill's name in its list and what it does in the info panel, wrapped over
+ * its lines, and each map's name there, as where the party is. Returns one line per problem.
+ */
+export function checkMenuText(
+  sources: Pick<TextSources, 'characters' | 'skills' | 'items'> & {
+    readonly maps: Readonly<Record<string, { readonly name: string }>>;
+  },
+  font: MeasuredFont,
+  room: MenuTextRoom,
+): string[] {
+  const fits = (owner: string, field: string, text: string, most: number, where: string) => {
+    const width = font.width(text);
+    if (width <= most) return [];
+    return [`${owner}: its ${field}, "${text}", is ${width} pixels wide; ${where} ${most}`];
+  };
+  const wraps = (owner: string, description: string) => {
+    const lines = wrapText(description, room.info, (text) => font.width(text)).length;
+    if (lines <= room.infoLines) return [];
+    return [
+      `${owner}: its description, "${description}", takes ${lines} lines of the main menu's ` +
+        `info panel, which holds ${room.infoLines}`,
+    ];
+  };
+  const characters = Object.entries(sources.characters).flatMap(([id, { name }]) =>
+    fits(`Character ${id}`, 'name', name, room.name, "the main menu's party rows have room for"),
+  );
+  const listed = (['skills', 'items'] as const).flatMap((kind) =>
+    Object.entries(sources[kind]).flatMap(([id, { name, description }]) => [
+      ...fits(
+        `${OWNERS[kind]} ${id}`,
+        'name',
+        name,
+        room.listLabel,
+        'main menu lists have room for',
+      ),
+      ...(description === undefined ? [] : wraps(`${OWNERS[kind]} ${id}`, description)),
+    ]),
+  );
+  const maps = Object.entries(sources.maps).flatMap(([id, { name }]) =>
+    fits(`Map ${id}`, 'name', name, room.info, "the main menu's info panel has room for"),
+  );
+  return [...characters, ...listed, ...maps];
 }

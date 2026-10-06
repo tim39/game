@@ -58,7 +58,7 @@ import type { DialogueLine } from '../ui/dialogue-box';
 import { MAX_CHOICES } from '../ui/dialogue-layout';
 import { BATTLE_MUSIC, BATTLE_SCENE, type BattleStart } from './battle';
 import type { DialogueRequest } from './dialogue';
-import { SAVE_MENU_SCENE, type SaveMenuStart } from './save-menu';
+import { MAIN_MENU_SCENE, type MainMenuStart } from './main-menu';
 
 /**
  * Where to put the player, `scene.start('field', start)`: a cell, or one of the map's spawns. With
@@ -149,7 +149,7 @@ export class FieldScene extends Phaser.Scene {
   private enterPending = false;
   /** A script brought the player to this map: the autosave waits for it to end. */
   private autosavePending = false;
-  /** Menu was pressed: the save menu opens once the player stands still. */
+  /** Menu was pressed: the main menu opens once the player stands still. */
   private menuPending = false;
   /** Auto scripts that have run since the player arrived. */
   private autosRun = new Set<Trigger>();
@@ -279,7 +279,7 @@ export class FieldScene extends Phaser.Scene {
       return;
     }
 
-    // Menu opens the save menu once the player stands still. Pressed mid-step, it lets the step
+    // Menu opens the main menu once the player stands still. Pressed mid-step, it lets the step
     // finish and then stops there, as if the direction had been let go.
     if (!this.leaving && input.pressed('menu')) this.menuPending = true;
     // While leaving, the step into the way out finishes, and nothing else happens.
@@ -350,10 +350,10 @@ export class FieldScene extends Phaser.Scene {
         this.run(auto.script);
       }
     }
-    // The save menu waits for the fade in too. A script or a way out it stopped on goes first.
+    // The menu waits for the fade in too. A script or a way out it stopped on goes first.
     if (this.menuPending && !this.walker.step && !this.cameras.main.fadeEffect.isRunning) {
       this.menuPending = false;
-      if (!this.script && !this.leaving) this.openSaveMenu();
+      if (!this.script && !this.leaving) this.openMainMenu();
     }
     this.drawFigures();
     this.updateCollisionView(map);
@@ -489,14 +489,13 @@ export class FieldScene extends Phaser.Scene {
     saveSlots.autosave(session.state, new Date());
   }
 
-  /** Opens the save menu over the field, which waits until it closes. */
-  private openSaveMenu(): void {
+  /** Opens the main menu over the field, which waits until it closes. */
+  private openMainMenu(): void {
     this.buffered = null;
     this.scene.pause();
-    this.scene.launch(SAVE_MENU_SCENE, {
-      mode: 'save',
+    this.scene.launch(MAIN_MENU_SCENE, {
       onClose: () => this.scene.resume(),
-    } satisfies SaveMenuStart);
+    } satisfies MainMenuStart);
   }
 
   /** Keeps the game state's location up to date with the player's, for saves to keep. */

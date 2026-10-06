@@ -14,7 +14,7 @@ export const UI_TEXT = {
 } as const;
 
 /**
- * The save menu: saving in a slot from the field, and loading one from the title screen's
+ * The save menu: saving in a slot from the main menu, and loading one from the title screen's
  * Continue. `slot` is `autosave` or a slot's number.
  */
 export const SAVE_MENU_TEXT = {
@@ -37,6 +37,45 @@ export const SAVE_MENU_TEXT = {
     touch: { save: 'A: save   B: back', load: 'A: load   B: back' },
   },
 } as const;
+
+/**
+ * The main menu, which Menu opens on the field: its commands, the party's summary, and what its
+ * pages say. Stats' short names are BATTLE_TEXT.stats.
+ */
+export const MENU_TEXT = {
+  commands: {
+    items: 'Items',
+    skills: 'Skills',
+    equip: 'Equip',
+    status: 'Status',
+    options: 'Options',
+    save: 'Save',
+  },
+  /** What each page asks for, at the bottom, while nothing else is said there. */
+  ask: {
+    whose: { skills: 'Whose skills?', equip: 'Who will change gear?', status: 'Whose status?' },
+    on: (name: string) => `${name}: on whom?`,
+    onAll: (name: string) => `${name}: on everyone it helps.`,
+  },
+  slots: { weapon: 'Weapon', armor: 'Armor', accessory: 'Accessory' },
+  /** In a slot with nothing in it. */
+  nothing: '-',
+  /** Takes off what's in a slot, at the end of what could go in it. */
+  remove: 'Remove',
+  level: (level: number) => `Lv ${level}`,
+  hp: 'HP',
+  mp: 'MP',
+  /** EXP to the next level, or at the last level, none. */
+  next: 'Next',
+  maxed: '-',
+  exp: 'EXP',
+  gold: (gold: number) => `${gold} gold`,
+  /** The Status page's heading over the skills a member knows, and what it says if none. */
+  skills: 'Skills',
+  noSkills: 'None yet',
+  /** The last line of a list of skills too long to show, saying how many more Skills lists. */
+  moreSkills: (count: number) => `and ${count} more`,
+};
 
 /** The Game Over screen, once a battle is lost: what it says, and what it offers. */
 export const GAME_OVER_TEXT = {

@@ -100,10 +100,22 @@ async function step(page: Page, key: string, times = 1): Promise<void> {
   }
 }
 
-/** Presses Menu on the field, and waits for the save menu. */
+/** Presses Menu on the field, and chooses Save on the main menu, which opens the save menu. */
 async function openSaveMenu(page: Page): Promise<void> {
   await page.keyboard.press('KeyC');
+  await page.waitForFunction(() => window.__game?.activeScenes().join() === 'main-menu');
+  // Save is the last command: up from Items, round from the top.
+  await tapKey(page, 'ArrowUp');
+  await tapKey(page, 'KeyZ');
   await page.waitForFunction(() => window.__game?.activeScenes().join() === 'save-menu');
+}
+
+/** Closes the save menu, back to the main menu, and that too, back to the field on `map`. */
+async function backToField(page: Page, map: string, key = 'KeyX'): Promise<void> {
+  await tapKey(page, key);
+  await page.waitForFunction(() => window.__game?.activeScenes().join() === 'main-menu');
+  await tapKey(page, key);
+  await arrivedOn(page, map);
 }
 
 /** Moves the cursor to a slot, by its label, and presses Confirm. */
@@ -186,8 +198,7 @@ test('a game saved in a slot carries on from right there after the page reloads'
   });
 
   // Back to the field, just as it was.
-  await tapKey(page, 'KeyX');
-  await arrivedOn(page, 'saltmere-tamsin');
+  await backToField(page, 'saltmere-tamsin');
   expect(await field(page)).toMatchObject({ x: 2, y: 3, facing: 'left' });
   // Wander off, which the save doesn't know about, and reload.
   await step(page, 'ArrowDown', 2);
@@ -238,8 +249,7 @@ test('saving over a save asks first, and No keeps the one that was there', async
   await choose(page, 'Slot 2');
   const first = await stored(page, 2);
   expect(first?.state.location).toEqual({ map: 'test-shore', x: 10, y: 12, facing: 'down' });
-  await tapKey(page, 'KeyX');
-  await arrivedOn(page, 'test-shore');
+  await backToField(page, 'test-shore');
 
   await step(page, 'ArrowRight', 2);
   await openSaveMenu(page);
@@ -279,9 +289,8 @@ test('saving over a save asks first, and No keeps the one that was there', async
   expect((await saveMenu(page)).selected).toBe('Autosave');
   await tapKey(page, 'KeyZ');
   expect(await stored(page, 'autosave')).toBeNull();
-  // Menu closes it, like Cancel.
-  await tapKey(page, 'KeyC');
-  await arrivedOn(page, 'test-shore');
+  // Menu closes it, like Cancel, and then the main menu.
+  await backToField(page, 'test-shore', 'KeyC');
   expect(errors).toEqual([]);
 });
 
@@ -358,7 +367,7 @@ test('a script that takes the player somewhere autosaves once it has finished', 
   expect(errors).toEqual([]);
 });
 
-test('Menu opens the save menu only when the player can act: not in a conversation, and not mid-step', async ({
+test('Menu opens the main menu only when the player can act: not in a conversation, and not mid-step', async ({
   page,
 }) => {
   const errors = watchErrors(page);
@@ -369,7 +378,7 @@ test('Menu opens the save menu only when the player can act: not in a conversati
   await page.waitForFunction(() => window.__game?.inspect('dialogue')?.prompt === true);
   await tapKey(page, 'KeyC');
   await nextFrames(page);
-  expect(await activeScenes(page)).not.toContain('save-menu');
+  expect(await activeScenes(page)).not.toContain('main-menu');
   // Nor once the conversation is over.
   await tapKey(page, 'KeyZ');
   await page.waitForFunction(() => window.__game?.inspect('field')?.running === false);
@@ -382,7 +391,7 @@ test('Menu opens the save menu only when the player can act: not in a conversati
   await page.keyboard.down('ArrowRight');
   await page.waitForFunction(() => window.__game?.inspect('field')?.moving === true);
   await page.keyboard.press('KeyC');
-  await page.waitForFunction(() => window.__game?.activeScenes().join() === 'save-menu');
+  await page.waitForFunction(() => window.__game?.activeScenes().join() === 'main-menu');
   const stopped = await field(page);
   expect(stopped).toMatchObject({ y: 12, moving: false });
   expect(stopped?.x).toBeGreaterThan(10);
@@ -494,8 +503,7 @@ test('the debug menu exports a save to a file, and imports one into any slot', a
   await warp(page, 'saltmere-tamsin', 2, 3, 'left');
   await openSaveMenu(page);
   await tapKey(page, 'KeyZ');
-  await tapKey(page, 'KeyX');
-  await arrivedOn(page, 'saltmere-tamsin');
+  await backToField(page, 'saltmere-tamsin');
 
   await debugPage(page, 'Export a save');
   const exporting = await debugMenu(page);

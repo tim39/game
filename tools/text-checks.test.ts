@@ -8,8 +8,10 @@ import { SKILLS } from '../src/data/skills';
 import { SPEAKERS } from '../src/data/speakers';
 import { ASSETS } from '../src/systems/asset-manifest';
 import { BATTLE_LAYOUT } from '../src/ui/battle-layout';
+import { MAPS } from '../src/data/maps';
+import { MENU_LAYOUT } from '../src/ui/main-menu-layout';
 import { measureBodyFont, type MeasuredFont } from './font-metrics';
-import { checkBattleText, checkText, type TextSources } from './text-checks';
+import { checkBattleText, checkMenuText, checkText, type TextSources } from './text-checks';
 
 /** Six pixels a character, with every character but curly quotes. */
 const FONT: MeasuredFont = {
@@ -124,5 +126,49 @@ test('the real names and descriptions fit the battle screen, measured with the r
       font,
       BATTLE_LAYOUT.room,
     ),
+  ).toEqual([]);
+});
+
+test('reports names and descriptions too wide for the main menu', () => {
+  const room = { name: 30, listLabel: 60, info: 60, infoLines: 3 };
+  expect(
+    checkMenuText(
+      {
+        characters: { rowan: { name: 'Rowan' }, cassandra: { name: 'Cassandra' } },
+        skills: { sweep: { name: 'Sweep', description: 'A wide swing.' } },
+        // Unlike in battle, equipment shows too: in Items, and on Equip.
+        items: {
+          potion: { name: 'Potion', description: 'Restores HP to one ally.' },
+          'iron-sword': {
+            name: 'Iron Sword of Old',
+            description: 'Heavier than bronze, and a great deal keener.',
+          },
+        },
+        maps: { saltmere: { name: 'Saltmere' }, cottage: { name: "Fisher's Cottage" } },
+      },
+      FONT,
+      room,
+    ),
+  ).toEqual([
+    'Character cassandra: its name, "Cassandra", is 54 pixels wide; the main menu\'s party rows ' +
+      'have room for 30',
+    'Item iron-sword: its name, "Iron Sword of Old", is 102 pixels wide; main menu lists have ' +
+      'room for 60',
+    'Item iron-sword: its description, "Heavier than bronze, and a great deal keener.", takes 6 ' +
+      "lines of the main menu's info panel, which holds 3",
+    'Map cottage: its name, "Fisher\'s Cottage", is 96 pixels wide; the main menu\'s info panel ' +
+      'has room for 60',
+  ]);
+});
+
+test('the real names, descriptions and places fit the main menu, measured with the real font', () => {
+  const font = measureBodyFont(
+    readFileSync(join(import.meta.dirname, '../public', ASSETS['font.body'].url)),
+  );
+  expect(
+    checkMenuText({ characters: CHARACTERS, skills: SKILLS, items: ITEMS, maps: MAPS }, font, {
+      ...MENU_LAYOUT.room,
+      infoLines: MENU_LAYOUT.infoLines,
+    }),
   ).toEqual([]);
 });
