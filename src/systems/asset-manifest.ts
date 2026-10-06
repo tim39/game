@@ -155,7 +155,7 @@ export const ASSETS = {
   'bgm.saltmere': sound('bgm/calm-village'),
   'bgm.battle': sound('bgm/fight'),
   'sfx.chest': sound('sfx/secret-2'),
-  'sfx.victory': sound('sfx/success-1'),
+  'sfx.victory': sound('sfx/success-3'),
   'sfx.level-up': sound('sfx/level-up-1'),
 } as const satisfies Record<string, AssetEntry>;
 

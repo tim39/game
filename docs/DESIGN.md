@@ -305,7 +305,7 @@ Picked from the pack's 41 tracks by title only. Listen and swap freely.
 | Final boss | 24 - Final Area |
 | Ending | 8 - End Theme |
 | Credits | 15 - Credit Theme |
-| Victory, level up | Jingles: Success1, LevelUp1 |
+| Victory, level up | Jingles: Success3 (picked from its spectrogram, unheard: notes rising to a held one; Success1 is three short beeps), LevelUp1 |
 | Opening a chest | Jingles: Secret2 (picked from its spectrogram, unheard) |
 
 ## Accessibility

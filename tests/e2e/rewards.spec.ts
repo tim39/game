@@ -117,6 +117,7 @@ test('a battle won shows what the party gained, a page at a time, and they keep 
   // The battle's music gives way to the victory jingle.
   const fanfare = await audio(page);
   expect(fanfare.sounds).toContain('sfx.victory');
+  expect(fanfare.playing).toEqual(['sfx.victory']);
   expect(fanfare.music).toBeNull();
   await page.screenshot({ path: 'test-results/screenshots/rewards-spoils.png' });
 
@@ -128,7 +129,8 @@ test('a battle won shows what the party gained, a page at a time, and they keep 
     'HP +28 MP +3 ATK +3 DEF +2',
     'MAG +2 RES +2',
   ]);
-  expect((await audio(page)).sounds).toContain('sfx.level-up');
+  // The level-up jingle cuts the victory jingle short.
+  expect((await audio(page)).playing).toEqual(['sfx.level-up']);
   await page.screenshot({ path: 'test-results/screenshots/rewards-level-up.png' });
   await press(page, 'KeyZ');
   const bram = await info(page);

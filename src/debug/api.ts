@@ -37,7 +37,7 @@ export interface DebugApi {
   vitals(character: string, set?: Partial<Vitals>): { now: Vitals; most: Vitals };
   /** Runs an event script on the field, as if something had set it off. Throws if one is running. */
   run(script: string): void;
-  /** The music playing and fading, and the latest sound effects. */
+  /** The music playing and fading, the latest sound effects, and those playing right now. */
   audio(): AudioInfo;
   /**
    * Stops every running scene and starts a battle against `enemies`, left to right, with the party

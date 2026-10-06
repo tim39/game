@@ -406,7 +406,12 @@ export class BattleScene extends Phaser.Scene {
         const pages = this.aftermath ? this.victoryPages(this.aftermath) : [];
         for (const page of pages) {
           panels?.showVictory(page);
-          if (page.levelUp) audio.playSound('sfx.level-up');
+          if (page.levelUp) {
+            // Each jingle cuts short the one before it, rather than playing over it.
+            audio.stopSound('sfx.victory');
+            audio.stopSound('sfx.level-up');
+            audio.playSound('sfx.level-up');
+          }
           await this.confirm();
           if (!this.live(run)) return;
         }

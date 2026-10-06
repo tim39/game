@@ -21,7 +21,7 @@ It's vibe coded. The owner directs and playtests; Claude writes nearly all of th
 1. Check open GitHub issues labeled `bug`; fix anything that blocks play first.
 2. Otherwise take the next unchecked task in the current ROADMAP milestone, or the one the owner names.
 3. Work on a branch, one task per branch. When every check passes, merge it into `main` yourself (fast-forward) and push; the owner chose this over PRs. Open a PR only if the owner asks for one. After pushing `main`, check that CI and the deploy went green.
-4. Finish against the definition of done below, then tell the owner what changed and what to try in the build.
+4. Finish against the definition of done below, then tell the owner what changed and what to try in the build. The owner would rather not make decisions: where something is open, decide what's best yourself, do it, and say what you decided and why, so they can overrule it.
 
 ## Commands
 
@@ -53,7 +53,7 @@ Keep the names stable.
 7. **Phaser 4 is not Phaser 3.** Most examples you remember are Phaser 3. If you're unsure an API exists, check `node_modules/phaser/types/phaser.d.ts` instead of guessing.
 8. **Every asset needs a license.** Only add files with a known source and license, and add them to `CREDITS.md` in the same commit.
 9. **Docs move with the code.** Mechanics changes update `docs/DESIGN.md`; architecture changes update `docs/TECH.md`; same PR.
-10. **Creative direction belongs to the owner.** Propose story, character and tone changes; don't make them silently.
+10. **Creative direction belongs to the owner.** Never change story, character or tone silently. They'd rather not be asked, so make the call and say what you changed and why when you report back.
 
 ## Definition of done
 

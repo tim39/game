@@ -32,6 +32,8 @@ export interface AudioInfo {
   readonly paused: readonly string[];
   /** The latest sound effects played, oldest first. */
   readonly sounds: readonly string[];
+  /** The sound effects playing right now. */
+  readonly playing: readonly string[];
 }
 
 /**
@@ -128,6 +130,19 @@ class AudioManager {
     if (this.played.length > SOUNDS_LISTED) this.played.shift();
   }
 
+  /**
+   * Stops a sound effect, `sfx.*`, wherever it's playing: a jingle cut short by the next, rather
+   * than heard under it.
+   */
+  stopSound(key: string): void {
+    checkKey(key, 'sfx.');
+    for (const sound of this.game?.sound.getAll(key) ?? []) {
+      // Played once, a sound is let go when it finishes; stopped, it never does.
+      sound.stop();
+      sound.destroy();
+    }
+  }
+
   debugInfo(): AudioInfo {
     return {
       locked: this.game?.sound.locked ?? true,
@@ -141,6 +156,9 @@ class AudioManager {
       starts: this.starts,
       paused: [...(this.interrupted?.tracks.keys() ?? [])],
       sounds: [...this.played],
+      playing: (this.game?.sound.getAllPlaying() ?? [])
+        .map((sound) => sound.key)
+        .filter((key) => key.startsWith('sfx.')),
     };
   }
 
