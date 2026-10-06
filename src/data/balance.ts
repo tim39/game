@@ -84,6 +84,12 @@ export const MAP_FADE_MS = 250;
 export const REST_FADE_MS = 500;
 
 /**
+ * Pulling a lever in the Tide Caves fades to black this fast, the tide turns, and it fades back in
+ * at the same speed, after holding black for `hold` as the sea rushes.
+ */
+export const TIDE_FADE_MS = { fade: 300, hold: 500 } as const;
+
+/**
  * Arriving somewhere new, the area banner fades in this fast, stays this long, and fades out this
  * slowly, in milliseconds.
  */

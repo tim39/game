@@ -80,6 +80,33 @@ export const ENEMIES: Readonly<Record<string, EnemyDef>> = {
       { type: 'skill', skill: 'mist-touch', weight: 3 },
     ],
   },
+  // Drifts in the tide pools, and stings to send whoever it touches to sleep. The pack's Slime.
+  'tide-jelly': {
+    name: 'Tide Jelly',
+    stats: { hp: 46, mp: 0, atk: 11, def: 5, mag: 4, res: 10, spd: 6 },
+    exp: 9,
+    gold: 7,
+    drops: [{ item: 'potion', chance: 0.12 }],
+    reactions: { water: 'absorb', wind: 'weak' },
+    actions: [
+      { type: 'attack', weight: 2 },
+      { type: 'skill', skill: 'numbing-sting', weight: 2 },
+    ],
+  },
+  // Quick to bite, and its bite poisons; it goes for whoever's worst hurt. The pack's Snake3.
+  'sea-snake': {
+    name: 'Sea Snake',
+    stats: { hp: 36, mp: 0, atk: 13, def: 5, mag: 2, res: 5, spd: 14 },
+    exp: 9,
+    gold: 8,
+    // The cure for its venom.
+    drops: [{ item: 'antidote', chance: 0.15 }],
+    reactions: { water: 'resist', earth: 'weak' },
+    actions: [
+      { type: 'attack', weight: 2 },
+      { type: 'skill', skill: 'venom-bite', weight: 2, target: 'lowest-hp' },
+    ],
+  },
   // The boss, a Hollowed knight (see docs/STORY.md). Every fourth turn it telegraphs Undertow, and
   // below half its HP every third, cleaving whoever's worst hurt in between. The pack's
   // GiantBlueSamurai.

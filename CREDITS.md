@@ -54,6 +54,8 @@ By **Pixel-boy** and **AAA**: https://pixel-boy.itch.io/ninja-adventure-asset-pa
 | `public/assets/monsters/mollusc.png` | The Reef Snail in battle | `Actor/Monster/Mollusc/Mollusc.png` | Just the column facing right, its four frames put side by side in one strip |
 | `public/assets/monsters/octopus-2.png` | The Grotto Octopus in battle | `Actor/Monster/Octopus2/SpriteSheet.png` | Just the column facing right, its four frames put side by side in one strip |
 | `public/assets/monsters/spirit.png` | The Drowned Wisp in battle | `Actor/Monster/Spirit/SpriteSheet.png` | Just the column facing right, its four frames put side by side in one strip |
+| `public/assets/monsters/slime.png` | The Tide Jelly in battle | `Actor/Monster/Slime/Slime.png` | Just the column facing right, its four frames put side by side in one strip |
+| `public/assets/monsters/snake-3.png` | The Sea Snake in battle | `Actor/Monster/Snake3/Snake3.png` | Just the column facing right, its four frames put side by side in one strip |
 | `public/assets/monsters/giant-blue-samurai.png` | The Drowned Warden in battle | `Actor/Boss/GiantBlueSamurai/Idle.png` | None |
 | `public/assets/vfx/cut.png` | The party's physical hits | `FX/Attack/Cut/SpriteSheet.png` | None |
 | `public/assets/vfx/claw.png` | Enemies' physical hits | `FX/Attack/Claw/SpriteSheet.png` | None |
@@ -84,12 +86,15 @@ By **Pixel-boy** and **AAA**: https://pixel-boy.itch.io/ninja-adventure-asset-pa
 | `public/assets/bgm/intro.ogg`, `public/assets/bgm/intro.m4a` | Title music | `Audio/Musics/38 - Intro.ogg` | Turned up 1.1 dB, to −20 LUFS like the other tracks; re-encoded as Ogg Vorbis (quality 4) and AAC (128 kbps) |
 | `public/assets/bgm/calm-village.ogg`, `public/assets/bgm/calm-village.m4a` | Saltmere's music | `Audio/Musics/33 - Calm Village.ogg` | Turned down 1.3 dB, to −20 LUFS; re-encoded as Ogg Vorbis (quality 4) and AAC (128 kbps) |
 | `public/assets/bgm/fight.ogg`, `public/assets/bgm/fight.m4a` | Battle music | `Audio/Musics/17 - Fight.ogg` | Turned up 2.5 dB, to −20 LUFS; re-encoded as Ogg Vorbis (quality 4) and AAC (128 kbps) |
+| `public/assets/bgm/aquatic.ogg`, `public/assets/bgm/aquatic.m4a` | The Tide Caves' music | `Audio/Musics/18 - Aquatic.ogg` | Turned up 4 dB, to −20 LUFS; re-encoded as Ogg Vorbis (quality 4) and AAC (128 kbps) |
 | `public/assets/sfx/secret-2.ogg`, `public/assets/sfx/secret-2.m4a` | A chest opening | `Audio/Jingles/Secret2.wav` | Encoded as Ogg Vorbis (quality 4) and AAC (128 kbps) |
 | `public/assets/sfx/success-3.ogg`, `public/assets/sfx/success-3.m4a` | Winning a battle | `Audio/Jingles/Success3.wav` | Encoded as Ogg Vorbis (quality 4) and AAC (128 kbps) |
 | `public/assets/sfx/level-up-1.ogg`, `public/assets/sfx/level-up-1.m4a` | A level-up | `Audio/Jingles/LevelUp1.wav` | Encoded as Ogg Vorbis (quality 4) and AAC (128 kbps) |
 | `public/assets/sfx/game-over-3.ogg`, `public/assets/sfx/game-over-3.m4a` | Losing a battle | `Audio/Jingles/GameOver3.wav` | Encoded as Ogg Vorbis (quality 4) and AAC (128 kbps) |
 | `public/assets/sfx/secret-4.ogg`, `public/assets/sfx/secret-4.m4a` | Morning, after a night's rest | `Audio/Jingles/Secret4.wav` | Encoded as Ogg Vorbis (quality 4) and AAC (128 kbps) |
 | `public/assets/sfx/heal-2.ogg`, `public/assets/sfx/heal-2.m4a` | A Light Shrine's healing, and healing from the menu | `Audio/Sounds/Magic & Skill/Heal2.wav` | Encoded as Ogg Vorbis (quality 4) and AAC (128 kbps) |
+| `public/assets/sfx/impact.ogg`, `public/assets/sfx/impact.m4a` | A tide lever cranking, in the Tide Caves | `Audio/Sounds/Hit & Impact/Impact.wav` | Encoded as Ogg Vorbis (quality 4) and AAC (128 kbps) |
+| `public/assets/sfx/wave.ogg`, `public/assets/sfx/wave.m4a` | The sea rushing in or out as the tide turns, in the Tide Caves | `Audio/Sounds/Ambient/Wave.wav` | Just its first wave, the first 3.4 seconds, faded out over the last 0.4; turned up 8 dB, to −22 LUFS like the other sound effects; encoded as Ogg Vorbis (quality 4) and AAC (128 kbps) |
 | `public/assets/sfx/move-3.ogg`, `public/assets/sfx/move-3.m4a` | A menu's cursor moving | `Audio/Sounds/Menu/Move3.wav` | Encoded as Ogg Vorbis (quality 4) and AAC (128 kbps) |
 | `public/assets/sfx/accept-5.ogg`, `public/assets/sfx/accept-5.m4a` | Choosing something in a menu | `Audio/Sounds/Menu/Accept5.wav` | Encoded as Ogg Vorbis (quality 4) and AAC (128 kbps) |
 | `public/assets/sfx/move-4.ogg`, `public/assets/sfx/move-4.m4a` | Going back in a menu | `Audio/Sounds/Menu/Move4.wav` | Encoded as Ogg Vorbis (quality 4) and AAC (128 kbps) |

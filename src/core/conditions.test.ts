@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { badConditionTerms, conditionFlags, conditionHolds } from './conditions';
+import { badConditionTerms, conditionFlags, conditionHolds, conditionHoldsFor } from './conditions';
 import { createGameState, setFlag } from './state';
 
 const start = createGameState({
@@ -34,4 +34,11 @@ test('finds terms that are not flag names, and the flags a condition reads', () 
     'story.lamps-lit',
     'story.festival',
   ]);
+});
+
+test('a condition can go by any set of flags, not just a game state’s', () => {
+  const isSet = (flag: string): boolean => flag === 'tide.b1-low';
+  expect(conditionHoldsFor('tide.b1-low', isSet)).toBe(true);
+  expect(conditionHoldsFor(['!tide.b1-low'], isSet)).toBe(false);
+  expect(conditionHoldsFor(undefined, () => false)).toBe(true);
 });

@@ -4,7 +4,7 @@ A classic high-fantasy JRPG for the browser, with turn-order-timeline battles, 1
 
 Built with TypeScript and Phaser 4, and vibe coded with Claude Code.
 
-> **Status:** milestones M0 to M5 are done, and M6 has begun: you can walk around Saltmere, on desktop or a phone, go into every house, talk to its people (who have something new to say as the story moves on), open chests, save and load, and fight wolves on the road north in turn-order battles, with rewards, level-ups and a Game Over screen. Between battles there's the menu (items, skills, gear, status), shops, inns, Light Shrines and an Options screen, all with sounds. See the roadmap for what's next.
+> **Status:** milestones M0 to M5 are done, and M6 has begun: you can walk around Saltmere, on desktop or a phone, go into every house, talk to its people (who have something new to say as the story moves on), go down into the Tide Caves under the lighthouse once the Beacon is out (for now, with the debug build's Story page), open chests, save and load, and fight wolves on the road north in turn-order battles, with rewards, level-ups and a Game Over screen. Between battles there's the menu (items, skills, gear, status), shops, inns, Light Shrines and an Options screen, all with sounds. See the roadmap for what's next.
 
 ## Run it locally
 

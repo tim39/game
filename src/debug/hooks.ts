@@ -87,8 +87,10 @@ export function installDebugHooks(game: Phaser.Game): void {
         enemies: area.boss,
         table: area.encounters,
       })),
-      // Until the caves have a backdrop of their own, their battles are on the beach.
-      backdrop: (table) => (table === 'tide-caves' ? 'shore' : 'meadow'),
+      // Each area's battles are fought in front of its maps' backdrop.
+      backdrop: (table) =>
+        Object.values(MAPS).find((map) => map.encounters?.table === table)?.encounters?.backdrop ??
+        'meadow',
     }),
     plan,
     backdrops: Object.keys(BACKDROPS),

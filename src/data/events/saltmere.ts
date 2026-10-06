@@ -391,7 +391,7 @@ export const roadSign = defineEvent(async (ev) => {
 export const caveStairs = defineEvent(async (ev) => {
   await ev.say(
     'sign',
-    'Stairs down into the sea caves under the lighthouse. It is pitch dark down there.',
+    'Stairs down into the sea caves under the lighthouse, with a rope across them: KEEP OUT.',
   );
 });
 

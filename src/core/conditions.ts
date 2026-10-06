@@ -11,10 +11,20 @@ const termsOf = (condition: Condition): readonly string[] =>
   typeof condition === 'string' ? [condition] : condition;
 
 /** Whether a condition holds for this state. No condition at all always holds. */
-export function conditionHolds(condition: Condition | undefined, state: GameState): boolean {
+export const conditionHolds = (condition: Condition | undefined, state: GameState): boolean =>
+  conditionHoldsFor(condition, (flag) => hasFlag(state, flag));
+
+/**
+ * Whether a condition holds, given which flags are set (`isSet`). No condition at all always
+ * holds.
+ */
+export function conditionHoldsFor(
+  condition: Condition | undefined,
+  isSet: (flag: string) => boolean,
+): boolean {
   if (condition === undefined) return true;
   return termsOf(condition).every((term) =>
-    term.startsWith('!') ? !hasFlag(state, term.slice(1)) : hasFlag(state, term),
+    term.startsWith('!') ? !isSet(term.slice(1)) : isSet(term),
   );
 }
 

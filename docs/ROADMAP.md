@@ -98,7 +98,7 @@ Start a session and say **"next task"**, or name one. Claude takes the first unc
 *Goal: the first 30 minutes, start to finish, polished enough to show someone.*
 
 - [x] Saltmere fully populated: NPCs whose lines change with story flags, a shop, an inn, chests, Tamsin's house.
-- [ ] The Tide Caves: three floors, the tide-switch gimmick, 5–6 enemy types, treasure, Light Shrines.
+- [x] The Tide Caves: three floors, the tide-switch gimmick, 5–6 enemy types, treasure, Light Shrines.
 - [ ] Boss: the Drowned Warden, with phases and one telegraphed attack.
 - [ ] Cutscenes: the opening on Kindling day (lighting the village lamps, Bram arriving, the festival), the Beacon going out, the Beacon chamber, Rowan gaining Tide Edge.
 - [ ] Title screen art and a short intro.

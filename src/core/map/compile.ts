@@ -1,5 +1,11 @@
 import type { Chest } from '../chest';
-import { badConditionTerms, conditionHolds, type Condition } from '../conditions';
+import {
+  badConditionTerms,
+  conditionFlags,
+  conditionHolds,
+  conditionHoldsFor,
+  type Condition,
+} from '../conditions';
 import { isDirection, type Direction } from '../direction';
 import { PLAYER } from '../events';
 import { isId, isNamespacedId } from '../ids';
@@ -169,8 +175,39 @@ const TREE_SALT = 1;
 const PREFAB_CHARS = new Set(['#', '.', '^', '=', 'D', ' ']);
 const lookups = new WeakMap<BlobLayout, ReadonlyMap<number, readonly [number, number]>>();
 
-/** Builds a map's layers, collision and exits. Throws if anything doesn't fit. */
-export function compileMap(def: MapDef, content: MapContent): CompiledMap {
+/** Which flags are set: what a map's terrain and prefabs that change with a condition go by. */
+export type FlagsSet = (flag: string) => boolean;
+
+/** No flags set, as at the start of a game. */
+const NO_FLAGS: FlagsSet = () => false;
+
+/**
+ * The flags a map's terrain and prefabs change with, each once, in the order the map names them:
+ * its legend's conditional terrains, then its prefabs' conditions. The map is drawn afresh as soon
+ * as any of them changes. People and triggers have conditions of their own, which go by the flags
+ * as they're checked.
+ */
+export function mapFlags(def: MapDef): string[] {
+  const conditions: Condition[] = [
+    ...Object.values(def.legend).flatMap((entry) =>
+      typeof entry === 'string' ? [] : [entry.when],
+    ),
+    ...(def.objects ?? []).flatMap((object) =>
+      object.type === 'prefab' && object.when !== undefined ? [object.when] : [],
+    ),
+  ];
+  return [...new Set(conditions.flatMap(conditionFlags))];
+}
+
+/**
+ * Builds a map's layers, collision and exits, as `flags` has it: its conditional terrains and
+ * prefabs go by which flags are set (none, if it isn't given). Throws if anything doesn't fit.
+ */
+export function compileMap(
+  def: MapDef,
+  content: MapContent,
+  flags: FlagsSet = NO_FLAGS,
+): CompiledMap {
   function fail(message: string): never {
     throw new Error(`Map ${def.id}: ${message}`);
   }
@@ -183,9 +220,21 @@ export function compileMap(def: MapDef, content: MapContent): CompiledMap {
     if (row.length !== width) fail(`row ${y} is ${row.length} cells wide, not ${width}`);
   });
 
+  // A conditional terrain is the one its condition picks, as the flags are.
+  const legend = new Map<string, string>();
+  for (const [char, entry] of Object.entries(def.legend)) {
+    if (typeof entry === 'string') {
+      legend.set(char, entry);
+      continue;
+    }
+    for (const term of badConditionTerms(entry.when)) {
+      fail(`its legend's "${char}" has "${term}" in its condition, which isn't a flag`);
+    }
+    legend.set(char, conditionHoldsFor(entry.when, flags) ? entry.terrain : entry.otherwise);
+  }
   const ids = rows.flatMap((row, y) =>
     [...row].map(
-      (char, x) => def.legend[char] ?? fail(`"${char}" at (${x}, ${y}) isn't in its legend`),
+      (char, x) => legend.get(char) ?? fail(`"${char}" at (${x}, ${y}) isn't in its legend`),
     ),
   );
   const onMap = (x: number, y: number): boolean => x >= 0 && y >= 0 && x < width && y < height;
@@ -348,7 +397,15 @@ export function compileMap(def: MapDef, content: MapContent): CompiledMap {
     const [x, y] = object.at;
     switch (object.type) {
       case 'prefab':
-        stamp(object.prefab, object.at, false, object.to, object.script);
+        for (const term of object.when === undefined ? [] : badConditionTerms(object.when)) {
+          fail(
+            `the ${object.prefab} at (${x}, ${y}) has "${term}" in its condition, which isn't a flag`,
+          );
+        }
+        // Only there while its condition holds.
+        if (conditionHoldsFor(object.when, flags)) {
+          stamp(object.prefab, object.at, false, object.to, object.script);
+        }
         break;
       case 'warp':
         if (!onMap(x, y)) fail(`the warp at (${x}, ${y}) is off the map`);

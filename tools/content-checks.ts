@@ -3,7 +3,7 @@ import { conditionFlags, type Condition } from '../src/core/conditions';
 import { canEquip, slotOf } from '../src/core/equipment';
 import { isNamespacedId } from '../src/core/ids';
 import { compileMap, isBlocked, type CompiledMap } from '../src/core/map/compile';
-import type { MapContent, MapDef } from '../src/core/map/types';
+import type { MapContent, MapDef, MapObject } from '../src/core/map/types';
 import {
   CONTENT_SCHEMAS,
   type CharacterDef,
@@ -407,6 +407,13 @@ export function checkShops({
   );
 }
 
+/** A map object with a condition, as a problem with it names it. */
+function whoWaits(object: MapObject): string {
+  if (object.type === 'npc') return `npc ${object.id}`;
+  if (object.type === 'prefab') return `the ${object.prefab} at (${object.at[0]}, ${object.at[1]})`;
+  return `its ${object.type} trigger`;
+}
+
 /** The flags of the main story are `story.` ones; everything else has a namespace of its own. */
 export const STORY_NAMESPACE = 'story.';
 
@@ -441,11 +448,16 @@ export function checkStory({
   const notInStory = (flag: string): string => `${flag}, which isn't one of the story's points`;
 
   for (const map of Object.values(maps)) {
+    for (const [char, entry] of Object.entries(map.legend)) {
+      if (typeof entry === 'string') continue;
+      for (const flag of conditionFlags(entry.when).filter(unknown)) {
+        problems.push(`Map ${map.id}: its legend's "${char}" waits on ${notInStory(flag)}`);
+      }
+    }
     for (const object of map.objects ?? []) {
       const when: Condition | undefined = 'when' in object ? object.when : undefined;
       for (const flag of when === undefined ? [] : conditionFlags(when).filter(unknown)) {
-        const who = object.type === 'npc' ? `npc ${object.id}` : `its ${object.type} trigger`;
-        problems.push(`Map ${map.id}: ${who} waits on ${notInStory(flag)}`);
+        problems.push(`Map ${map.id}: ${whoWaits(object)} waits on ${notInStory(flag)}`);
       }
     }
   }

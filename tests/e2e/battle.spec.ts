@@ -424,7 +424,8 @@ test('the debug menu starts a battle over the field, and joins Bram to the party
   await waitForPlayer(page);
   expect(await page.evaluate(() => window.__game?.activeScenes())).toEqual(['battle']);
   const battle = await info(page);
-  expect(battle.backdrop).toBe('shore');
+  // In front of the caves' cavern, where Cave Bats are met.
+  expect(battle.backdrop).toBe('tide-caves');
   expect(battle.fighters.map(({ name }) => name)).toEqual([
     'Rowan',
     'Bram',

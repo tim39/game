@@ -137,6 +137,7 @@ const MapObjectSchema = z.discriminatedUnion('type', [
     at: GridPointSchema,
     to: WarpTargetSchema.optional(),
     script: ScriptIdSchema.optional(),
+    when: ConditionSchema.optional(),
   }),
   z.strictObject({ type: z.literal('warp'), at: GridPointSchema, to: WarpTargetSchema }),
   z.strictObject({
@@ -188,6 +189,9 @@ const MapObjectSchema = z.discriminatedUnion('type', [
  * What a battle is fought in front of: a small map that fills the screen, of terrain and maybe some
  * prefabs (see src/core/map/backdrop.ts).
  */
+/** A colour, as 0xRRGGBB. */
+const ColorSchema = z.int().min(0).max(0xffffff);
+
 const BackdropSchema = z.strictObject({
   terrain: z.string(),
   /** One character each. */
@@ -195,6 +199,8 @@ const BackdropSchema = z.strictObject({
   objects: z
     .array(z.strictObject({ type: z.literal('prefab'), prefab: IdSchema, at: GridPointSchema }))
     .optional(),
+  /** A colour it's multiplied by, as a map's can be. */
+  shade: ColorSchema.optional(),
 });
 export type BackdropDef = ContentOf<typeof BackdropSchema>;
 
@@ -205,12 +211,20 @@ const MapSchema = z.strictObject({
   area: IdSchema.optional(),
   music: AssetKeySchema.optional(),
   terrain: z.string(),
-  /** One character each. */
-  legend: z.record(z.string().length(1), IdSchema),
+  /** One character each: a terrain, or one that changes with a condition. */
+  legend: z.record(
+    z.string().length(1),
+    z.union([
+      IdSchema,
+      z.strictObject({ when: ConditionSchema, terrain: IdSchema, otherwise: IdSchema }),
+    ]),
+  ),
   objects: z.array(MapObjectSchema).optional(),
   edges: z.partialRecord(z.enum(SIDES), WarpTargetSchema).optional(),
   /** An encounter table, and a backdrop. */
   encounters: z.strictObject({ table: IdSchema, backdrop: IdSchema }).optional(),
+  /** A colour the whole map is multiplied by. */
+  shade: ColorSchema.optional(),
 });
 
 // Battle: what skills and items do (see src/core/battle/terms.ts).

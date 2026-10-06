@@ -1,5 +1,5 @@
 import { compileBackdrop } from '../src/core/map/backdrop';
-import { compileMap, type CompiledMap } from '../src/core/map/compile';
+import { compileMap, mapFlags, type CompiledMap } from '../src/core/map/compile';
 import type { GridPoint, MapContent, MapDef, WarpTarget } from '../src/core/map/types';
 import type { BackdropDef } from '../src/core/schema';
 import type { AssetEntry } from '../src/systems/asset-manifest';
@@ -22,7 +22,8 @@ export interface MapSources {
  * Checks the map content against the asset manifest and itself. Returns one line per problem:
  * - every tile a terrain or prefab uses is inside a 16×16 sprite sheet from the manifest;
  * - the terrains and prefabs that terrains refer to exist;
- * - every map compiles, and every warp, doorway and edge leads to a spawn that exists;
+ * - every map compiles, however the flags its terrain and prefabs change with are set, and every
+ *   warp, doorway and edge leads to a spawn that exists;
  * - every NPC's sprite is a 16×16 character sheet in the asset manifest;
  * - every map's music is music in the asset manifest;
  * - no two chests share a flag, on any map, so each opens by itself.
@@ -82,16 +83,30 @@ export function checkMaps({ maps, content, manifest, imageSize }: MapSources): s
     checkTiles(`Prefab ${id}`, prefab.sheet, tiles);
   }
 
+  // Each map as it starts, with none of its flags set, and every other way its flags can be.
   const compiled = new Map<string, CompiledMap>();
+  const variants: CompiledMap[] = [];
   for (const map of Object.values(maps)) {
     const { music } = map;
     if (music !== undefined && (!music.startsWith('bgm.') || manifest[music]?.type !== 'audio')) {
       problems.push(`Map ${map.id}: its music, ${music}, isn't music in the asset manifest`);
     }
-    try {
-      compiled.set(map.id, compileMap(map, content));
-    } catch (error) {
-      problems.push(error instanceof Error ? error.message : String(error));
+    const flags = mapFlags(map);
+    if (flags.length > MAX_MAP_FLAGS) {
+      problems.push(
+        `Map ${map.id}: its terrain and prefabs change with ${flags.length} flags; the most is ${MAX_MAP_FLAGS}`,
+      );
+      continue;
+    }
+    for (const set of subsetsOf(flags)) {
+      try {
+        const variant = compileMap(map, content, (flag) => set.has(flag));
+        if (set.size === 0) compiled.set(map.id, variant);
+        else variants.push(variant);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        problems.push(flags.length === 0 ? message : `${message} (${described(flags, set)})`);
+      }
     }
   }
 
@@ -102,11 +117,13 @@ export function checkMaps({ maps, content, manifest, imageSize }: MapSources): s
       problems.push(`${from} leads to spawn ${spawn} on ${map}, which has no such spawn`);
     }
   };
-  for (const map of compiled.values()) {
+  for (const map of [...compiled.values(), ...variants]) {
     map.warps.forEach((warp, index) => {
       const at = `(${index % map.width}, ${Math.floor(index / map.width)})`;
       if (warp) checkTarget(`Map ${map.id}: the way out at ${at}`, warp);
     });
+  }
+  for (const map of compiled.values()) {
     for (const [side, edge] of Object.entries(map.edges)) {
       checkTarget(`Map ${map.id}: its ${side} edge`, edge);
     }
@@ -135,8 +152,27 @@ export function checkMaps({ maps, content, manifest, imageSize }: MapSources): s
     }
   }
 
-  return problems;
+  // A way out in every variant of a map is checked in each; it's reported once.
+  return [...new Set(problems)];
 }
+
+/**
+ * The most flags a map's terrain and prefabs may change with: the checks compile it every way they
+ * can be set, 2 to the power of how many there are.
+ */
+const MAX_MAP_FLAGS = 6;
+
+/** Every way some flags can be set: as sets of those set, from none of them to all. */
+function subsetsOf(flags: readonly string[]): ReadonlySet<string>[] {
+  return Array.from(
+    { length: 2 ** flags.length },
+    (_, bits) => new Set(flags.filter((_flag, index) => (bits >> index) & 1)),
+  );
+}
+
+/** How a map's flags were set, as a condition would say it: `tide.b1-low, !tide.b2-low`. */
+const described = (flags: readonly string[], set: ReadonlySet<string>): string =>
+  `with ${flags.map((flag) => (set.has(flag) ? flag : `!${flag}`)).join(', ')}`;
 
 export interface ReachSources {
   readonly maps: Readonly<Record<string, MapDef>>;

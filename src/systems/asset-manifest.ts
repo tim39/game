@@ -133,6 +133,8 @@ export const ASSETS = {
   'monster.reef-snail': sheet('monsters/mollusc.png'),
   'monster.grotto-octopus': sheet('monsters/octopus-2.png'),
   'monster.drowned-wisp': sheet('monsters/spirit.png'),
+  'monster.tide-jelly': sheet('monsters/slime.png'),
+  'monster.sea-snake': sheet('monsters/snake-3.png'),
   'monster.drowned-warden': frames('monsters/giant-blue-samurai.png', 96, 48, { x: 40, y: 8 }),
 
   // Battle effects, played once over whoever an action reaches: a hit of each kind and element,
@@ -168,6 +170,7 @@ export const ASSETS = {
   // Music, which loops (see Draft soundtrack in DESIGN.md), and sound effects.
   'bgm.title': sound('bgm/intro'),
   'bgm.saltmere': sound('bgm/calm-village'),
+  'bgm.tide-caves': sound('bgm/aquatic'),
   'bgm.battle': sound('bgm/fight'),
   'sfx.chest': sound('sfx/secret-2'),
   'sfx.victory': sound('sfx/success-3'),
@@ -175,6 +178,9 @@ export const ASSETS = {
   'sfx.game-over': sound('sfx/game-over-3'),
   'sfx.rest': sound('sfx/secret-4'),
   'sfx.heal': sound('sfx/heal-2'),
+  // The Tide Caves: a sluice lever cranking, and the sea rushing in or out.
+  'sfx.lever': sound('sfx/impact'),
+  'sfx.tide': sound('sfx/wave'),
   // Menus: the cursor moving, a choice made, going back, a choice that can't be made now, and
   // buying or selling in a shop.
   'sfx.cursor': sound('sfx/move-3'),

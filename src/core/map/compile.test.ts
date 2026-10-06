@@ -8,6 +8,7 @@ import {
   exitAt,
   isBlocked,
   isOutOfBounds,
+  mapFlags,
   npcsAbout,
   scriptAt,
   terrainRows,
@@ -170,6 +171,49 @@ describe('blob terrain', () => {
   });
 });
 
+describe('terrain that changes with a condition', () => {
+  // Shallows: grass while the tide is out, water while it's in.
+  const tidal: MapDef = {
+    ...map(`
+      ....
+      .~s.
+      .~s.
+      ....
+    `),
+    legend: {
+      ...LEGEND,
+      s: { when: 'tide.test-low', terrain: 'grass', otherwise: 'water' },
+    },
+  };
+  const low = (flag: string): boolean => flag === 'tide.test-low';
+
+  test('is its terrain while the condition holds, and the other while it doesn’t', () => {
+    expect(solidRows(compileMap(tidal, CONTENT))).toEqual(['....', '.##.', '.##.', '....']);
+    expect(solidRows(compileMap(tidal, CONTENT, low))).toEqual(['....', '.#..', '.#..', '....']);
+  });
+
+  test('shapes its neighbours as the terrain it is', () => {
+    // As water, the shallows make the channel a 2×2 pond; as grass, the channel is 1 wide.
+    expect(grid(compileMap(tidal, CONTENT), 'ground')[1]).toEqual(['0,0', '0,6', '2,6', '0,0']);
+    expect(grid(compileMap(tidal, CONTENT, low), 'ground')[1]).toEqual([
+      '0,0',
+      '3,6',
+      '0,0',
+      '0,0',
+    ]);
+  });
+
+  test('names flags in its condition', () => {
+    const bad: MapDef = {
+      ...tidal,
+      legend: { ...LEGEND, s: { when: 'low-tide', terrain: 'grass', otherwise: 'water' } },
+    };
+    expect(() => compileMap(bad, CONTENT)).toThrow(
+      'Map test: its legend\'s "s" has "low-tide" in its condition, which isn\'t a flag',
+    );
+  });
+});
+
 describe('trees', () => {
   test('pair up along each row, with a filler for an odd cell, and overhang the row above', () => {
     const compiled = compile(`
@@ -317,6 +361,47 @@ describe('exits and arrivals', () => {
       'prefab two-doors has 2 doorways; one at most',
     );
   });
+});
+
+describe('prefabs that come and go with a condition', () => {
+  const shed = (when: string, x = 0): MapObject => ({
+    type: 'prefab',
+    prefab: 'shed',
+    at: [x, 0],
+    when,
+  });
+
+  test('are only there while their condition holds', () => {
+    const def = map('...\n...', [shed('story.built'), shed('!story.built', 1)]);
+    const built = (flag: string): boolean => flag === 'story.built';
+    expect(solidRows(compileMap(def, CONTENT))).toEqual(['...', '.##']);
+    expect(solidRows(compileMap(def, CONTENT, built))).toEqual(['...', '##.']);
+  });
+
+  test('can share cells with others that are never there at the same time', () => {
+    const def = map('..\n..', [shed('story.built'), shed('!story.built')]);
+    expect(() => compileMap(def, CONTENT)).not.toThrow();
+  });
+
+  test('name flags in their condition', () => {
+    expect(() => compile('..\n..', [shed('built')])).toThrow(
+      'Map test: the shed at (0, 0) has "built" in its condition, which isn\'t a flag',
+    );
+  });
+});
+
+test('a map’s flags are those its terrain and prefabs change with, each once', () => {
+  const def: MapDef = {
+    ...map('..\n..', [
+      { type: 'prefab', prefab: 'shed', at: [0, 0], when: ['story.built', '!tide.test-low'] },
+      { type: 'npc', id: 'a', sprite: 'villager', at: [0, 0], facing: 'down', when: 'story.npc' },
+      { type: 'enter', script: 'hello', when: 'story.enter' },
+    ]),
+    legend: { ...LEGEND, s: { when: '!tide.test-low', terrain: 'water', otherwise: 'grass' } },
+  };
+  // People and triggers check their conditions as they go; the map doesn't change with them.
+  expect(mapFlags(def)).toEqual(['tide.test-low', 'story.built']);
+  expect(mapFlags(map('..'))).toEqual([]);
 });
 
 describe('npcs', () => {

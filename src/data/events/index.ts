@@ -2,6 +2,7 @@ import type { EventScript } from '../../core/events';
 import { recordById } from '../../core/ids';
 import * as saltmere from './saltmere';
 import * as testMaps from './test-maps';
+import * as tideCaves from './tide-caves';
 
 /** `lighthouseSign` → `lighthouse-sign`: script IDs are kebab-case, like every other ID. */
 const kebab = (name: string): string => name.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`);
@@ -15,5 +16,6 @@ const area = (prefix: string, scripts: Record<string, EventScript>): [string, Ev
  */
 export const EVENTS: Readonly<Record<string, EventScript>> = recordById('event script', [
   ...area('saltmere', saltmere),
+  ...area('tide-caves', tideCaves),
   ...area('test', testMaps),
 ]);

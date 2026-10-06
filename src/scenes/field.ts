@@ -11,12 +11,14 @@ import {
   exitAt,
   isBlocked,
   isOutOfBounds,
+  mapFlags,
   npcsAbout,
   scriptAt,
   sideOf,
   touchAt,
   type ChestPlacement,
   type CompiledMap,
+  type LayerName,
   type Spawn,
   type Trigger,
 } from '../core/map/compile';
@@ -59,7 +61,7 @@ import { input } from '../systems/input/game-input';
 import { saveSlots } from '../systems/saves';
 import { session } from '../systems/session';
 import { settings } from '../systems/settings';
-import { DEPTH, TILE, createTilemap } from '../systems/tilemap';
+import { DEPTH, TILE, createTilemap, shadeMap } from '../systems/tilemap';
 import { bannerOnArrival } from '../ui/area-banner';
 import { showAreaBanner, type AreaBannerBox } from '../ui/area-banner-box';
 import { playBattleTransition } from '../ui/battle-transition';
@@ -135,7 +137,12 @@ export class FieldScene extends Phaser.Scene {
   private map?: CompiledMap;
   private world?: WalkWorld;
   private player?: Figure;
+  private layers?: Record<LayerName, Phaser.Tilemaps.TilemapLayer>;
   private overhead?: Phaser.Tilemaps.TilemapLayer;
+  /** The flags the map's terrain and prefabs change with (see `mapFlags`). */
+  private flags: readonly string[] = [];
+  /** Which of them were set when the map was last drawn, to tell when to draw it afresh. */
+  private drawnWith = '';
   private walker: Walker = standingWalker(0, 0);
   private npcs: NpcOnMap[] = [];
   private chests: ChestOnMap[] = [];
@@ -192,11 +199,14 @@ export class FieldScene extends Phaser.Scene {
     this.stopWalks();
     // The map left, on a map change; any other start (a new game, a load) has none.
     const left = start.autosave ? this.map?.id : undefined;
-    const map = compileMap(def, MAP_CONTENT);
-    this.map = map;
+    // The last map's layers and collision view went with it, as the scene started over.
+    this.layers = undefined;
+    this.collisionView = undefined;
+    this.flags = mapFlags(def);
+    const map = this.draw(compileMap(def, MAP_CONTENT, isSet));
+    if (def.shade !== undefined) shadeMap(this, map, def.shade, DEPTH.shade);
     // The same music as the last map's plays on.
     audio.playMusic(def.music ?? null);
-    this.overhead = createTilemap(this, map).overhead;
     this.rng = Rng.fromSeed(`field:${map.id}`);
     // Who's about follows the story, as it is on arrival.
     this.npcs = npcsAbout(map, session.state).map((placement) => ({
@@ -211,20 +221,6 @@ export class FieldScene extends Phaser.Scene {
         .setOrigin(0.5, 1)
         .setDepth(DEPTH.characters + (chest.y * TILE) / 100_000),
     }));
-    this.world = {
-      // Noclip, a debug switch, walks through walls and people, but not off the map.
-      isBlocked: (x, y) =>
-        debugSwitches.noclip
-          ? isOutOfBounds(map, x, y)
-          : isBlocked(map, x, y) || this.npcAt(x, y) !== undefined,
-      // A walk stops at a way out, at a touch, which runs its script, and where a battle comes.
-      stopsAt: (x, y) =>
-        exitAt(map, x, y) !== null ||
-        touchAt(map, x, y, session.state) !== null ||
-        (this.countsTowardsBattle(map, x, y) &&
-          battleDue(encounters.countdown, settings.encounterRate, ENCOUNTER_TUNING)),
-    };
-
     const at = 'spawn' in start ? spawnOn(map, start.spawn) : start;
     this.walker = standingWalker(at.x, at.y, at.facing);
     this.trackLocation(map);
@@ -234,8 +230,7 @@ export class FieldScene extends Phaser.Scene {
     // Arriving doesn't count as stopping on a touch.
     this.stoppedAt = this.walker.steps;
     this.autosRun = new Set();
-    // The last map's view went with it, and so did any battle on the way.
-    this.collisionView = undefined;
+    // Any battle on the way went with the last map.
     this.encountering = false;
     this.transitioning = false;
     this.curtain = undefined;
@@ -279,6 +274,12 @@ export class FieldScene extends Phaser.Scene {
   }
 
   override update(_time: number, delta: number): void {
+    // A flag the map's terrain or prefabs go by has changed (the tide has turned, say): it's drawn
+    // afresh, with everyone where they are.
+    if (this.map && this.flagsSet() !== this.drawnWith) {
+      const def = MAPS[this.map.id];
+      if (def) this.draw(compileMap(def, MAP_CONTENT, isSet));
+    }
     const { map, world } = this;
     if (!map || !world) return;
     const dt = Math.min(delta, MAX_FRAME_MS);
@@ -439,6 +440,40 @@ export class FieldScene extends Phaser.Scene {
         open: Number(sprite.frame.name) === CHEST_FRAME.open,
       })),
     };
+  }
+
+  /** Which of the map's flags are set, as a key: `10` for the first set and the second not. */
+  private flagsSet(): string {
+    return this.flags.map((flag) => (isSet(flag) ? '1' : '0')).join('');
+  }
+
+  /**
+   * Puts a compiled map on screen in place of the last one, and walks on it: its layers, what blocks
+   * the way and where a walk stops. Returns it.
+   */
+  private draw(map: CompiledMap): CompiledMap {
+    this.layers?.ground.tilemap.destroy();
+    this.map = map;
+    this.layers = createTilemap(this, map);
+    this.overhead = this.layers.overhead;
+    this.drawnWith = this.flagsSet();
+    this.world = {
+      // Noclip, a debug switch, walks through walls and people, but not off the map.
+      isBlocked: (x, y) =>
+        debugSwitches.noclip
+          ? isOutOfBounds(map, x, y)
+          : isBlocked(map, x, y) || this.npcAt(x, y) !== undefined,
+      // A walk stops at a way out, at a touch, which runs its script, and where a battle comes.
+      stopsAt: (x, y) =>
+        exitAt(map, x, y) !== null ||
+        touchAt(map, x, y, session.state) !== null ||
+        (this.countsTowardsBattle(map, x, y) &&
+          battleDue(encounters.countdown, settings.encounterRate, ENCOUNTER_TUNING)),
+    };
+    // The collision view marks the cells as they were: it's made afresh.
+    this.collisionView?.destroy();
+    this.collisionView = undefined;
+    return map;
   }
 
   private figure(key: string): Figure {
@@ -862,6 +897,9 @@ const finished = (walker: Walker): number => walker.steps - (walker.step ? 1 : 0
 /** Where a walker last arrived: where they stand, or the cell a step under way is leaving. */
 const arrivedAt = (walker: Walker): { x: number; y: number } =>
   walker.step ? { x: walker.step.fromX, y: walker.step.fromY } : { x: walker.x, y: walker.y };
+
+/** Whether a flag is set in the game being played. */
+const isSet = (flag: string): boolean => hasFlag(session.state, flag);
 
 /** A chest's frame: open once its flag is set. */
 const chestFrame = (chest: ChestPlacement): number =>

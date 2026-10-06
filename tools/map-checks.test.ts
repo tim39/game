@@ -97,6 +97,35 @@ test('reports ways out that lead to missing maps or spawns', () => {
   ]);
 });
 
+test('compiles every map every way the flags it changes with can be set', () => {
+  const problems = check(
+    content({
+      terrains: {
+        grass: { kind: 'fill', sheet: 'tiles.grass', tiles: [[0, 0]] },
+        rock: { kind: 'fill', sheet: 'tiles.grass', tiles: [[1, 0]], solid: true },
+      },
+    }),
+    {
+      // Its spawn is on a cell that's rock while the tide's in.
+      cave: {
+        id: 'cave',
+        name: 'Cave',
+        terrain: '.s',
+        legend: {
+          '.': 'grass',
+          s: { when: 'tide.cave-low', terrain: 'grass', otherwise: 'rock' },
+        },
+        objects: [
+          { type: 'spawn', id: 'start', at: [1, 0], facing: 'down' },
+          // A way out that's only there once a flag is set, to a spawn there isn't.
+          { type: 'warp', at: [0, 0], to: { map: 'cave', spawn: 'start' } },
+        ],
+      },
+    },
+  );
+  expect(problems).toEqual(['Map cave: spawn start is on a solid cell (with !tide.cave-low)']);
+});
+
 test('reports NPCs whose sprite is not a character sheet', () => {
   const problems = check(content({}), {
     a: {

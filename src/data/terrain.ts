@@ -136,6 +136,15 @@ export const TERRAINS = defineTerrains({
     layout: [...ROOM_WALL, [0, -1, ALL_WALL]],
     solid: true,
   },
+
+  // The Tide Caves: mossy green stone round each floor's cavern, with sand and the sea inside it.
+  'cave-wall': {
+    kind: 'blob',
+    sheet: 'tiles.room-wall',
+    origin: [5, 6],
+    layout: [...ROOM_WALL, [0, -1, ALL_WALL]],
+    solid: true,
+  },
 });
 
 export const PREFABS = definePrefabs({
@@ -220,6 +229,28 @@ export const PREFABS = definePrefabs({
   beacon: { sheet: 'tiles.dungeon', origin: [2, 2], layout: ['#'] },
   // A Light Shrine: a gold orb on a stone, which heals the party (see src/data/events/rest.ts).
   shrine: { sheet: 'tiles.dungeon', origin: [7, 2], layout: ['#'] },
+
+  // The Tide Caves. Green stone stairs, to match the walls, and a green door.
+  'cave-stairs-down': { sheet: 'tiles.element', origin: [9, 11], layout: ['D'] },
+  'cave-stairs-up': { sheet: 'tiles.element', origin: [9, 12], layout: ['D'] },
+  'cave-door': { sheet: 'tiles.element', origin: [9, 13], layout: ['D'] },
+  // A sluice lever on a post, which turns the tide: its light is blue while the tide is in, and
+  // red while it's out. A floor has one of each, on the same cell, while the tide is each way.
+  'tide-lever-in': { sheet: 'tiles.dungeon', origin: [4, 3], layout: ['#'] },
+  'tide-lever-out': { sheet: 'tiles.dungeon', origin: [3, 3], layout: ['#'] },
+  // Planks that float up level with the rock while the tide is in, to walk on: alone, or the ends
+  // and middles of a row or a column of them.
+  raft: { sheet: 'tiles.water', origin: [3, 15], layout: ['='] },
+  'raft-left': { sheet: 'tiles.water', origin: [0, 15], layout: ['='] },
+  'raft-across': { sheet: 'tiles.water', origin: [1, 15], layout: ['='] },
+  'raft-right': { sheet: 'tiles.water', origin: [2, 15], layout: ['='] },
+  'raft-top': { sheet: 'tiles.water', origin: [3, 12], layout: ['='] },
+  'raft-down': { sheet: 'tiles.water', origin: [3, 13], layout: ['='] },
+  'raft-bottom': { sheet: 'tiles.water', origin: [3, 14], layout: ['='] },
+  // Rocks: a grey boulder, a blue one, and a grey stone.
+  'cave-rock': { sheet: 'tiles.nature', origin: [16, 8], layout: ['##', '##'] },
+  'blue-rock': { sheet: 'tiles.nature', origin: [0, 12], layout: ['##', '##'] },
+  stone: { sheet: 'tiles.nature', origin: [18, 9], layout: ['#'] },
 });
 
 export const MAP_CONTENT: MapContent = { terrains: TERRAINS, prefabs: PREFABS };

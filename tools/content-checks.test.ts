@@ -40,17 +40,26 @@ describe('checkContent', () => {
     name: 'Town',
     music: 'bgm.town',
     terrain: '...',
-    legend: { '.': 'grass' },
+    legend: { '.': 'grass', s: { when: 'tide.town-low', terrain: 'grass', otherwise: 'water' } },
     objects: [
       { type: 'prefab', prefab: 'door', at: [0, 0], to: { map: 'town', spawn: 'start' } },
       { type: 'warp', at: [1, 0], to: { map: 'town', spawn: 'start' } },
       { type: 'spawn', id: 'start', at: [2, 0], facing: 'down' },
-      { type: 'npc', id: 'ada', sprite: 'ada', at: [0, 1], facing: 'left', wander: 2 },
+      {
+        type: 'npc',
+        id: 'ada',
+        sprite: 'ada',
+        at: [0, 1],
+        facing: 'left',
+        wander: 2,
+        when: '!story.ada-gone',
+      },
       { type: 'touch', at: [1, 1], script: 'town/ada', when: '!story.met-ada' },
       { type: 'enter', script: 'town/ada' },
       { type: 'auto', script: 'town/ada', when: ['story.met-ada', '!story.waved'] },
       { type: 'chest', at: [2, 1], flag: 'chest.town-01', item: 'potion' },
       { type: 'chest', at: [2, 2], flag: 'chest.town-02', gold: 30 },
+      { type: 'prefab', prefab: 'raft', at: [0, 2], when: '!tide.town-low' },
     ],
     edges: { east: { map: 'town', spawn: 'start' } },
     encounters: { table: 'wolves', backdrop: 'field' },
@@ -1024,11 +1033,12 @@ describe('checkStory', () => {
       id: 'town',
       name: 'Town',
       terrain: '...',
-      legend: { '.': 'grass' },
+      legend: { '.': 'grass', w: { when: 'story.flood', terrain: 'water', otherwise: 'grass' } },
       objects: [
         { type: 'npc', id: 'ada', sprite: 'ada', at: [0, 0], facing: 'down', when: '!story.dusk' },
         { type: 'enter', script: 'town/hello', when: ['story.dawn', 'town.visited'] },
         { type: 'touch', at: [1, 0], script: 'town/step', when: 'story.noon' },
+        { type: 'prefab', prefab: 'stall', at: [2, 0], when: 'story.fair' },
       ],
     };
     expect(
@@ -1040,8 +1050,10 @@ describe('checkStory', () => {
           : {},
       }),
     ).toEqual([
+      "Map town: its legend's \"w\" waits on story.flood, which isn't one of the story's points",
       "Map town: npc ada waits on story.dusk, which isn't one of the story's points",
       "Map town: its touch trigger waits on story.noon, which isn't one of the story's points",
+      "Map town: the stall at (2, 0) waits on story.fair, which isn't one of the story's points",
       "Character rowan: learns tide-edge by story.tide, which isn't one of the story's points",
     ]);
   });

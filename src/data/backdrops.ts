@@ -1,11 +1,12 @@
 import type { BackdropDef } from '../core/schema';
+import { CAVE_SHADE } from './maps/tide';
 
 /**
  * What battles are fought in front of, by ID: small maps of the field's terrains that fill the
  * screen, 20 cells across and 12 down (see src/core/map/backdrop.ts). The enemies stand on the left
  * and the party on the right, from the third row down to the ninth; the rows above are the far side,
  * under the timeline, and the last three are under the menus. So far, a meadow by a wood and a
- * beach, for the fights around Saltmere until the Tide Caves have a backdrop of their own.
+ * beach, for the fights around Saltmere, and the Tide Caves' cavern.
  */
 export const BACKDROPS: Readonly<Record<string, BackdropDef>> = {
   meadow: {
@@ -41,5 +42,24 @@ export const BACKDROPS: Readonly<Record<string, BackdropDef>> = {
       ....................
     `,
     legend: { '~': 'sea', '.': 'sand' },
+  },
+  // The Tide Caves: the cavern's mossy wall along the top, the sea at its foot, and wet sand.
+  'tide-caves': {
+    terrain: `
+      ####################
+      ####################
+      ~~~~~~~~....~~~~~~~~
+      ~~~~~~........~~~~~~
+      ....................
+      ....................
+      ....................
+      ....................
+      ....................
+      ....................
+      ....................
+      ....................
+    `,
+    legend: { '#': 'cave-wall', '~': 'sea', '.': 'sand' },
+    shade: CAVE_SHADE,
   },
 };

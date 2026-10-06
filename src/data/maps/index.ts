@@ -11,6 +11,9 @@ import saltmereLighthouseTop from './saltmere-lighthouse-top';
 import saltmereRhona from './saltmere-rhona';
 import saltmereTamsin from './saltmere-tamsin';
 import testCellar from './test-cellar';
+import tideCavesB1 from './tide-caves-b1';
+import tideCavesB2 from './tide-caves-b2';
+import tideCavesB3 from './tide-caves-b3';
 import testHouse from './test-house';
 import testMarket from './test-market';
 import testMeadow from './test-meadow';
@@ -31,6 +34,9 @@ export const MAPS: Readonly<Record<string, MapDef>> = recordById(
     saltmereLighthouse,
     saltmereLighthouseTop,
     northRoad,
+    tideCavesB1,
+    tideCavesB2,
+    tideCavesB3,
     testShore,
     testHouse,
     testCellar,

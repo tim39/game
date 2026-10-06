@@ -76,6 +76,7 @@ export interface WarpTarget {
 /**
  * A prefab placed on a map, by its top-left cell. With `to`, its doorway leads there; with
  * `script`, facing any of its cells and pressing Confirm runs that event script (a sign, say).
+ * With `when`, it's only there while that holds: the map changes as soon as it does.
  */
 export interface PrefabObject {
   readonly type: 'prefab';
@@ -83,6 +84,7 @@ export interface PrefabObject {
   readonly at: GridPoint;
   readonly to?: WarpTarget;
   readonly script?: string;
+  readonly when?: Condition;
 }
 
 /** A cell that takes whoever steps into it to `to`. Doorways are usually simpler. */
@@ -179,6 +181,16 @@ export interface MapEncounters {
   readonly backdrop: string;
 }
 
+/**
+ * A legend entry that changes with a condition: `terrain` while `when` holds, and `otherwise`
+ * while it doesn't. The Tide Caves' shallows are sand at low tide and sea at high tide.
+ */
+export interface ConditionalTerrain {
+  readonly when: Condition;
+  readonly terrain: string;
+  readonly otherwise: string;
+}
+
 export interface MapDef {
   /** Kebab-case, like `saltmere` or `tide-caves-b1`. */
   readonly id: string;
@@ -200,13 +212,21 @@ export interface MapDef {
    * Blank lines at either end and the indentation shared by every line are ignored.
    */
   readonly terrain: string;
-  /** Terrain character → terrain ID. */
-  readonly legend: Readonly<Record<string, string>>;
+  /**
+   * Terrain character → terrain ID; or a terrain that changes with a condition, which the map
+   * changes to as soon as it does (see `ConditionalTerrain`).
+   */
+  readonly legend: Readonly<Record<string, string | ConditionalTerrain>>;
   readonly objects?: readonly MapObject[];
   /** Walking off an edge leads here. Without an entry, that edge is a wall. */
   readonly edges?: Readonly<Partial<Record<Side, WarpTarget>>>;
   /** Random battles while walking about the map. Without them, there are none. */
   readonly encounters?: MapEncounters;
+  /**
+   * A colour, as 0xRRGGBB, the whole map is multiplied by: a cave's gloom. Without it, the map
+   * shows in its own colours.
+   */
+  readonly shade?: number;
 }
 
 /** The terrains and prefabs maps are built from. Passed in, so tests can use small fixtures. */

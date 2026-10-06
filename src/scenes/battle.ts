@@ -28,7 +28,7 @@ import { BATTLE_POSES } from '../systems/character-frames';
 import { input } from '../systems/input/game-input';
 import { session } from '../systems/session';
 import { settings } from '../systems/settings';
-import { createTilemap } from '../systems/tilemap';
+import { createTilemap, shadeMap } from '../systems/tilemap';
 import {
   AILMENT_EFFECT,
   GUARD_EFFECT,
@@ -98,7 +98,7 @@ export interface BattleStart {
 type ActionEvent = Extract<BattleEvent, { type: 'action' }>;
 
 /** Above the backdrop's layers, back to front. */
-const DEPTH = { shadows: 9, fighters: 10, effects: 20, marks: 30, pops: 31, panels: 40 };
+const DEPTH = { shade: 8, shadows: 9, fighters: 10, effects: 20, marks: 30, pops: 31, panels: 40 };
 
 /** A frame longer than this (say, after the tab was hidden) counts as this long. */
 const MAX_FRAME_MS = 100;
@@ -962,7 +962,10 @@ export class BattleScene extends Phaser.Scene {
   private drawBackdrop(id: string): void {
     const backdrop = Object.hasOwn(BACKDROPS, id) ? BACKDROPS[id] : undefined;
     if (!backdrop) throw new Error(`There's no backdrop called ${id}`);
-    createTilemap(this, compileBackdrop(id, backdrop, MAP_CONTENT));
+    const map = compileBackdrop(id, backdrop, MAP_CONTENT);
+    createTilemap(this, map);
+    // A shade darkens the backdrop, but not the fighters in front of it.
+    if (backdrop.shade !== undefined) shadeMap(this, map, backdrop.shade, DEPTH.shade);
   }
 
   /** Puts everyone in their places: the enemies on the left, the party on the right. */

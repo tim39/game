@@ -17,10 +17,13 @@ export const ENCOUNTERS: Readonly<Record<string, EncounterTable>> = {
       { enemies: ['reef-snail'], weight: 2 },
       { enemies: ['reef-snail', 'cave-bat'], weight: 2 },
       { enemies: ['grotto-octopus', 'cave-bat'], weight: 2 },
+      { enemies: ['tide-jelly', 'tide-jelly'], weight: 2 },
+      { enemies: ['sea-snake', 'cave-bat'], weight: 2 },
       { enemies: ['grotto-octopus', 'grotto-octopus'] },
       { enemies: ['drowned-wisp', 'drowned-wisp'] },
       { enemies: ['reef-snail', 'drowned-wisp'] },
       { enemies: ['cave-bat', 'cave-bat', 'drowned-wisp'] },
+      { enemies: ['sea-snake', 'tide-jelly'] },
     ],
   },
 };
