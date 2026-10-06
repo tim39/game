@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { TEXT_SPEED } from '../data/balance';
 import { input } from '../systems/input/game-input';
+import { settings } from '../systems/settings';
 import {
   drawChoiceBox,
   drawDialogueBox,
@@ -73,7 +74,7 @@ export class DialogueScene extends Phaser.Scene {
     this.flow = stepDialogue(
       flow,
       { dt: Math.min(delta, MAX_FRAME_MS), confirm, move },
-      TEXT_SPEED,
+      TEXT_SPEED[settings.textSpeed],
     );
     this.render();
     if (!this.flow.done) return;

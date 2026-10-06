@@ -94,7 +94,7 @@ test('Menu opens the main menu: the party, the commands, the gold, the time and 
     ['Skills', true],
     ['Equip', true],
     ['Status', true],
-    ['Options', false],
+    ['Options', true],
     ['Save', true],
   ]);
   expect(opened.party).toEqual([

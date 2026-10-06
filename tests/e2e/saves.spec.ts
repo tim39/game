@@ -149,7 +149,7 @@ test('a game saved in a slot carries on from right there after the page reloads'
     items: [
       { label: 'New Game', enabled: true },
       { label: 'Continue', enabled: false },
-      { label: 'Options', enabled: false },
+      { label: 'Options', enabled: true },
     ],
   });
 
@@ -210,7 +210,7 @@ test('a game saved in a slot carries on from right there after the page reloads'
     items: [
       { label: 'New Game', enabled: true },
       { label: 'Continue', enabled: true },
-      { label: 'Options', enabled: false },
+      { label: 'Options', enabled: true },
     ],
   });
   await page.screenshot({ path: 'test-results/screenshots/title-continue.png' });

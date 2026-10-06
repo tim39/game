@@ -95,6 +95,39 @@ export const SHOP_TEXT = {
   same: 'Same',
 };
 
+/** The Options screen: each setting's name, what it does, and what it can be. */
+export const OPTIONS_TEXT = {
+  title: 'Options',
+  rows: {
+    textSpeed: 'Text speed',
+    battleSpeed: 'Battle speed',
+    encounterRate: 'Encounters',
+    alwaysRun: 'Always run',
+    musicVolume: 'Music',
+    soundVolume: 'Sound',
+    screenShake: 'Screen shake',
+    reduceFlashing: 'Reduce flashing',
+  },
+  /** At the bottom, while the cursor is on the setting. */
+  help: {
+    textSpeed: 'How fast lines of dialogue type out.',
+    battleSpeed: 'How fast battles play out.',
+    encounterRate: 'How often random battles come.',
+    alwaysRun: 'Run without holding Run, and walk while holding it.',
+    musicVolume: 'How loud the music plays.',
+    soundVolume: 'How loud sound effects play.',
+    screenShake: 'Whether heavy blows shake the screen.',
+    reduceFlashing: 'Fewer, gentler flashes in battle.',
+  },
+  textSpeeds: { slow: 'Slow', normal: 'Normal', fast: 'Fast' },
+  battleSpeed: (speed: number) => `${speed}x`,
+  encounterRates: { off: 'Off', low: 'Low', normal: 'Normal', high: 'High' },
+  on: 'On',
+  off: 'Off',
+  /** A volume, in tenths: `60%`. */
+  volume: (tenths: number) => `${tenths * 10}%`,
+};
+
 /** The Game Over screen, once a battle is lost: what it says, and what it offers. */
 export const GAME_OVER_TEXT = {
   heading: 'Game Over',

@@ -455,7 +455,7 @@ export class FieldScene extends Phaser.Scene {
     this.buffered = null;
     this.menuPending = false;
     audio.interruptMusic(BATTLE_MUSIC);
-    void playBattleTransition(this, DEPTH.transition).then((curtain) => {
+    void playBattleTransition(this, DEPTH.transition, !settings.reduceFlashing).then((curtain) => {
       // The field may have started over meanwhile: a debug warp, say.
       if (this.map !== map) {
         curtain.destroy();

@@ -42,10 +42,17 @@ test('the keyboard moves the title cursor, wraps around, and confirms', async ({
   await tapKey(page, 'ArrowUp');
   expect((await title(page))?.selected).toBe('Options');
 
-  // Disabled items ignore Confirm; New Game responds.
+  // Options opens over the title, and Cancel comes back.
+  await tapKey(page, 'Enter');
+  await page.waitForFunction(() => window.__game?.activeScenes().includes('options') ?? false);
+  await tapKey(page, 'Escape');
+  await page.waitForFunction(() => window.__game?.activeScenes().join() === 'title');
+  // Disabled items ignore Confirm: there's no save to continue. New Game responds.
+  await tapKey(page, 'ArrowUp');
+  expect((await title(page))?.selected).toBe('Continue');
   await tapKey(page, 'Enter');
   expect(await activeScenes(page)).toEqual(['title']);
-  await tapKey(page, 'ArrowDown');
+  await tapKey(page, 'ArrowUp');
   await tapKey(page, 'KeyZ');
   expect(await activeScenes(page)).toContain('dialogue-sample');
 });

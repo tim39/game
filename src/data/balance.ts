@@ -130,10 +130,11 @@ export const SOUND_REPEAT_MS = 50;
 export const NPC_TUNING: NpcTuning = { stepMs: 360, pauseMs: [1500, 4000], lookMs: 3000 };
 
 /**
- * How fast dialogue types out, in characters a second: a full box of about 140 characters in under
- * three seconds. Confirm shows the rest at once. The Options screen (M5) will offer other speeds.
+ * How fast dialogue types out, in characters a second, at each of the Options screen's text
+ * speeds: at Normal, a full box of about 140 characters in under three seconds. Confirm shows the
+ * rest at once.
  */
-export const TEXT_SPEED = 50;
+export const TEXT_SPEED = { slow: 25, normal: 50, fast: 100 } as const;
 
 /** The party at a point in an area: their level, the gear they wear, and the items they carry. */
 export interface PartyCheckpoint {

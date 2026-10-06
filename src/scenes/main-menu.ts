@@ -36,6 +36,7 @@ import {
 import { MENU_HEIGHT, MENU_LAYOUT, MENU_SCALE, MENU_WIDTH } from '../ui/main-menu-layout';
 import { formatPlayTime } from '../ui/save-slot-text';
 import { wrapText } from '../ui/text-wrap';
+import { OPTIONS_SCENE, type OptionsStart } from './options';
 import { SAVE_MENU_SCENE, type SaveMenuStart } from './save-menu';
 
 export const MAIN_MENU_SCENE = 'main-menu';
@@ -78,10 +79,10 @@ interface Shown {
 
 /**
  * The main menu, over the field (see Screens in docs/DESIGN.md): Items, Skills, Equip, Status,
- * Options (once there's an Options screen) and Save, beside the party at a glance, with the gold,
- * the play time and where the party is. src/ui/main-menu-flow.ts decides what happens; this draws
- * it, a page at a time, in the pack's cream panels, and does what's chosen to the game: using items
- * and casting skills (src/core/field-use.ts) and changing gear. Save opens the save menu over it.
+ * Options and Save, beside the party at a glance, with the gold, the play time and where the party
+ * is. src/ui/main-menu-flow.ts decides what happens; this draws it, a page at a time, in the pack's
+ * cream panels, and does what's chosen to the game: using items and casting skills
+ * (src/core/field-use.ts) and changing gear. Options and Save open their screens over it.
  */
 export class MainMenuScene extends Phaser.Scene {
   private start?: MainMenuStart;
@@ -167,8 +168,14 @@ export class MainMenuScene extends Phaser.Scene {
       case 'unequip':
         session.state = unequip(state, action.member, action.slot);
         break;
+      case 'options':
+        this.openOver(OPTIONS_SCENE, { onClose: () => this.scene.resume() } satisfies OptionsStart);
+        return;
       case 'save':
-        this.openSaveMenu();
+        this.openOver(SAVE_MENU_SCENE, {
+          mode: 'save',
+          onClose: () => this.scene.resume(),
+        } satisfies SaveMenuStart);
         return;
       case 'close':
         this.close();
@@ -177,13 +184,10 @@ export class MainMenuScene extends Phaser.Scene {
     if (this.menu) this.menu = settleMainMenu(this.menu, this.world());
   }
 
-  /** Opens the save menu over this one, which waits until it closes. */
-  private openSaveMenu(): void {
+  /** Opens the save menu or the Options screen over this one, which waits until it closes. */
+  private openOver(scene: string, start: SaveMenuStart | OptionsStart): void {
     this.scene.pause();
-    this.scene.launch(SAVE_MENU_SCENE, {
-      mode: 'save',
-      onClose: () => this.scene.resume(),
-    } satisfies SaveMenuStart);
+    this.scene.launch(scene, start);
   }
 
   /**

@@ -90,7 +90,7 @@ Start a session and say **"next task"**, or name one. Claude takes the first unc
 
 - [x] Main menu: Items, Skills (healing outside battle), Equip (with stat comparison), Status, Options, Save.
 - [x] Shops (buy and sell, quantities, who can equip it and how stats change), inns and Light Shrines.
-- [ ] Options, remembered between sessions: text speed, battle speed, encounter rate, always run, volumes, screen shake, reduce flashing.
+- [x] Options, remembered between sessions: text speed, battle speed, encounter rate, always run, volumes, screen shake, reduce flashing.
 - [ ] Area name banner, and a sound pass on menus and cursors.
 
 ## M6: Vertical slice ★★

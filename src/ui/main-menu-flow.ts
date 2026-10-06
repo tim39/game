@@ -24,7 +24,7 @@ import { MENU_TEXT } from '../data/ui-text';
  * for the scene to do to the game, and `settleMainMenu` then brings the pages up to date with it.
  */
 
-/** The main menu's commands, top to bottom. Options waits for the Options screen. */
+/** The main menu's commands, top to bottom. */
 export const MAIN_COMMANDS = ['items', 'skills', 'equip', 'status', 'options', 'save'] as const;
 export type MainCommand = (typeof MAIN_COMMANDS)[number];
 
@@ -85,7 +85,10 @@ export interface MainMenuInput {
   readonly menu: boolean;
 }
 
-/** What the scene should do: use an item, cast a skill, change gear, save, or close the menu. */
+/**
+ * What the scene should do: use an item, cast a skill, change gear, open the Options screen, save,
+ * or close the menu.
+ */
 export type MenuAction =
   | { readonly type: 'use'; readonly item: ItemId; readonly on: readonly CharacterId[] }
   | {
@@ -96,6 +99,7 @@ export type MenuAction =
     }
   | { readonly type: 'equip'; readonly member: CharacterId; readonly item: ItemId }
   | { readonly type: 'unequip'; readonly member: CharacterId; readonly slot: Slot }
+  | { readonly type: 'options' }
   | { readonly type: 'save' }
   | { readonly type: 'close' };
 
@@ -113,7 +117,7 @@ export function entriesOf(page: MenuPage, world: MenuWorld): MenuEntry[] {
       return MAIN_COMMANDS.map((command) => ({
         label: MENU_TEXT.commands[command],
         detail: '',
-        enabled: command !== 'options' && (state.party.length > 0 || command === 'save'),
+        enabled: state.party.length > 0 || command === 'save' || command === 'options',
         help: null,
       }));
     case 'items':
@@ -330,7 +334,7 @@ function confirm(
       if (!entry?.enabled || command === undefined) return still;
       if (command === 'save') return { menu, action: { type: 'save' } };
       if (command === 'items') return push({ kind: 'items' });
-      if (command === 'options') return still;
+      if (command === 'options') return { menu, action: { type: 'options' } };
       return push({ kind: 'whose', command });
     }
     case 'items': {

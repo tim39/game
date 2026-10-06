@@ -101,6 +101,7 @@ function apply(menu: MainMenu, game: MenuWorld, action: MenuAction | null) {
     case 'unequip':
       state = unequip(state, action.member, action.slot);
       break;
+    case 'options':
     case 'save':
     case 'close':
     case undefined:
@@ -118,18 +119,18 @@ const lines = (menu: MainMenu, game: MenuWorld) =>
   ]);
 
 describe('the commands', () => {
-  test('are Items, Skills, Equip, Status, Options and Save, with Options greyed out', () => {
+  test('are Items, Skills, Equip, Status, Options and Save', () => {
     const menu = openMainMenu();
     expect(lines(menu, world())).toEqual([
       ['Items', '', true],
       ['Skills', '', true],
       ['Equip', '', true],
       ['Status', '', true],
-      ['Options', '', false],
+      ['Options', '', true],
       ['Save', '', true],
     ]);
-    // Options does nothing until the Options screen exists; Save asks the scene to save.
-    expect(play(menu, world(), UP, UP, CONFIRM)).toMatchObject({ action: null });
+    // Options and Save ask the scene to open their screens.
+    expect(play(menu, world(), UP, UP, CONFIRM).action).toEqual({ type: 'options' });
     expect(play(menu, world(), UP, CONFIRM).action).toEqual({ type: 'save' });
   });
 

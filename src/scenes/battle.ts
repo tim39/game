@@ -585,7 +585,7 @@ export class BattleScene extends Phaser.Scene {
       case 'phase': {
         this.catchUp(event);
         const figure = this.figure(event.fighter);
-        this.cameras.main.shake(BATTLE_PACING.hit, 0.004);
+        if (settings.screenShake) this.cameras.main.shake(BATTLE_PACING.hit, 0.004);
         await this.flash(figure, COLOURS.alert, 3);
         return;
       }
@@ -679,7 +679,9 @@ export class BattleScene extends Phaser.Scene {
     this.pop(figure, [...words, { text: String(event.amount), tint }]);
     if (event.amount > 0) {
       void this.flash(figure, 0xffffff, 1);
-      if (event.critical) this.cameras.main.shake(BATTLE_PACING.lunge, 0.003);
+      if (event.critical && settings.screenShake) {
+        this.cameras.main.shake(BATTLE_PACING.lunge, 0.003);
+      }
       await this.shake(figure);
     }
     await this.wait(BATTLE_PACING.hit / 2);
@@ -844,8 +846,17 @@ export class BattleScene extends Phaser.Scene {
     });
   }
 
-  /** Flashes a fighter in a colour, `times` times. */
+  /**
+   * Flashes a fighter in a colour, `times` times. With Reduce flashing on, it's tinted the colour
+   * once instead, softly: white, the hit flash, doesn't show at all.
+   */
   private async flash(figure: Figure, colour: number, times: number): Promise<void> {
+    if (settings.reduceFlashing) {
+      figure.sprite.setTint(colour).setTintMode(Phaser.TintModes.MULTIPLY);
+      await this.wait(BATTLE_PACING.hit / 2);
+      this.untint(figure);
+      return;
+    }
     for (let flash = 0; flash < times; flash++) {
       figure.sprite.setTint(colour).setTintMode(Phaser.TintModes.FILL);
       await this.wait(BATTLE_PACING.hit / 6);

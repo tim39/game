@@ -7,6 +7,7 @@ import { saveSlots } from '../systems/saves';
 import { loadGame, startNewGame } from '../systems/session';
 import { FONT } from '../ui/fonts';
 import type { FieldStart } from './field';
+import { OPTIONS_SCENE, type OptionsStart } from './options';
 import { SAVE_MENU_SCENE, type SaveMenuStart } from './save-menu';
 
 interface MenuItem {
@@ -15,11 +16,11 @@ interface MenuItem {
   readonly enabled: boolean;
 }
 
-/** Continue is there once there's a save to carry on from. Options arrive with M5. */
+/** Continue is there once there's a save to carry on from. */
 const menuItems = (canContinue: boolean): readonly MenuItem[] => [
   { id: 'new-game', label: 'New Game', enabled: true },
   { id: 'continue', label: 'Continue', enabled: canContinue },
-  { id: 'options', label: 'Options', enabled: false },
+  { id: 'options', label: 'Options', enabled: true },
 ];
 
 const GOLD = 0xf5c46b;
@@ -118,6 +119,13 @@ export class TitleScene extends Phaser.Scene {
     if (!item?.enabled) return;
     if (item.id === 'continue') {
       this.continueGame();
+      return;
+    }
+    if (item.id === 'options') {
+      this.scene.pause();
+      this.scene.launch(OPTIONS_SCENE, {
+        onClose: () => this.scene.resume(),
+      } satisfies OptionsStart);
       return;
     }
     // No real opening yet: New Game previews the dialogue box, then puts the player in Saltmere.

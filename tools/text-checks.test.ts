@@ -9,7 +9,10 @@ import { SPEAKERS } from '../src/data/speakers';
 import { ASSETS } from '../src/systems/asset-manifest';
 import { BATTLE_LAYOUT } from '../src/ui/battle-layout';
 import { MAPS } from '../src/data/maps';
+import { OPTIONS_TEXT } from '../src/data/ui-text';
 import { MENU_LAYOUT } from '../src/ui/main-menu-layout';
+import { OPTIONS_LAYOUT } from '../src/ui/options-layout';
+import { wrapText } from '../src/ui/text-wrap';
 import { measureBodyFont, type MeasuredFont } from './font-metrics';
 import { checkBattleText, checkMenuText, checkText, type TextSources } from './text-checks';
 
@@ -171,4 +174,27 @@ test('the real names, descriptions and places fit the main menu, measured with t
       infoLines: MENU_LAYOUT.infoLines,
     }),
   ).toEqual([]);
+});
+
+test('the Options screen’s names, values and help fit it, measured with the real font', () => {
+  const font = measureBodyFont(
+    readFileSync(join(import.meta.dirname, '../public', ASSETS['font.body'].url)),
+  );
+  const { room } = OPTIONS_LAYOUT;
+  const values = [
+    ...Object.values(OPTIONS_TEXT.textSpeeds),
+    ...Object.values(OPTIONS_TEXT.encounterRates),
+    ...[1, 2, 3, 4].map(OPTIONS_TEXT.battleSpeed),
+    OPTIONS_TEXT.on,
+    OPTIONS_TEXT.off,
+  ];
+  const tooWide = [
+    ...Object.values(OPTIONS_TEXT.rows).filter((label) => font.width(label) > room.label),
+    ...values.filter((value) => font.width(value) > room.value),
+  ];
+  expect(tooWide).toEqual([]);
+  const tooLong = Object.values(OPTIONS_TEXT.help).filter(
+    (help) => wrapText(help, room.help, (text) => font.width(text)).length > room.helpLines,
+  );
+  expect(tooLong).toEqual([]);
 });

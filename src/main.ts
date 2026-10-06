@@ -6,6 +6,7 @@ import { DialogueSampleScene } from './scenes/dialogue-sample';
 import { FieldScene } from './scenes/field';
 import { GameOverScene } from './scenes/game-over';
 import { MainMenuScene } from './scenes/main-menu';
+import { OptionsScene } from './scenes/options';
 import { PreloadScene } from './scenes/preload';
 import { SaveMenuScene } from './scenes/save-menu';
 import { ShopScene } from './scenes/shop';
@@ -15,7 +16,7 @@ import { preventBrowserGestures } from './systems/browser-gestures';
 import { GAME_HEIGHT, GAME_WIDTH, pickZoom } from './systems/display';
 import { input } from './systems/input/game-input';
 import { prefersTouch } from './systems/input/touch-controls';
-import { settings } from './systems/settings';
+import { DEFAULT_SETTINGS, browserStorage, loadSettings } from './systems/settings';
 
 const container = document.getElementById('game');
 if (!container) throw new Error('index.html needs a <div id="game">');
@@ -35,8 +36,8 @@ const game = new Phaser.Game({
     zoom: zoomForContainer(),
   },
   // Later scenes draw over earlier ones: a battle over the field, the dialogue box over either,
-  // the main menu and shops over the field, and the save menu over the main menu, the title
-  // screen or the Game Over screen.
+  // the main menu and shops over the field, the save menu over the main menu, the title screen or
+  // the Game Over screen, and the Options screen over the title screen or the main menu.
   scene: [
     BootScene,
     PreloadScene,
@@ -49,6 +50,7 @@ const game = new Phaser.Game({
     MainMenuScene,
     ShopScene,
     SaveMenuScene,
+    OptionsScene,
   ],
 });
 
@@ -58,8 +60,9 @@ new ResizeObserver(() => game.scale.setZoom(zoomForContainer())).observe(contain
 preventBrowserGestures();
 input.attach(game, container);
 audio.install(game);
-// Phones and tablets have no Run button to hold, so they run unless B is held (Controls in DESIGN.md).
-if (prefersTouch()) settings.alwaysRun = true;
+// The player's settings, as they left them. Until they've set any, phones and tablets, which have no
+// Run button to hold, run unless B is held (Controls in DESIGN.md).
+loadSettings(browserStorage(), { ...DEFAULT_SETTINGS, alwaysRun: prefersTouch() });
 
 // Vite replaces these with constants, so production builds drop the debug code entirely.
 if (import.meta.env.DEV || import.meta.env.MODE === 'e2e') {
