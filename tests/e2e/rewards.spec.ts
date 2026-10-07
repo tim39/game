@@ -60,7 +60,8 @@ function watchErrors(page: Page): string[] {
 
 /**
  * Opens the game at the title, with Bram in the party beside Rowan, and battles at the debug
- * menu's 4× speed, so the tests aren't kept waiting.
+ * menu's 4× speed, so the tests aren't kept waiting. It's past the opening, which Tamsin's house
+ * plays until Rowan is on lamp duty: a battle from the title ends there, in a new game's place.
  */
 async function toTitle(page: Page): Promise<void> {
   await page.goto('/');
@@ -68,6 +69,7 @@ async function toTitle(page: Page): Promise<void> {
   await page.evaluate(() => {
     window.__game?.battleSpeed(4);
     window.__game?.join('bram');
+    window.__game?.setFlag('story.lamp-duty');
   });
 }
 
@@ -198,8 +200,6 @@ test('resting in Rowan’s bed puts the party back on its feet', async ({ page }
   await page.evaluate(() => {
     window.__game?.vitals('rowan', { hp: 5, mp: 0 });
     window.__game?.vitals('bram', { hp: 0 });
-    // Past the opening, which Tamsin's house plays until Rowan is on lamp duty.
-    window.__game?.setFlag('story.lamp-duty');
     // Beside Rowan's bed, in Tamsin's house, facing it.
     window.__game?.warp('saltmere-tamsin', 2, 1, 'left');
   });
