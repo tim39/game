@@ -1,4 +1,5 @@
 import { defineMap } from '../../core/map/types';
+import { INDOOR_MOODS } from './moods';
 
 /**
  * The Gull's Rest, Saltmere's inn: Gwen keeps it from behind her counter, where the party can take
@@ -10,6 +11,7 @@ export default defineMap({
   name: "The Gull's Rest",
   area: 'saltmere',
   music: 'bgm.saltmere',
+  moods: INDOOR_MOODS,
   terrain: `
     ##############
     #............#
@@ -51,6 +53,16 @@ export default defineMap({
     { type: 'prefab', prefab: 'rug', at: [5, 6] },
     { type: 'prefab', prefab: 'pot', at: [12, 7] },
     { type: 'prefab', prefab: 'plant', at: [1, 6] },
+    // Bram, staying the night of the Kindling.
+    {
+      type: 'npc',
+      id: 'bram',
+      sprite: 'bram',
+      at: [11, 4],
+      facing: 'left',
+      script: 'saltmere/bram',
+      when: ['story.kindling', '!story.beacon-out'],
+    },
     {
       type: 'npc',
       id: 'aled',

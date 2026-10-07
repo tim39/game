@@ -153,7 +153,9 @@ test('a game saved in a slot carries on from right there after the page reloads'
     ],
   });
 
-  // In Tamsin's house, facing the chest at the foot of Rowan's bed: open it.
+  // In Tamsin's house, facing the chest at the foot of Rowan's bed: open it. (Past the opening,
+  // which the house plays until Rowan is on lamp duty.)
+  await page.evaluate(() => window.__game?.setFlag('story.lamp-duty'));
   await warp(page, 'saltmere-tamsin', 2, 3, 'left');
   await tapKey(page, 'KeyZ');
   await readOn(page, 'Found Potion!');
@@ -297,6 +299,8 @@ test('saving over a save asks first, and No keeps the one that was there', async
 test('every map change saves to the autosave, which Continue can load', async ({ page }) => {
   const errors = watchErrors(page);
   await toTitle(page);
+  // Past the opening, which Tamsin's house plays until Rowan is on lamp duty.
+  await page.evaluate(() => window.__game?.setFlag('story.lamp-duty'));
   await warp(page, 'saltmere', 7, 6, 'up');
   // A warp isn't a map change made by playing.
   expect(await stored(page, 'autosave')).toBeNull();
@@ -500,6 +504,8 @@ test('the debug menu exports a save to a file, and imports one into any slot', a
 }, testInfo) => {
   const errors = watchErrors(page);
   await toTitle(page);
+  // Past the opening, which Tamsin's house plays until Rowan is on lamp duty.
+  await page.evaluate(() => window.__game?.setFlag('story.lamp-duty'));
   await warp(page, 'saltmere-tamsin', 2, 3, 'left');
   await openSaveMenu(page);
   await tapKey(page, 'KeyZ');

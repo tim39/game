@@ -171,10 +171,19 @@ test('reports maps whose music is not music in the manifest', () => {
     b: room('b'),
     c: room('c', 'bgm.nowhere'),
     d: room('d', 'sfx.ding'),
+    // A mood's music, which can be silence.
+    e: {
+      ...room('e', 'bgm.town'),
+      moods: [
+        { when: 'story.night', music: null },
+        { when: 'story.dusk', music: 'bgm.dusk' },
+      ],
+    },
   });
   expect(problems).toEqual([
     "Map c: its music, bgm.nowhere, isn't music in the asset manifest",
     "Map d: its music, sfx.ding, isn't music in the asset manifest",
+    "Map e: its moods[1]'s music, bgm.dusk, isn't music in the asset manifest",
   ]);
 });
 

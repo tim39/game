@@ -79,7 +79,7 @@ const SLOTS: readonly DebugSlot[] = [
 /** A short story, for the Story page. */
 const STORY = [
   { flag: 'story.dawn', name: 'Dawn' },
-  { flag: 'story.noon', name: 'Noon' },
+  { flag: 'story.noon', name: 'Noon', joins: 'liora' },
   { flag: 'story.dusk', name: 'Dusk' },
 ];
 
@@ -589,17 +589,20 @@ test('the story page jumps to any point in the story, and starts the field over 
     ['Dusk', 'story.dusk'],
   ]);
 
-  // Noon sets its flag and Dawn's, as if the story had got there.
+  // Noon sets its flag and Dawn's, as if the story had got there, and Liora, who joins at Noon,
+  // is in the party.
   choose(menu, 'Noon');
   const flags = () => STORY.map(({ flag }) => hasFlag(game.state, flag));
   expect(flags()).toEqual([true, true, false]);
+  expect(game.state.party).toEqual(['rowan', 'bram', 'liora']);
   expect(menu.view().notice).toBe('The story is at Noon.');
   expect(field.restarts).toBe(1);
   expect(lines(menu)[2]).toMatchObject({ label: 'Noon', detail: 'now' });
 
-  // Going back clears the later flags; the start clears them all.
+  // Going back clears the later flags, and Liora hasn't joined yet; the start clears them all.
   choose(menu, 'Dawn');
   expect(flags()).toEqual([true, false, false]);
+  expect(game.state.party).toEqual(['rowan', 'bram']);
   choose(menu, 'The start');
   expect(flags()).toEqual([false, false, false]);
   expect(field.restarts).toBe(3);
@@ -611,10 +614,16 @@ test('how far the story has got is its latest point whose flag is set', () => {
   const { game } = setUp({});
   expect(storyReached(game.state, STORY)).toBe(-1);
   expect(storyReached(setFlag(game.state, 'story.noon'), STORY)).toBe(1);
-  const all = storyAt(game.state, STORY, 2);
+  const all = storyAt(game.state, STORY, 2, DB);
   expect(storyReached(all, STORY)).toBe(2);
-  // Other flags are left as they are.
+  // Other flags are left as they are, and so is everyone who doesn't join at a point.
   const opened = setFlag(game.state, 'chest.test-01');
-  expect(hasFlag(storyAt(opened, STORY, 0), 'chest.test-01')).toBe(true);
-  expect(storyAt(all, STORY, -1).flags).toEqual({});
+  expect(hasFlag(storyAt(opened, STORY, 0, DB), 'chest.test-01')).toBe(true);
+  expect(storyAt(all, STORY, -1, DB)).toMatchObject({ flags: {}, party: ['rowan', 'bram'] });
+  // Whoever joins at a point joins as they would, in their own gear.
+  expect(all.members.liora).toEqual({
+    level: 1,
+    exp: 0,
+    equipment: DB.characters.liora?.equipment,
+  });
 });

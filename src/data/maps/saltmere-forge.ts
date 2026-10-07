@@ -1,4 +1,5 @@
 import { defineMap } from '../../core/map/types';
+import { INDOOR_MOODS } from './moods';
 
 /**
  * Hal's forge, in Saltmere: the kiln, the anvil and the workbench, and Hal, who mends anchors and
@@ -9,6 +10,7 @@ export default defineMap({
   name: "Hal's Forge",
   area: 'saltmere',
   music: 'bgm.saltmere',
+  moods: INDOOR_MOODS,
   terrain: `
     ##########
     #........#

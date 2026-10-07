@@ -4,6 +4,7 @@ import { ENCOUNTER_RATES, type EncounterRate } from '../core/encounters';
 import { SLOTS, canEquip, slotOf, type Slot } from '../core/equipment';
 import { expToReach, type ExpCurve } from '../core/levels';
 import type { MapDef, SpawnObject } from '../core/map/types';
+import { recruit } from '../core/party';
 import type { ItemDef } from '../core/schema';
 import {
   addGold,
@@ -11,6 +12,7 @@ import {
   equip,
   hasFlag,
   itemCount,
+  leaveParty,
   restoreParty,
   setFlag,
   setLevel,
@@ -482,10 +484,20 @@ export function storyReached(state: GameState, story: readonly StoryPoint[]): nu
 
 /**
  * The game with the story at one of its points, as if it had got there: that point's flag and those
- * before it set, and those after it clear. Point -1 is the start, before any of them.
+ * before it set, and those after it clear; whoever joins the party at one of those points in it,
+ * as they join, and whoever joins later out of it. Point -1 is the start, before any of them.
  */
-export function storyAt(state: GameState, story: readonly StoryPoint[], point: number): GameState {
-  return story.reduce((next, { flag }, index) => setFlag(next, flag, index <= point), state);
+export function storyAt(
+  state: GameState,
+  story: readonly StoryPoint[],
+  point: number,
+  db: GameDb,
+): GameState {
+  return story.reduce((next, { flag, joins }, index) => {
+    const flagged = setFlag(next, flag, index <= point);
+    if (joins === undefined) return flagged;
+    return index <= point ? recruit(flagged, joins, db) : leaveParty(flagged, joins);
+  }, state);
 }
 
 const storyPointName = (story: readonly StoryPoint[], point: number): string =>
@@ -505,7 +517,7 @@ function storyPage(context: DebugMenuContext): DebugPage {
         label: storyPointName(story, point),
         detail: point === reached ? 'now' : (story[point]?.flag ?? 'no story flags'),
         choose: () => {
-          game.set(storyAt(game.get(), story, point));
+          game.set(storyAt(game.get(), story, point, context.db));
           context.notify(`The story is at ${storyPointName(story, point)}.`);
           context.restartField();
         },

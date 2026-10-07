@@ -276,13 +276,112 @@ test('the Drowned Warden fights to the boss music, and once beaten is gone for g
   await page.screenshot({ path: 'test-results/screenshots/boss-beaten.png' });
   await step(page, 'ArrowUp', 5);
   expect(await field(page)).toMatchObject({ x: 6, y: 3, facing: 'up' });
-  await press(page, 'KeyZ');
-  await closeOn(page, "The Beacon's bowl is cold and dark, and full of black ash.");
 
   // Gone for good, as the game remembers.
   await page.evaluate(() => window.__game?.warp('tide-caves-beacon', 6, 8, 'up'));
   await arrivedOn(page, 'tide-caves-beacon');
   expect(await blocked(page)).toMatchObject({ up: false });
+  expect(errors).toEqual([]);
+});
+
+test('the dead Beacon’s last spark: Rowan learns Tide Edge, and the two of them go home', async ({
+  page,
+}) => {
+  const errors = watchErrors(page);
+  // With the story as far as the Warden beaten, in front of the Beacon on its dais.
+  await startOn(page, ['tide-caves-beacon', 6, 3, 'up'], () => {
+    for (const flag of [
+      'story.lamp-duty',
+      'story.lamps-lit',
+      'story.bram-arrived',
+      'story.kindling',
+      'story.bram-joined',
+      'story.warden-beaten',
+    ]) {
+      window.__game?.setFlag(flag);
+    }
+    window.__game?.join('bram');
+  });
+  await press(page, 'KeyZ');
+  await untilSaid(
+    page,
+    "The Beacon's bowl is cold and dark, and full of black ash. Beside it, someone has cut a mark into the stone: a flame, struck through.",
+  );
+  await press(page, 'KeyZ');
+  // Bram knows whose mark it is.
+  await untilSaid(
+    page,
+    "I know that mark. It's Vesh's. I served under him, years ago: the best of us, and the High Warden's right hand.",
+  );
+  expect(await dialogue(page)).toMatchObject({ name: 'Bram' });
+  await page.screenshot({ path: 'test-results/screenshots/boss-vesh-mark.png' });
+  await press(page, 'KeyZ');
+  await untilSaid(page, 'If Vesh did this, he had a reason. I would give a great deal to hear it.');
+  await press(page, 'KeyZ');
+  await untilSaid(page, 'Something stirs in the ash: one last spark, blue as the sea.');
+  await press(page, 'KeyZ');
+  await untilSaid(
+    page,
+    "It drifts up into Rowan's open hand, and sinks in, warm as a lamp on a cold night.",
+  );
+  expect((await audio(page)).sounds).toContain('sfx.heal');
+  await press(page, 'KeyZ');
+  // The spark is Rowan's, and with it Tide Edge, to a jingle.
+  await untilSaid(page, 'Rowan learned Tide Edge!');
+  expect((await state(page)).flags).toHaveProperty(['story.tide-spark'], true);
+  expect((await audio(page)).sounds).toContain('sfx.level-up');
+  await page.screenshot({ path: 'test-results/screenshots/boss-tide-edge.png' });
+  await press(page, 'KeyZ');
+  await untilSaid(
+    page,
+    'Never seen a Beacon do that. Never seen one dead, either. The Order will need to hear of this, in Wardenhold.',
+  );
+  await press(page, 'KeyZ');
+  await untilSaid(page, 'But home first. Your Tamsin will be counting the minutes.');
+  await press(page, 'KeyZ');
+
+  // Up through the caves, in the dark, and in at Tamsin's door.
+  await untilSaid(
+    page,
+    'Rowan and Bram climb back up through the caves, and out into the misty night.',
+  );
+  expect(await field(page)).toMatchObject({ dark: true });
+  await press(page, 'KeyZ');
+  await untilSaid(
+    page,
+    "You came back. With a light in you, too. Don't look at me like that: I've lit enough lamps to know one.",
+  );
+  expect(await field(page)).toMatchObject({ map: 'saltmere-tamsin', x: 5, y: 6, facing: 'up' });
+  await page.screenshot({ path: 'test-results/screenshots/boss-home.png' });
+  await closeOn(
+    page,
+    "You came back. With a light in you, too. Don't look at me like that: I've lit enough lamps to know one.",
+  );
+  // Back in Saltmere, named by its banner, where the Gloam's music carries in.
+  expect(await field(page)).toMatchObject({ banner: 'Saltmere' });
+  expect((await audio(page)).music).toBe('bgm.gloam');
+
+  // Status shows Tide Edge among Rowan's skills.
+  await press(page, 'KeyC');
+  await page.waitForFunction(() => window.__game?.activeScenes().join() === 'main-menu');
+  const labels = (await page.evaluate(() => window.__game?.inspect('main-menu')?.entries)) as {
+    label: string;
+  }[];
+  const status = labels.findIndex(({ label }) => label === 'Status');
+  for (let move = 0; move < status; move++) await press(page, 'ArrowDown');
+  await press(page, 'KeyZ', 'KeyZ');
+  expect(await page.evaluate(() => window.__game?.inspect('main-menu'))).toMatchObject({
+    page: { kind: 'status', member: 'rowan' },
+    info: ['Skills', 'Tide Edge'],
+  });
+  await press(page, 'KeyC');
+  await arrivedOn(page, 'saltmere-tamsin');
+
+  // The Beacon gives no more.
+  await page.evaluate(() => window.__game?.warp('tide-caves-beacon', 6, 3, 'up'));
+  await arrivedOn(page, 'tide-caves-beacon');
+  await press(page, 'KeyZ');
+  await closeOn(page, "The Beacon's bowl is cold and dark, and full of black ash.");
   expect(errors).toEqual([]);
 });
 

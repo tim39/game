@@ -68,6 +68,7 @@ By **Pixel-boy** and **AAA**: https://pixel-boy.itch.io/ninja-adventure-asset-pa
 | `public/assets/vfx/smoke.png` | Gloam hits, tinted violet; the party fleeing | `FX/Smoke/Smoke/SpriteSheet.png` | None |
 | `public/assets/vfx/spark.png` | Healing, reviving and helpful statuses | `FX/Magic/Spark/SpriteSheet.png` | None |
 | `public/assets/vfx/aura.png` | Harmful statuses | `FX/Magic/Aura/SpriteSheet.png` | None |
+| `public/assets/vfx/fog.png` | The Gloam's mist, drifting over Saltmere once the Beacon is out | `FX/Environment/Fog.png` | None |
 | `public/assets/vfx/shield-blue.png` | Guard | `FX/Magic/Shield/SpriteSheetBlue.png` | None |
 | `public/assets/tiles/floor.png` | Ground: grass, sand, dirt paths | `Backgrounds/Tilesets/TilesetFloor.png` | Cropped a blank 1 px row off the bottom (417 to 416 px tall), so it divides into 16 px tiles |
 | `public/assets/tiles/water.png` | Sea, shorelines, docks | `Backgrounds/Tilesets/TilesetWater.png` | None |
@@ -88,6 +89,7 @@ By **Pixel-boy** and **AAA**: https://pixel-boy.itch.io/ninja-adventure-asset-pa
 | `public/assets/bgm/calm-village.ogg`, `public/assets/bgm/calm-village.m4a` | Saltmere's music | `Audio/Musics/33 - Calm Village.ogg` | Turned down 1.3 dB, to −20 LUFS; re-encoded as Ogg Vorbis (quality 4) and AAC (128 kbps) |
 | `public/assets/bgm/fight.ogg`, `public/assets/bgm/fight.m4a` | Battle music | `Audio/Musics/17 - Fight.ogg` | Turned up 2.5 dB, to −20 LUFS; re-encoded as Ogg Vorbis (quality 4) and AAC (128 kbps) |
 | `public/assets/bgm/aquatic.ogg`, `public/assets/bgm/aquatic.m4a` | The Tide Caves' music | `Audio/Musics/18 - Aquatic.ogg` | Turned up 4 dB, to −20 LUFS; re-encoded as Ogg Vorbis (quality 4) and AAC (128 kbps) |
+| `public/assets/bgm/lost-village.ogg`, `public/assets/bgm/lost-village.m4a` | The Gloam's music: Saltmere once the Beacon is out | `Audio/Musics/26 - Lost Village.ogg` | Turned up 0.6 dB, to −20 LUFS; re-encoded as Ogg Vorbis (quality 4) and AAC (128 kbps) |
 | `public/assets/bgm/tension.ogg`, `public/assets/bgm/tension.m4a` | Boss battle music | `Audio/Musics/28 - Tension.ogg` | Turned down 0.4 dB, to −20 LUFS; re-encoded as Ogg Vorbis (quality 4) and AAC (128 kbps) |
 | `public/assets/sfx/secret-2.ogg`, `public/assets/sfx/secret-2.m4a` | A chest opening | `Audio/Jingles/Secret2.wav` | Encoded as Ogg Vorbis (quality 4) and AAC (128 kbps) |
 | `public/assets/sfx/success-3.ogg`, `public/assets/sfx/success-3.m4a` | Winning a battle | `Audio/Jingles/Success3.wav` | Encoded as Ogg Vorbis (quality 4) and AAC (128 kbps) |
@@ -95,6 +97,7 @@ By **Pixel-boy** and **AAA**: https://pixel-boy.itch.io/ninja-adventure-asset-pa
 | `public/assets/sfx/game-over-3.ogg`, `public/assets/sfx/game-over-3.m4a` | Losing a battle | `Audio/Jingles/GameOver3.wav` | Encoded as Ogg Vorbis (quality 4) and AAC (128 kbps) |
 | `public/assets/sfx/secret-4.ogg`, `public/assets/sfx/secret-4.m4a` | Morning, after a night's rest | `Audio/Jingles/Secret4.wav` | Encoded as Ogg Vorbis (quality 4) and AAC (128 kbps) |
 | `public/assets/sfx/heal-2.ogg`, `public/assets/sfx/heal-2.m4a` | A Light Shrine's healing, and healing from the menu | `Audio/Sounds/Magic & Skill/Heal2.wav` | Encoded as Ogg Vorbis (quality 4) and AAC (128 kbps) |
+| `public/assets/sfx/fire.ogg`, `public/assets/sfx/fire.m4a` | A lamp being lit, and the Kindling's flame | `Audio/Sounds/Elemental/Fire.wav` | Turned down 5.7 dB, to −22 LUFS like the other sound effects; encoded as Ogg Vorbis (quality 4) and AAC (128 kbps) |
 | `public/assets/sfx/impact.ogg`, `public/assets/sfx/impact.m4a` | A tide lever cranking, in the Tide Caves | `Audio/Sounds/Hit & Impact/Impact.wav` | Encoded as Ogg Vorbis (quality 4) and AAC (128 kbps) |
 | `public/assets/sfx/wave.ogg`, `public/assets/sfx/wave.m4a` | The sea rushing in or out as the tide turns, in the Tide Caves | `Audio/Sounds/Ambient/Wave.wav` | Just its first wave, the first 3.4 seconds, faded out over the last 0.4; turned up 8 dB, to −22 LUFS like the other sound effects; encoded as Ogg Vorbis (quality 4) and AAC (128 kbps) |
 | `public/assets/sfx/move-3.ogg`, `public/assets/sfx/move-3.m4a` | A menu's cursor moving | `Audio/Sounds/Menu/Move3.wav` | Encoded as Ogg Vorbis (quality 4) and AAC (128 kbps) |
@@ -103,4 +106,6 @@ By **Pixel-boy** and **AAA**: https://pixel-boy.itch.io/ninja-adventure-asset-pa
 | `public/assets/sfx/menu-11.ogg`, `public/assets/sfx/menu-11.m4a` | Choosing something that can't be chosen now | `Audio/Sounds/Menu/Menu11.wav` | Encoded as Ogg Vorbis (quality 4) and AAC (128 kbps) |
 | `public/assets/sfx/gold-1.ogg`, `public/assets/sfx/gold-1.m4a` | Buying or selling in a shop | `Audio/Sounds/Bonus/Gold1.wav` | Encoded as Ogg Vorbis (quality 4) and AAC (128 kbps) |
 | `public/assets/tiles/drowned-warden.png` | The Drowned Warden, standing guard in the Beacon chamber | `Actor/Boss/GiantBlueSamurai/Idle.png`, its first frame | Cut down to the 80×48 middle of the 96×48 frame, from one blade's tip to the other's, so it divides into 16 px tiles |
+| `public/assets/tiles/lamp.png` | Saltmere's lamps, unlit and lit | `Backgrounds/Tilesets/tileset_camp.png`, the lamp on its post (column 6, rows 5–6) | Twice, side by side: the lantern's glass darkened, unlit, and lit in warm yellows with a faint glow round it |
+| `public/assets/tiles/pyre-burning.png` | The Kindling pyre, burning | `Backgrounds/Tilesets/tileset_camp.png`, the pyre (columns 12–13, rows 5–6), and `FX/Particle/Fire.png` | Five of the fire's small flames laid over the logs |
 | `public/assets/tiles/lighthouse.png` | Saltmere's lighthouse | `Backgrounds/Tilesets/TilesetDesert.png`, the domed tower (columns 3–5, rows 0–4) | Cut out; the dome recoloured from greens to the pack's reds, and the two windows lit in its yellows |

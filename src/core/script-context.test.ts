@@ -50,6 +50,7 @@ function fakeStage(answers: number[] = []): { stage: Stage; log: string[] } {
     wait: (ms) => done(`wait ${ms}`),
     face: (actor, toward) => done(`face ${actor} ${toward}`),
     move: (actor, route) => done(`move ${actor} ${route.join(' ')}`),
+    leave: (actor) => done(`leave ${actor}`),
     fadeOut: (ms) => done(`fadeOut ${ms ?? 'default'}`),
     fadeIn: (ms) => done(`fadeIn ${ms ?? 'default'}`),
     teleport: (map, spawn) => done(`teleport ${map} ${spawn}`),
@@ -169,6 +170,8 @@ describe('the on-screen verbs', () => {
       await ev.say('tamsin', 'Well?');
       const pick = await ev.choice(['Yes', 'No']);
       await ev.say('tamsin', pick === 1 ? 'Suit yourself.' : 'Good.');
+      await ev.move('tamsin', ['right']);
+      await ev.leave('tamsin');
     });
     const { log } = await run(scene, START, [1]);
     expect(log).toEqual([
@@ -184,6 +187,8 @@ describe('the on-screen verbs', () => {
       'say tamsin: Well?',
       'choice Yes / No',
       'say tamsin: Suit yourself.',
+      'move tamsin right',
+      'leave tamsin',
     ]);
   });
 

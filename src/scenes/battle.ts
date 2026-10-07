@@ -90,6 +90,11 @@ export interface BattleStart {
   readonly setup: BattleSetup;
   /** What it's fought in front of: one of BACKDROPS, in src/data/backdrops.ts. */
   readonly backdrop: string;
+  /**
+   * The shade over the field it's fought from, as the map's mood has it (night, say, or the
+   * Gloam): it darkens a backdrop that has no shade of its own.
+   */
+  readonly shade?: number;
   /** Where its luck comes from: the same seed, and the same choices, play the same battle. */
   readonly seed: number | string;
   /**
@@ -246,7 +251,7 @@ export class BattleScene extends Phaser.Scene {
     this.start = start;
     audio.interruptMusic(battleMusic(start.setup.enemies));
     this.cameras.main.setZoom(BATTLE_SCALE).centerOn(BATTLE_WIDTH / 2, BATTLE_HEIGHT / 2);
-    this.drawBackdrop(start.backdrop);
+    this.drawBackdrop(start.backdrop, start.shade);
 
     this.rng = Rng.fromSeed(start.seed);
     const battle = startBattle(start.setup, session.state, DB, BATTLE_TUNING, this.rng);
@@ -304,6 +309,7 @@ export class BattleScene extends Phaser.Scene {
     const list = page === 'skills' || page === 'items' ? (menu?.[page] ?? []) : [];
     return {
       backdrop: this.start.backdrop,
+      shade: BACKDROPS[this.start.backdrop]?.shade ?? this.start.shade ?? null,
       outcome: battle.outcome,
       result: this.result,
       active: battle.active,
@@ -973,13 +979,14 @@ export class BattleScene extends Phaser.Scene {
 
   // Setting the stage.
 
-  private drawBackdrop(id: string): void {
+  private drawBackdrop(id: string, fieldShade: number | undefined): void {
     const backdrop = Object.hasOwn(BACKDROPS, id) ? BACKDROPS[id] : undefined;
     if (!backdrop) throw new Error(`There's no backdrop called ${id}`);
     const map = compileBackdrop(id, backdrop, MAP_CONTENT);
     createTilemap(this, map);
     // A shade darkens the backdrop, but not the fighters in front of it.
-    if (backdrop.shade !== undefined) shadeMap(this, map, backdrop.shade, DEPTH.shade);
+    const shade = backdrop.shade ?? fieldShade;
+    if (shade !== undefined) shadeMap(this, map, shade, DEPTH.shade);
   }
 
   /** Puts everyone in their places: the enemies on the left, the party on the right. */

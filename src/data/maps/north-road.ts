@@ -1,4 +1,5 @@
 import { defineMap } from '../../core/map/types';
+import { OUTDOOR_MOODS } from './moods';
 
 /**
  * The North Road, out of Saltmere through the meadows and woods, where wolves prowl: the first
@@ -8,6 +9,7 @@ export default defineMap({
   id: 'north-road',
   name: 'The North Road',
   music: 'bgm.saltmere',
+  moods: OUTDOOR_MOODS,
   terrain: `
     TTTTTTTTTTTTT,,TTTTTTTTT
     TTTTTTTTTTTTT,,TTTTTTTTT

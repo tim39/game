@@ -199,6 +199,33 @@ export function mapFlags(def: MapDef): string[] {
   return [...new Set(conditions.flatMap(conditionFlags))];
 }
 
+/** How a map sounds and looks: the music arriving plays, its shade and whether mist drifts over it. */
+export interface MapLook {
+  /** A `bgm.*` track, or null for silence. */
+  readonly music: string | null;
+  /** A colour the map is multiplied by, as 0xRRGGBB, or null for none. */
+  readonly shade: number | null;
+  readonly mist: boolean;
+}
+
+/**
+ * A map's music, shade and mist as the flags are: its own, as the first of its moods whose
+ * condition holds changes them.
+ */
+export function mapLook(def: MapDef, flags: FlagsSet = NO_FLAGS): MapLook {
+  const mood = def.moods?.find(({ when }) => conditionHoldsFor(when, flags));
+  return {
+    music: mood?.music !== undefined ? mood.music : (def.music ?? null),
+    shade: mood?.shade !== undefined ? mood.shade : (def.shade ?? null),
+    mist: mood?.mist ?? def.mist ?? false,
+  };
+}
+
+/** The flags a map's moods change with, each once. Its shade and mist change as soon as they do. */
+export function moodFlags(def: MapDef): string[] {
+  return [...new Set((def.moods ?? []).flatMap(({ when }) => conditionFlags(when)))];
+}
+
 /**
  * Builds a map's layers, collision and exits, as `flags` has it: its conditional terrains and
  * prefabs go by which flags are set (none, if it isn't given). Throws if anything doesn't fit.
@@ -218,6 +245,12 @@ export function compileMap(
   if (width === 0) fail('its terrain is empty');
   rows.forEach((row, y) => {
     if (row.length !== width) fail(`row ${y} is ${row.length} cells wide, not ${width}`);
+  });
+
+  (def.moods ?? []).forEach(({ when }, index) => {
+    for (const term of badConditionTerms(when)) {
+      fail(`its moods[${index}] has "${term}" in its condition, which isn't a flag`);
+    }
   });
 
   // A conditional terrain is the one its condition picks, as the flags are.

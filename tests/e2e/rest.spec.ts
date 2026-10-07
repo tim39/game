@@ -38,6 +38,8 @@ async function startHurt(
   await page.goto('/');
   await page.waitForFunction(() => window.__game?.activeScenes().includes('title') ?? false);
   await page.evaluate((amount) => {
+    // Past the opening, which Tamsin's house plays until Rowan is on lamp duty.
+    window.__game?.setFlag('story.lamp-duty');
     window.__game?.join('bram');
     window.__game?.vitals('rowan', { hp: 5, mp: 0 });
     window.__game?.vitals('bram', { hp: 0 });

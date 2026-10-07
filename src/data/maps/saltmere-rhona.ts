@@ -1,4 +1,5 @@
 import { defineMap } from '../../core/map/types';
+import { INDOOR_MOODS } from './moods';
 
 /**
  * Rhona's house in Saltmere, where she lives with her boy Pip: the oven, their beds and the table,
@@ -9,6 +10,7 @@ export default defineMap({
   name: "Rhona's House",
   area: 'saltmere',
   music: 'bgm.saltmere',
+  moods: INDOOR_MOODS,
   terrain: `
     ##########
     #........#

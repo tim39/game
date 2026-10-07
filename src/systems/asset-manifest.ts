@@ -103,6 +103,8 @@ export const ASSETS = {
   'tiles.boat': sheet('tiles/boat.png'), // a fishing boat, 5×2 tiles
   'tiles.lighthouse': sheet('tiles/lighthouse.png'), // Saltmere's lighthouse, 3×5 tiles
   'tiles.drowned-warden': sheet('tiles/drowned-warden.png'), // the boss, standing guard, 5×3 tiles
+  'tiles.lamp': sheet('tiles/lamp.png'), // a lamp on its post, unlit and lit, 1×2 tiles each
+  'tiles.pyre-burning': sheet('tiles/pyre-burning.png'), // the Kindling pyre, burning, 2×2 tiles
 
   // Characters: one column per direction (down, up, left, right) and a row per pose. Most sheets
   // have 7 rows (walk 0–3, attack, jump, special); tamsin and child have just 2 walk rows.
@@ -123,6 +125,9 @@ export const ASSETS = {
   'sprite.princess': sheet('sprites/princess.png'),
   'sprite.child': sheet('sprites/child.png'),
   'sprite.shadow': image('sprites/shadow.png'), // drawn under characters
+
+  // The Gloam's mist, tiled over a map whose mood has it (see src/scenes/field.ts).
+  'overlay.mist': image('vfx/fog.png'),
 
   // Things on the map that change, drawn as sprites rather than tiles.
   'object.chest': frames('sprites/treasure-chest.png', 16, 14), // shut, then open
@@ -176,12 +181,15 @@ export const ASSETS = {
   'bgm.tide-caves': sound('bgm/aquatic'),
   'bgm.battle': sound('bgm/fight'),
   'bgm.boss': sound('bgm/tension'),
+  'bgm.gloam': sound('bgm/lost-village'),
   'sfx.chest': sound('sfx/secret-2'),
   'sfx.victory': sound('sfx/success-3'),
   'sfx.level-up': sound('sfx/level-up-1'),
   'sfx.game-over': sound('sfx/game-over-3'),
   'sfx.rest': sound('sfx/secret-4'),
   'sfx.heal': sound('sfx/heal-2'),
+  // A lamp being lit, and the Kindling's flame leaping up.
+  'sfx.fire': sound('sfx/fire'),
   // The Tide Caves: a sluice lever cranking, and the sea rushing in or out.
   'sfx.lever': sound('sfx/impact'),
   'sfx.tide': sound('sfx/wave'),

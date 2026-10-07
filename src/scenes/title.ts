@@ -4,7 +4,7 @@ import { audio } from '../systems/audio';
 import { input } from '../systems/input/game-input';
 import { touchMode } from '../systems/input/touch-controls';
 import { saveSlots } from '../systems/saves';
-import { loadGame, startNewGame } from '../systems/session';
+import { loadGame, session, startNewGame } from '../systems/session';
 import { FONT } from '../ui/fonts';
 import type { FieldStart } from './field';
 import { OPTIONS_SCENE, type OptionsStart } from './options';
@@ -131,9 +131,9 @@ export class TitleScene extends Phaser.Scene {
       } satisfies OptionsStart);
       return;
     }
-    // No real opening yet: New Game previews the dialogue box, then puts the player in Saltmere.
+    // A new game starts black, for its opening to fade in (see src/data/events/saltmere.ts).
     startNewGame();
-    this.scene.start('dialogue-sample');
+    this.scene.start('field', { ...session.state.location, dark: true } satisfies FieldStart);
   }
 
   /** Opens the save menu to pick a save, and carries on from it where it was saved. */

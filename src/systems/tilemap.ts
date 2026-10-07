@@ -4,15 +4,16 @@ import { LAYERS, type CompiledMap, type LayerName } from '../core/map/compile';
 export const TILE = 16;
 
 /**
- * Field depths: the map's layers, with characters between the base and overhead layers, a shade
- * over all of them, the debug collision view over that, then the area banner, and over everything,
- * the way into a battle.
+ * Field depths: the map's layers, with characters between the base and overhead layers, the
+ * Gloam's mist over them, a shade over all of that, mist included, the debug collision view over
+ * that, then the area banner, and over everything, the way into a battle.
  */
 export const DEPTH = {
   ground: 0,
   base: 1,
   characters: 2,
   overhead: 3,
+  mist: 3.4,
   shade: 3.5,
   debug: 4,
   banner: 5,

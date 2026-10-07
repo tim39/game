@@ -2,6 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 import type { Direction } from '../../src/core/direction';
 import type { GameState } from '../../src/core/state';
 import type {} from '../../src/debug/api';
+import { NEW_GAME } from '../../src/data/new-game';
 import type { AudioInfo } from '../../src/systems/audio';
 import { MENU_SOUNDS } from '../../src/ui/menu-sound';
 
@@ -142,8 +143,10 @@ test('a battle lost ends in the Game Over screen, and Retry battle fights it aga
 }) => {
   const errors = watchErrors(page);
   await toTitle(page);
-  // Rowan, worn down, against a Wolf, with the first move and a Fire Bomb that would win it.
+  // Rowan, worn down, against a Wolf, with the first move and a Fire Bomb that would win it. (Past
+  // the opening, which plays where the battle ends, in Tamsin's house, until Rowan is on lamp duty.)
   await page.evaluate(() => {
+    window.__game?.setFlag('story.lamp-duty');
     window.__game?.vitals('rowan', { hp: 4 });
     window.__game?.give('fire-bomb');
     window.__game?.battle(['wolf'], { seed: 1, start: 'preemptive' });
@@ -202,7 +205,7 @@ test('a battle lost ends in the Game Over screen, and Retry battle fights it aga
   for (let shown = 0; shown < 5 && (await activeScenes(page))?.join() !== 'field'; shown++) {
     await press(page, 'KeyZ');
   }
-  await arrivedOn(page, 'saltmere');
+  await arrivedOn(page, NEW_GAME.location.map);
   const after = await state(page);
   expect(after.members.rowan).toMatchObject({ exp: 6, hp: 4 });
   expect(after.inventory).not.toHaveProperty('fire-bomb');

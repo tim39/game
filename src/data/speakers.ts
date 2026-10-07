@@ -3,6 +3,8 @@ import type { Speaker } from '../core/schema';
 /** Who speaks in the dialogue box, by the ID event scripts' `say` names them by. */
 export const SPEAKERS: Readonly<Record<string, Speaker>> = {
   tamsin: { name: 'Tamsin', portrait: 'portrait.tamsin' },
+  // A Warden knight, come to inspect the Tide Beacon, who joins the party the night it goes out.
+  bram: { name: 'Bram', portrait: 'portrait.bram' },
   // Saltmere's people.
   hob: { name: 'Hob', portrait: 'portrait.hob' },
   nell: { name: 'Nell', portrait: 'portrait.nell' },

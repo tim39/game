@@ -54,7 +54,7 @@ test('the keyboard moves the title cursor, wraps around, and confirms', async ({
   expect(await activeScenes(page)).toEqual(['title']);
   await tapKey(page, 'ArrowUp');
   await tapKey(page, 'KeyZ');
-  expect(await activeScenes(page)).toContain('dialogue-sample');
+  expect(await activeScenes(page)).toContain('field');
 });
 
 test('holding a direction repeats, and letting go stops it', async ({ page }) => {
@@ -117,5 +117,5 @@ test('a gamepad moves the title cursor and confirms', async ({ page }) => {
   await nextFrames(page);
   await setButton(0, false);
   await nextFrames(page);
-  expect(await activeScenes(page)).toContain('dialogue-sample');
+  expect(await activeScenes(page)).toContain('field');
 });

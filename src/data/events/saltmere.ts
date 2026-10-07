@@ -1,11 +1,21 @@
-import type { EventContext } from '../../core/events';
+import type { Direction } from '../../core/direction';
+import type { EventContext, EventScript } from '../../core/events';
 import { defineEvent } from '../../core/events';
-import { INN_PRICES } from '../balance';
+import { INN_PRICES, SCENE_FADE_MS } from '../balance';
+import { ALL_LIT, GATHERED, KINDLED, LAMPS, lampFlag } from '../maps/kindling';
 import { inn, rest } from './rest';
 
 // Saltmere's people, and what there is to look at, from Kindling day until Rowan comes back up
-// from under the lighthouse. Everyone says something new at each turn of the story (the points in
-// src/data/story.ts), and the cutscenes that move it on come with the opening (M6).
+// from under the lighthouse, and the scenes that move the story on: Tamsin putting Rowan on lamp
+// duty, the lamps, Bram arriving, the Kindling, and the night the Beacon goes out. Everyone says
+// something new at each turn of the story (the points in src/data/story.ts).
+
+/** A flame catching: a lamp being lit, or the Kindling pyre. */
+const FIRE_SOUND = 'sfx.fire';
+
+/** A route of `count` steps the same way. */
+const steps = (way: Direction, count: number): Direction[] =>
+  Array.from({ length: count }, () => way);
 
 /**
  * How far the story has got, as Saltmere sees it: the morning of the Kindling, the evening after
@@ -31,34 +41,61 @@ async function sayFor(
   await ev.say(speaker, lines[stageOf(ev)]);
 }
 
+// Kindling day begins.
+
+/** Tamsin puts Rowan on lamp duty, and says where the lamps are. */
+async function lampDuty(ev: EventContext): Promise<void> {
+  await ev.say(
+    'tamsin',
+    "Up already? Good. Kindling's tonight, Rowan, and the lamps won't light themselves.",
+  );
+  const pick = await ev.choice(['On my way!', 'Five more minutes?']);
+  ev.setFlag('story.lamp-duty');
+  if (pick === 1) {
+    await ev.say(
+      'tamsin',
+      'Five more minutes and the whole village is lighting candles in the dark. Up!',
+    );
+  }
+  await ev.say(
+    'tamsin',
+    'Seven lamps: four round the pyre in the square, one by our door, one by the dock and one on the lighthouse path.',
+  );
+  await ev.say('tamsin', "Back by dusk, mind. The Kindling won't wait.");
+}
+
+/**
+ * The game begins, from black: where, and when; then, in Tamsin's house, Tamsin comes over to put
+ * Rowan on lamp duty. Arriving in the house before lamp duty runs it.
+ */
+export const opening = defineEvent(async (ev) => {
+  await ev.fadeOut(0);
+  await ev.say(
+    'sign',
+    'Saltmere: a fishing village on the coast of Aurel, under the light of the Tide Beacon.',
+  );
+  await ev.say('sign', 'It is the morning of the Kindling.');
+  await ev.fadeIn(SCENE_FADE_MS);
+  await ev.move('tamsin', steps('left', 6));
+  await ev.face('tamsin', 'player');
+  await ev.face('player', 'tamsin');
+  await lampDuty(ev);
+});
+
 // Tamsin's house: Tamsin, Rowan's bed and Tamsin's things.
 
 export const tamsin = defineEvent(async (ev) => {
   const stage = stageOf(ev);
   if (stage === 'morning') {
     if (!ev.flag('story.lamp-duty')) {
-      await ev.say(
-        'tamsin',
-        "Kindling's tonight, Rowan, and the lamps won't light themselves. Off you go!",
-      );
-      const pick = await ev.choice(['On my way!', 'Five more minutes?']);
-      ev.setFlag('story.lamp-duty');
-      if (pick === 0) {
-        await ev.say(
-          'tamsin',
-          "That's my lamplighter. Back by dusk, mind: the Kindling won't wait.",
-        );
-      } else {
-        await ev.say(
-          'tamsin',
-          'Five more minutes and the whole village is lighting candles in the dark. Go!',
-        );
-      }
+      await lampDuty(ev);
     } else if (ev.flag('story.bram-arrived')) {
       await ev.say(
         'tamsin',
         'A Warden knight, all the way from Wardenhold to look at our Beacon. In my day they sent a letter.',
       );
+      await ev.say('tamsin', "The sun's going down. Shall we go and light the pyre?");
+      if ((await ev.choice(["Let's go!", 'Not yet'])) === 0) await kindling(ev);
     } else if (ev.flag('story.lamps-lit')) {
       await ev.say(
         'tamsin',
@@ -85,6 +122,7 @@ export const tamsin = defineEvent(async (ev) => {
         "Keep it, then. Though come morning you won't remember it either. Nobody ever does.",
       );
     }
+    await ev.say('tamsin', 'Now, off to bed with you. Lamplighters rise early.');
     return;
   }
   if (stage === 'night') {
@@ -95,15 +133,17 @@ export const tamsin = defineEvent(async (ev) => {
     await ev.say('tamsin', 'Your bed is made, if you want a rest before you go.');
     return;
   }
-  await ev.say(
-    'tamsin',
-    "You came back. With a light in you, too. Don't look at me like that: I've lit enough lamps to know one.",
-  );
+  await ev.say('tamsin', "Wardenhold's a long road. Take a coat, and mind you come back.");
 });
 
 // Rowan's bed, in Tamsin's house: a night's rest puts the party back on their feet, as an inn's
-// does, for nothing. It's home.
+// does, for nothing. It's home. After the Kindling, it's bedtime, and the night the Beacon goes out.
 export const rowansBed = defineEvent(async (ev) => {
+  if (stageOf(ev) === 'evening') {
+    await ev.say('sign', "Rowan's bed. After a day like this, it looks very inviting.");
+    if ((await ev.choice(['Go to sleep', 'Not yet'])) === 0) await nightFalls(ev);
+    return;
+  }
   await ev.say('sign', "Rowan's bed, still unmade. A rest would do the party good.");
   if ((await ev.choice(['Rest a while', 'Not now'])) !== 0) return;
   await rest(ev);
@@ -185,6 +225,259 @@ export const corin = defineEvent(async (ev) => {
   await ev.say('corin', hello[stage]);
   await ev.shop('saltmere-market');
   await ev.say('corin', goodbye[stage]);
+});
+
+// The lamps Rowan lights on lamp duty (src/data/maps/kindling.ts).
+
+const LAMPS_LEFT = ['One', 'Two', 'Three', 'Four', 'Five', 'Six'];
+
+/** The `lamp`th lamp, from 1, which Rowan lights on lamp duty: once they all are, Bram arrives. */
+const lamp = (lamp: number): EventScript =>
+  defineEvent(async (ev) => {
+    if (ev.flag(lampFlag(lamp)) || ev.flag(ALL_LIT)) {
+      const stage = stageOf(ev);
+      await ev.say(
+        'sign',
+        stage === 'morning'
+          ? 'The lamp burns warm and bright, though the sun is still up.'
+          : stage === 'evening'
+            ? 'The lamp burns warm and bright in the dark.'
+            : 'The lamp burns on, small and dim in the mist.',
+      );
+      return;
+    }
+    if (!ev.flag('story.lamp-duty')) {
+      await ev.say('sign', 'A lamp on its post, trimmed and ready for dusk.');
+      return;
+    }
+    ev.sfx(FIRE_SOUND);
+    ev.setFlag(lampFlag(lamp));
+    const left = LAMPS.filter((_, index) => !ev.flag(lampFlag(index + 1))).length;
+    if (left > 0) {
+      await ev.say(
+        'sign',
+        `The wick catches, and the lamp glows warm. ${LAMPS_LEFT[left - 1] ?? left} more to light.`,
+      );
+      return;
+    }
+    ev.setFlag(ALL_LIT);
+    await ev.say(
+      'sign',
+      "The wick catches. That's every lamp in Saltmere lit, and the sun not yet down!",
+    );
+  });
+
+export const lamp1 = lamp(1);
+export const lamp2 = lamp(2);
+export const lamp3 = lamp(3);
+export const lamp4 = lamp(4);
+export const lamp5 = lamp(5);
+export const lamp6 = lamp(6);
+export const lamp7 = lamp(7);
+
+// Bram.
+
+/**
+ * Once the last lamp is lit, Bram walks into the village off the North Road: a Warden knight,
+ * come to see the Tide Beacon before the Kindling.
+ */
+export const bramArrives = defineEvent(async (ev) => {
+  await ev.say('sign', 'Footsteps on the North Road: someone is coming down into the village.');
+  await ev.fadeOut();
+  await ev.teleport('saltmere', 'square');
+  await ev.fadeIn();
+  await ev.move('bram', steps('down', 7));
+  await ev.face('bram', 'player');
+  await ev.say('bram', "Well met. That's a fine bit of lamplighting. Would you be Tamsin?");
+  const pick = await ev.choice(["I'm Rowan, her apprentice.", 'Do I look sixty?']);
+  await ev.say(
+    'bram',
+    pick === 0
+      ? 'Rowan, then. I am Bram, a knight of the Order of Wardens, out of Wardenhold.'
+      : 'Ha! Not a day over fifty. I am Bram, a knight of the Order of Wardens, out of Wardenhold.',
+  );
+  await ev.say(
+    'bram',
+    'The Order sends one of us to look in on each Beacon before the Kindling. This year, the Tide Beacon drew me.',
+  );
+  await ev.say(
+    'bram',
+    "That's its lighthouse, out on the point? I'll pay the Beacon my respects, and see you at the Kindling.",
+  );
+  ev.setFlag('story.bram-arrived');
+  // Off east, towards the lighthouse, until out of sight.
+  await ev.move('bram', steps('right', 11));
+  await ev.leave('bram');
+});
+
+export const bram = defineEvent(async (ev) => {
+  await ev.say(
+    'bram',
+    stageOf(ev) === 'morning'
+      ? "Your Beacon burns as steady as any I've inspected. I'll stay for the Kindling, if Saltmere will have me."
+      : "Your Beacon took my memory kindly enough. Can't say now what it was. That's the point, I'm told.",
+  );
+});
+
+// The Kindling, at dusk, round the pyre in the square.
+
+export const pyre = defineEvent(async (ev) => {
+  const stage = stageOf(ev);
+  if (stage === 'morning' && !ev.flag('story.bram-arrived')) {
+    await ev.say('sign', 'The Kindling pyre, stacked just so by Jory, ready to be lit at dusk.');
+    return;
+  }
+  if (stage === 'morning') {
+    await ev.say('sign', 'The Kindling pyre, stacked and ready, and the sun is going down.');
+    if ((await ev.choice(['Start the Kindling', 'Not yet'])) === 0) await kindling(ev);
+    return;
+  }
+  await ev.say(
+    'sign',
+    stage === 'evening'
+      ? 'The Kindling fire burns low and warm. Someone has left a fish to roast at the edge.'
+      : 'Jory keeps the pyre burning, log after log, against the mist.',
+  );
+});
+
+/**
+ * The Kindling: the village gathers round the pyre at dusk, Tamsin lights it, and everyone gives
+ * the Beacon a memory. So does Rowan, who forgets it at once. Then it's evening.
+ */
+async function kindling(ev: EventContext): Promise<void> {
+  await ev.fadeOut(SCENE_FADE_MS);
+  await ev.say('sign', 'The sun goes down over the sea, and all Saltmere gathers round the pyre.');
+  ev.setFlag(GATHERED);
+  await ev.teleport('saltmere', 'kindling');
+  await ev.fadeIn(SCENE_FADE_MS);
+  await ev.say(
+    'tamsin',
+    "Sixty Kindlings I've seen, and the Tide Beacon has kept our sea calm and our nights bright through every one.",
+  );
+  await ev.say(
+    'tamsin',
+    'Tonight we give a little back: a memory each, into the flame. Small ones will do. The Beacon is not greedy.',
+  );
+  // Tamsin lights the pyre, and with that, it's the Kindling.
+  ev.sfx(FIRE_SOUND);
+  ev.setFlag(KINDLED);
+  await ev.wait(SCENE_FADE_MS);
+  await ev.say('hob', 'The smell of tar on my first boat.');
+  await ev.say('pip', 'The taste of honey cake!');
+  await ev.say('aled', 'I walked three weeks to give you this. Keep the sea kind.');
+  await ev.say('dai', 'The taste of bad ale. Chew on that.');
+  await ev.say(
+    'bram',
+    "Wardens don't often get to give. An old marching song, then. It's had a good run.",
+  );
+  await ev.face('tamsin', 'player');
+  await ev.say('tamsin', 'Your turn, Rowan. Hold it in your mind, and give it to the flame.');
+  const memory = await ev.choice(['My first lamp, lit', 'The sea at night', "Tamsin's honey cake"]);
+  // What Rowan gave, kept for the story to give back one day.
+  ev.setVar('saltmere.rowans-memory', memory + 1);
+  ev.sfx(FIRE_SOUND);
+  await ev.say(
+    'sign',
+    'Rowan holds the memory up to the flame. The fire leaps up white, bright as day, and settles.',
+  );
+  await ev.say(
+    'sign',
+    'Rowan reaches back for it, to keep a little... and finds nothing there at all.',
+  );
+  await ev.say('tamsin', "Gone? Good. That's how you know the Beacon took it.");
+  await ev.say(
+    'tamsin',
+    "Now: there's fish on the fire and a fiddle by the inn. Happy Kindling, everyone!",
+  );
+  await ev.fadeOut(SCENE_FADE_MS);
+  await ev.say('sign', 'The Kindling goes on late into the night.');
+  ev.setFlag(GATHERED, false);
+  await ev.teleport('saltmere', 'kindling');
+}
+
+// The night the Beacon goes out.
+
+/**
+ * Rowan goes to sleep after the Kindling, and wakes in the night to the Beacon gone dark. Tamsin
+ * hears shouting in the square, and Rowan goes out to see (and the mist scene, below, runs).
+ */
+async function nightFalls(ev: EventContext): Promise<void> {
+  ev.bgm(null);
+  await ev.fadeOut(SCENE_FADE_MS);
+  ev.heal();
+  await ev.say('sign', 'Rowan sleeps, and dreams of nothing at all.');
+  ev.setFlag('story.beacon-out');
+  await ev.say(
+    'sign',
+    'Deep in the night, Rowan wakes to a cold that was never there before. The window is black. The Beacon is out.',
+  );
+  await ev.teleport('saltmere-tamsin', 'bed');
+  await ev.fadeIn(SCENE_FADE_MS);
+  await ev.move('tamsin', steps('left', 6));
+  await ev.face('tamsin', 'player');
+  await ev.face('player', 'tamsin');
+  await ev.say(
+    'tamsin',
+    "Rowan! The Beacon's gone dark, and there's a mist coming in off the sea like nothing I've ever seen.",
+  );
+  await ev.say('tamsin', 'Listen... Is that shouting, in the square?');
+  const pick = await ev.choice(["I'll go and see.", 'Stay here, Tamsin.']);
+  await ev.say(
+    'tamsin',
+    pick === 0
+      ? 'Go on, then. Take care, and come back.'
+      : "Where would I go? Go on, and take care. I'll keep the lamp lit.",
+  );
+  await ev.fadeOut();
+  await ev.teleport('saltmere', 'tamsin');
+}
+
+/**
+ * The night the Beacon goes out, out in the mist: Bram is fighting the Hollowed in the square.
+ * Rowan joins in, and Bram joins the party, with a word on fighting them, and a Fire Bomb.
+ */
+export const mist = defineEvent(async (ev) => {
+  await ev.say(
+    'sign',
+    'Mist fills the village, thick and cold, and the lamps are small and dim in it. From the square comes the ring of steel.',
+  );
+  await ev.fadeOut();
+  await ev.teleport('saltmere', 'square');
+  await ev.fadeIn();
+  await ev.face('bram-night', 'player');
+  await ev.say('bram', 'Lamplighter! Over here, and keep your head down!');
+  await ev.move('player', ['up']);
+  await ev.say(
+    'bram',
+    'Things came out of the mist when the Beacon died. Shapes, cold as the deep sea. They will be back.',
+  );
+  ev.giveItem('fire-bomb');
+  await ev.say('sign', 'Bram hands Rowan a Fire Bomb.');
+  await ev.say(
+    'bram',
+    "Fire's the bane of anything that comes out of the mist. Hit them where it hurts, and they stagger.",
+  );
+  await ev.say(
+    'bram',
+    'And watch the line along the top: it shows who moves next. My Shield Bash knocks them back down it.',
+  );
+  ev.joinParty('bram');
+  await ev.say('sign', 'Bram joins the party!');
+  await ev.say('bram', 'Here they come!');
+  await ev.battle(['drowned-wisp', 'drowned-wisp'], 'shore');
+  // Won, with the screen still black from the battle.
+  await ev.say(
+    'bram',
+    'Those were people, once, the Order says. The Hollowed: lost in the Gloam, until nothing was left but cold.',
+  );
+  await ev.say(
+    'bram',
+    "The Beacon's dark, and they came with the mist. Whatever's wrong, it's in that lighthouse.",
+  );
+  await ev.say('bram', 'You know the way, lamplighter. Lead on.');
+  ev.setFlag('story.bram-joined');
+  // Bram, in the party now, is no longer standing in the square.
+  await ev.teleport('saltmere', 'square');
 });
 
 // Out in the village.

@@ -435,13 +435,16 @@ export function checkStory({
 }): string[] {
   const problems: string[] = [];
   const flags = new Set<string>();
-  story.forEach(({ flag, name }, index) => {
+  story.forEach(({ flag, name, joins }, index) => {
     const at = `The story: point ${index}`;
     if (!isNamespacedId(flag) || !flag.startsWith(STORY_NAMESPACE)) {
       problems.push(`${at} has the flag "${flag}"; story flags look like story.beacon-out`);
     }
     if (flags.has(flag)) problems.push(`${at} has the flag ${flag}, as an earlier point does`);
     if (name.trim() === '') problems.push(`${at} has no name`);
+    if (joins !== undefined && !Object.hasOwn(characters, joins)) {
+      problems.push(`${at} has ${joins} join the party, who isn't a character`);
+    }
     flags.add(flag);
   });
   const unknown = (flag: string): boolean => flag.startsWith(STORY_NAMESPACE) && !flags.has(flag);
@@ -460,6 +463,11 @@ export function checkStory({
         problems.push(`Map ${map.id}: ${whoWaits(object)} waits on ${notInStory(flag)}`);
       }
     }
+    (map.moods ?? []).forEach(({ when }, index) => {
+      for (const flag of conditionFlags(when).filter(unknown)) {
+        problems.push(`Map ${map.id}: its moods[${index}] waits on ${notInStory(flag)}`);
+      }
+    });
   }
   for (const [id, character] of Object.entries(characters)) {
     for (const { skill, flag } of character.skills) {

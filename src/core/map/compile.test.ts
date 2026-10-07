@@ -9,6 +9,8 @@ import {
   isBlocked,
   isOutOfBounds,
   mapFlags,
+  mapLook,
+  moodFlags,
   npcsAbout,
   scriptAt,
   terrainRows,
@@ -402,6 +404,67 @@ test('a map’s flags are those its terrain and prefabs change with, each once',
   // People and triggers check their conditions as they go; the map doesn't change with them.
   expect(mapFlags(def)).toEqual(['tide.test-low', 'story.built']);
   expect(mapFlags(map('..'))).toEqual([]);
+});
+
+describe('a map’s moods', () => {
+  // A village with its own music, which goes quiet at dusk and dark and misty at night.
+  const village: MapDef = {
+    ...map('..'),
+    music: 'bgm.village',
+    moods: [
+      { when: 'story.night', music: 'bgm.night', shade: 0x8a7fa3, mist: true },
+      { when: ['story.dusk', '!story.festival'], music: null, shade: 0xe6bea8 },
+    ],
+  };
+  const flagsOf =
+    (...set: string[]) =>
+    (flag: string): boolean =>
+      set.includes(flag);
+
+  test('leave the map as it is until one holds', () => {
+    expect(mapLook(village)).toEqual({ music: 'bgm.village', shade: null, mist: false });
+    expect(mapLook(map('..'))).toEqual({ music: null, shade: null, mist: false });
+  });
+
+  test('change what they give, the first that holds winning', () => {
+    expect(mapLook(village, flagsOf('story.dusk'))).toEqual({
+      music: null,
+      shade: 0xe6bea8,
+      mist: false,
+    });
+    expect(mapLook(village, flagsOf('story.dusk', 'story.night'))).toEqual({
+      music: 'bgm.night',
+      shade: 0x8a7fa3,
+      mist: true,
+    });
+  });
+
+  test('leave what they don’t give as the map has it', () => {
+    const cave: MapDef = {
+      ...map('..'),
+      music: 'bgm.cave',
+      shade: 0x98a4c0,
+      moods: [{ when: 'story.flooded', mist: true }],
+    };
+    expect(mapLook(cave, flagsOf('story.flooded'))).toEqual({
+      music: 'bgm.cave',
+      shade: 0x98a4c0,
+      mist: true,
+    });
+  });
+
+  test('change with the flags their conditions name, each once', () => {
+    expect(moodFlags(village)).toEqual(['story.night', 'story.dusk', 'story.festival']);
+    // Not the terrain and prefabs' flags: the map's tiles don't change with them.
+    expect(mapFlags(village)).toEqual([]);
+    expect(moodFlags(map('..'))).toEqual([]);
+  });
+
+  test('name flags in their conditions', () => {
+    expect(() =>
+      compileMap({ ...map('..'), moods: [{ when: 'night', mist: true }] }, CONTENT),
+    ).toThrow('Map test: its moods[0] has "night" in its condition, which isn\'t a flag');
+  });
 });
 
 describe('npcs', () => {

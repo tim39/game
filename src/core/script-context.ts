@@ -26,6 +26,7 @@ export type Stage = Pick<
   | 'wait'
   | 'face'
   | 'move'
+  | 'leave'
   | 'fadeOut'
   | 'fadeIn'
   | 'teleport'
@@ -57,6 +58,7 @@ export function createScriptContext(stage: Stage, store: StateStore, db: GameDb)
     wait: (ms) => stage.wait(ms),
     face: (actor, toward) => stage.face(actor, toward),
     move: (actor, route) => stage.move(actor, route),
+    leave: (actor) => stage.leave(actor),
     fadeOut: (ms) => stage.fadeOut(ms),
     fadeIn: (ms) => stage.fadeIn(ms),
     teleport: (map, spawn) => stage.teleport(map, spawn),

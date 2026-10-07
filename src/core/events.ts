@@ -34,6 +34,12 @@ export interface EventContext {
    * wall or someone else, or off the map, fails the script.
    */
   move(actor: string, route: readonly Direction[]): Promise<void>;
+  /**
+   * Sees an NPC off: they fade from the map, as if gone out of sight (walk them there first), and
+   * it resolves once they're gone. They're back the next time the player arrives on the map, if
+   * their condition still holds.
+   */
+  leave(actor: string): Promise<void>;
   /** Fades the screen to black over `ms` milliseconds (the map fade's length by default). */
   fadeOut(ms?: number): Promise<void>;
   /** Fades the screen back in from black. */

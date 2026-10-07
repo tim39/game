@@ -1,4 +1,5 @@
 import { defineMap } from '../../core/map/types';
+import { INDOOR_MOODS } from './moods';
 
 /**
  * Tamsin's house in Saltmere, where Rowan lives: two beds, Rowan's to rest in, a table, the oven,
@@ -9,6 +10,7 @@ export default defineMap({
   name: "Tamsin's House",
   area: 'saltmere',
   music: 'bgm.saltmere',
+  moods: INDOOR_MOODS,
   terrain: `
     ###########
     #.........#
@@ -23,6 +25,10 @@ export default defineMap({
   objects: [
     { type: 'prefab', prefab: 'door', at: [5, 7], to: { map: 'saltmere', spawn: 'tamsin' } },
     { type: 'spawn', id: 'door', at: [5, 6], facing: 'up' },
+    // Between the beds, where a new game starts and Rowan wakes the night the Beacon goes out.
+    { type: 'spawn', id: 'bed', at: [2, 2], facing: 'down' },
+    // Kindling day begins: Tamsin puts Rowan on lamp duty.
+    { type: 'enter', script: 'saltmere/opening', when: '!story.lamp-duty' },
     // Rowan's bed, where the party can rest, and Tamsin's; then shelves and the oven along the
     // back wall.
     { type: 'prefab', prefab: 'bed', at: [1, 1], script: 'saltmere/rowans-bed' },

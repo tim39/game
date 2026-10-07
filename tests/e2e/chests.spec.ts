@@ -165,6 +165,8 @@ test('a chest opens from any side, and the debug hooks can shut it again', async
 test('Tamsin’s house has a Potion in a chest at the foot of Rowan’s bed', async ({ page }) => {
   const errors = watchErrors(page);
   await toTitle(page);
+  // Past the opening, which Tamsin's house plays until Rowan is on lamp duty.
+  await page.evaluate(() => window.__game?.setFlag('story.lamp-duty'));
   // In through the front door.
   await warp(page, 'saltmere', 7, 6, 'up');
   await page.keyboard.press('ArrowUp');

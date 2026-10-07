@@ -1,4 +1,5 @@
 import { defineMap } from '../../core/map/types';
+import { INDOOR_MOODS } from './moods';
 
 /**
  * Old Ewan's house in Saltmere: a sailor's, long ashore, with a sea chart for a rug, his books, his
@@ -9,6 +10,7 @@ export default defineMap({
   name: "Ewan's House",
   area: 'saltmere',
   music: 'bgm.saltmere',
+  moods: INDOOR_MOODS,
   terrain: `
     #########
     #.......#

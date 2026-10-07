@@ -253,11 +253,15 @@ export async function checkEvents({
         let mapId = startMap;
         // What this run has settled: once a flag, an item or gold is read or changed, it stays so.
         const settled = { flags: new Set<string>(), items: new Set<string>(), gold: false };
+        // Who this run has seen off the map it's on, until it teleports.
+        const gone = new Set<string>();
         const checkActor = (actor: string, verb: string): void => {
           if (actor === PLAYER) return;
           const map = mapId === null ? undefined : maps[mapId];
           if (map && !map.objects?.some((o) => o.type === 'npc' && o.id === actor)) {
             report(`it ${verb} ${actor}, but there's no one called that on ${map.id}`);
+          } else if (gone.has(actor)) {
+            report(`it ${verb} ${actor}, who has left`);
           }
         };
 
@@ -284,6 +288,13 @@ export async function checkEvents({
             }
             return Promise.resolve();
           },
+          leave: (actor) => {
+            if (actor === PLAYER)
+              report('it has the player leave, which only NPCs can; teleport them');
+            else checkActor(actor, 'sees off');
+            gone.add(actor);
+            return Promise.resolve();
+          },
           fadeOut: (ms) => {
             checkTime('fade out', ms);
             return Promise.resolve();
@@ -300,6 +311,7 @@ export async function checkEvents({
             }
             if (mapId !== null) teleports.set(mapId, (teleports.get(mapId) ?? new Set()).add(map));
             mapId = map;
+            gone.clear();
             return Promise.resolve();
           },
           shop: (id) => {

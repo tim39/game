@@ -277,7 +277,7 @@ test('reports scripts that add someone to the party who is not a character', asy
   expect(problems).toEqual(["Event recruit: it adds vesh to the party, which isn't a character"]);
 });
 
-test('checks the people a script moves and turns are on each map that runs it', async () => {
+test('checks the people a script moves, turns and sees off are on each map that runs it', async () => {
   const runner = (id: string, objects: MapDef['objects']): MapDef => ({ ...map, id, objects });
   const ada = { type: 'npc', id: 'ada', sprite: 'ada', at: [0, 0], facing: 'down' } as const;
   const problems = await check({
@@ -292,14 +292,20 @@ test('checks the people a script moves and turns are on each map that runs it', 
         await ev.face('player', 'ada');
         await ev.face('ada', 'down');
         await ev.move('player', ['north' as 'up']);
+        await ev.leave('ada');
+        await ev.face('ada', 'up');
+        await ev.leave('player');
       }),
     },
   });
   expect(problems).toEqual([
     'Event stroll: it moves player "north", which isn\'t a way',
+    'Event stroll: it turns ada, who has left',
+    'Event stroll: it has the player leave, which only NPCs can; teleport them',
     "Event stroll: it moves ada, but there's no one called that on b",
     "Event stroll: it turns someone to face ada, but there's no one called that on b",
     "Event stroll: it turns ada, but there's no one called that on b",
+    "Event stroll: it sees off ada, but there's no one called that on b",
   ]);
 });
 
@@ -318,6 +324,7 @@ test('checks teleports go to spawns that exist, and who is about on the map afte
     events: {
       trip: defineEvent(async (ev) => {
         await ev.face('ada', 'player');
+        await ev.leave('ada');
         await ev.teleport('b', 'gate');
         await ev.face('ada', 'player');
         await ev.teleport('b', 'nowhere');

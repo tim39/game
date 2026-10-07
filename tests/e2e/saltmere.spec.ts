@@ -2,7 +2,6 @@ import { expect, test, type Page } from '@playwright/test';
 import type { Direction } from '../../src/core/direction';
 import type { GameState } from '../../src/core/state';
 import type {} from '../../src/debug/api';
-import { NEW_GAME } from '../../src/data/new-game';
 import { STORY } from '../../src/data/story';
 
 /** Lets the game run a couple of frames, so whatever input just changed has been read. */
@@ -116,16 +115,10 @@ async function pick(page: Page, index: number): Promise<void> {
   await page.keyboard.press('KeyZ');
 }
 
-test('a new game starts in Saltmere, at Tamsin’s door', async ({ page }) => {
-  const { map, x, y, facing } = NEW_GAME.location;
-  expect(map).toBe('saltmere');
-  await warp(page, map, x, y, facing);
-  await page.screenshot({ path: 'test-results/screenshots/saltmere-start.png' });
-});
-
 test('into Tamsin’s house to talk to her, and back out', async ({ page }) => {
   const errors = watchErrors(page);
-  await warp(page, 'saltmere', 7, 6, 'up');
+  // The evening after the Kindling.
+  await warp(page, 'saltmere', 7, 6, 'up', { story: 'story.kindling' });
   await page.keyboard.press('ArrowUp');
   await arrivedOn(page, 'saltmere-tamsin');
   expect(await field(page)).toMatchObject({ x: 5, y: 6, facing: 'up' });
@@ -134,7 +127,10 @@ test('into Tamsin’s house to talk to her, and back out', async ({ page }) => {
   await step(page, 'ArrowRight', 3);
   await step(page, 'ArrowUp', 2);
   expect(await field(page)).toMatchObject({ x: 8, y: 4, facing: 'up' });
-  expect(await talk(page)).toMatchObject({ name: 'Tamsin' });
+  expect(await talk(page)).toMatchObject({
+    name: 'Tamsin',
+    text: 'Well? What did you give the Beacon?',
+  });
   // She asks for an answer, which she answers in turn.
   await readOn(page);
   await page.waitForFunction(
@@ -142,9 +138,9 @@ test('into Tamsin’s house to talk to her, and back out', async ({ page }) => {
   );
   await page.screenshot({ path: 'test-results/screenshots/saltmere-tamsin.png' });
   await page.keyboard.press('KeyZ');
-  await page.waitForFunction(() =>
-    String(window.__game?.inspect('dialogue')?.text).startsWith("That's my lamplighter."),
-  );
+  await untilSaid(page, "Can't remember? Then it took it. That's how you know it was a good one.");
+  await readOn(page);
+  await untilSaid(page, 'Now, off to bed with you. Lamplighters rise early.');
   await closeDialogue(page);
 
   await step(page, 'ArrowDown', 2);
@@ -329,7 +325,8 @@ test('once the Beacon is out, Hob and Pip are indoors, and everyone says somethi
   await warp(page, 'saltmere', 12, 10, 'up');
   expect(await people(page)).toEqual(['hob', 'corin', 'pip', 'jory', 'dai']);
 
-  await warp(page, 'saltmere', 12, 10, 'up', { story: 'story.beacon-out' });
+  // The night the Beacon goes out, once Bram has joined the fight in the square.
+  await warp(page, 'saltmere', 12, 10, 'up', { story: 'story.bram-joined' });
   expect(await people(page)).toEqual(['corin', 'jory', 'dai']);
   expect(await talk(page)).toMatchObject({
     name: 'Corin',

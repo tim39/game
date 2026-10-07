@@ -194,9 +194,12 @@ export const PREFABS = definePrefabs({
   boat: { sheet: 'tiles.boat', origin: [0, 0], layout: ['#####', '#####'] },
   palm: { sheet: 'tiles.desert', origin: [10, 10], layout: ['^^', '##'] },
   'palm-2': { sheet: 'tiles.desert', origin: [12, 10], layout: ['^^', '##'] },
-  // The Kindling pyre: logs in a ring of stones. A lamp on a post, for Rowan to light.
+  // The Kindling pyre: logs in a ring of stones, and burning, for the Kindling. A lamp on a post,
+  // for Rowan to light, and lit.
   pyre: { sheet: 'tiles.camp', origin: [12, 5], layout: ['##', '##'] },
-  lamp: { sheet: 'tiles.camp', origin: [6, 5], layout: ['^', '#'] },
+  'pyre-burning': { sheet: 'tiles.pyre-burning', origin: [0, 0], layout: ['##', '##'] },
+  lamp: { sheet: 'tiles.lamp', origin: [0, 0], layout: ['^', '#'] },
+  'lamp-lit': { sheet: 'tiles.lamp', origin: [1, 0], layout: ['^', '#'] },
   barrel: { sheet: 'tiles.house', origin: [18, 11], layout: ['#'] },
   'basket-fish': { sheet: 'tiles.house', origin: [16, 13], layout: ['#'] },
   'basket-greens': { sheet: 'tiles.house', origin: [17, 13], layout: ['#'] },

@@ -13,6 +13,8 @@ import {
   isBlocked,
   isOutOfBounds,
   mapFlags,
+  mapLook,
+  moodFlags,
   npcsAbout,
   scriptAt,
   sideOf,
@@ -20,6 +22,7 @@ import {
   type ChestPlacement,
   type CompiledMap,
   type LayerName,
+  type MapLook,
   type Spawn,
   type Trigger,
 } from '../core/map/compile';
@@ -42,7 +45,9 @@ import {
   AREA_BANNER_MS,
   ENCOUNTER_TUNING,
   FIELD_SPEEDS,
+  LEAVE_FADE_MS,
   MAP_FADE_MS,
+  MIST,
   NPC_TUNING,
 } from '../data/balance';
 import { BACKDROPS } from '../data/backdrops';
@@ -96,6 +101,10 @@ const MAX_FRAME_MS = 100;
 
 const PLAYER_SPRITE = 'sprite.rowan';
 
+/** The Gloam's mist, tiled over a map whose mood has it, tinted a little towards its violet-grey. */
+const MIST_IMAGE = 'overlay.mist';
+const MIST_TINT = 0xd8d0e8;
+
 /** A chest's sprite sheet: shut, then open. Its frames are shorter than a tile. */
 const CHEST_SPRITE = 'object.chest';
 const CHEST_FRAME = { shut: 0, open: 1 } as const;
@@ -141,7 +150,11 @@ export class FieldScene extends Phaser.Scene {
   private player?: Figure;
   private layers?: Record<LayerName, Phaser.Tilemaps.TilemapLayer>;
   private overhead?: Phaser.Tilemaps.TilemapLayer;
-  /** The flags the map's terrain and prefabs change with (see `mapFlags`). */
+  /** How the map sounds and looks now: its music on arrival, its shade and its mist. */
+  private look?: MapLook;
+  private shade?: Phaser.GameObjects.Rectangle;
+  private mist?: Phaser.GameObjects.TileSprite;
+  /** The flags the map's terrain, prefabs and moods change with (see `mapFlags`, `moodFlags`). */
   private flags: readonly string[] = [];
   /** Which of them were set when the map was last drawn, to tell when to draw it afresh. */
   private drawnWith = '';
@@ -201,14 +214,18 @@ export class FieldScene extends Phaser.Scene {
     this.stopWalks();
     // The map left, on a map change; any other start (a new game, a load) has none.
     const left = start.autosave ? this.map?.id : undefined;
-    // The last map's layers and collision view went with it, as the scene started over.
+    // The last map's layers, shade, mist and collision view went with it, as the scene started over.
     this.layers = undefined;
+    this.look = undefined;
+    this.shade = undefined;
+    this.mist = undefined;
     this.collisionView = undefined;
-    this.flags = mapFlags(def);
+    this.flags = [...new Set([...mapFlags(def), ...moodFlags(def)])];
     const map = this.draw(compileMap(def, MAP_CONTENT, isSet));
-    if (def.shade !== undefined) shadeMap(this, map, def.shade, DEPTH.shade);
+    const look = mapLook(def, isSet);
+    this.showLook(map, look);
     // The same music as the last map's plays on.
-    audio.playMusic(def.music ?? null);
+    audio.playMusic(look.music);
     this.rng = Rng.fromSeed(`field:${map.id}`);
     // Who's about follows the story, as it is on arrival.
     this.npcs = npcsAbout(map, session.state).map((placement) => ({
@@ -266,25 +283,38 @@ export class FieldScene extends Phaser.Scene {
     // The map's enter script runs on arrival; if a script brought the player, once that ends.
     this.enterPending = arrival !== undefined;
     // Arriving in another area names it; if a script brought the player, once that ends.
+    // Starting black (a new game, whose opening fades it in), it waits for that script too.
     this.banner = undefined;
     const banner = bannerOnArrival(MAPS, map.id, left);
-    this.bannerPending = arrival ? banner : null;
-    if (!arrival && banner !== null) this.showBanner(banner);
-    if (!arrival) this.runTrigger(enterTrigger(map, session.state));
-    else if (this.dark) arrival();
+    const waits = arrival !== undefined || this.dark;
+    this.bannerPending = waits ? banner : null;
+    if (!waits && banner !== null) this.showBanner(banner);
+    if (!arrival) {
+      this.runTrigger(enterTrigger(map, session.state));
+      // A map started black for a script to fade in, with no script to, fades in by itself.
+      if (this.dark && !this.script) {
+        void this.fade('in', MAP_FADE_MS);
+        if (banner !== null) this.showBanner(banner);
+        this.bannerPending = null;
+      }
+    } else if (this.dark) arrival();
     else camera.once(Phaser.Cameras.Scene2D.Events.FADE_IN_COMPLETE, () => arrival());
   }
 
   override update(_time: number, delta: number): void {
-    // A flag the map's terrain or prefabs go by has changed (the tide has turned, say): it's drawn
-    // afresh, with everyone where they are.
+    // A flag the map's terrain, prefabs or moods go by has changed (the tide has turned, say): it's
+    // drawn afresh, with everyone where they are. Its music waits for the next arrival.
     if (this.map && this.flagsSet() !== this.drawnWith) {
       const def = MAPS[this.map.id];
-      if (def) this.draw(compileMap(def, MAP_CONTENT, isSet));
+      if (def) this.showLook(this.draw(compileMap(def, MAP_CONTENT, isSet)), mapLook(def, isSet));
     }
     const { map, world } = this;
     if (!map || !world) return;
     const dt = Math.min(delta, MAX_FRAME_MS);
+    if (this.mist) {
+      this.mist.tilePositionX += (MIST.drift.x * dt) / 1000;
+      this.mist.tilePositionY += (MIST.drift.y * dt) / 1000;
+    }
     // Play time is real time. Phaser smooths `delta`, and holds it to 1/60 s while the window
     // isn't focused, so it counts the time that really passed instead.
     session.state = addPlayTime(session.state, Math.min(this.game.loop.rawDelta, MAX_FRAME_MS));
@@ -405,6 +435,8 @@ export class FieldScene extends Phaser.Scene {
       dark: this.dark,
       fading: camera.fadeEffect.isRunning,
       banner: this.banner?.showing ? this.banner.name : null,
+      shade: this.look?.shade ?? null,
+      mist: this.mist !== undefined,
       noclip: debugSwitches.noclip,
       collision: this.collisionView?.marked ?? null,
       encounters: map.encounters,
@@ -478,6 +510,30 @@ export class FieldScene extends Phaser.Scene {
     return map;
   }
 
+  /**
+   * Lays the map's shade and the Gloam's mist over it as its look says, putting away what it no
+   * longer has.
+   */
+  private showLook(map: CompiledMap, look: MapLook): void {
+    const was = this.look;
+    this.look = look;
+    if (was?.shade !== look.shade) {
+      this.shade?.destroy();
+      this.shade = look.shade === null ? undefined : shadeMap(this, map, look.shade, DEPTH.shade);
+    }
+    if (look.mist && !this.mist) {
+      this.mist = this.add
+        .tileSprite(0, 0, map.width * TILE, map.height * TILE, MIST_IMAGE)
+        .setOrigin(0)
+        .setTint(MIST_TINT)
+        .setAlpha(MIST.alpha)
+        .setDepth(DEPTH.mist);
+    } else if (!look.mist && this.mist) {
+      this.mist.destroy();
+      this.mist = undefined;
+    }
+  }
+
   private figure(key: string): Figure {
     const sprite = this.add.sprite(0, 0, key);
     return { sprite, rows: sheetRows(this.textures.get(key).getFrameNames().length) };
@@ -544,6 +600,8 @@ export class FieldScene extends Phaser.Scene {
     onEnd: (end: BattleEnd) => void,
   ): void {
     const seed = encounters.rng.nextUint32();
+    // Fought under the field's shade, at night or in the Gloam.
+    const shade = this.look?.shade ?? null;
     this.encountering = true;
     this.transitioning = true;
     this.buffered = null;
@@ -562,6 +620,7 @@ export class FieldScene extends Phaser.Scene {
       this.scene.launch(BATTLE_SCENE, {
         setup,
         backdrop,
+        ...(shade === null ? {} : { shade }),
         seed,
         onEnd: (end) => onEnd(end),
       } satisfies BattleStart);
@@ -721,6 +780,7 @@ export class FieldScene extends Phaser.Scene {
         }),
       face: (actor, toward) => Promise.resolve().then(() => this.face(actor, toward)),
       move: (actor, route) => this.walkAlong(actor, route),
+      leave: (actor) => this.seeOff(actor),
       fadeOut: (ms = MAP_FADE_MS) => this.fade('out', checkedMs(ms)),
       fadeIn: (ms = MAP_FADE_MS) => this.fade('in', checkedMs(ms)),
       teleport: (map, spawn) => this.teleport(map, spawn),
@@ -786,6 +846,28 @@ export class FieldScene extends Phaser.Scene {
       if (wrong !== undefined) throw new Error(`"${String(wrong)}" isn't a direction to step in`);
       if (this.walks.has(actor)) throw new Error(`${actor} is already walking somewhere`);
       this.walks.set(actor, { walk: { route, taken: 0 }, arrived, blocked });
+    });
+  }
+
+  /**
+   * Sees an NPC off: they fade from the map, and resolves once they're gone. They're back on the
+   * next arrival, if their condition still holds.
+   */
+  private seeOff(actor: string): Promise<void> {
+    return new Promise((gone) => {
+      if (actor === PLAYER) throw new Error("The player can't leave: teleport them instead");
+      const entry = this.npcCalled(actor);
+      if (this.walks.has(actor)) throw new Error(`${actor} can't leave while walking somewhere`);
+      this.tweens.add({
+        targets: entry.sprite,
+        alpha: 0,
+        duration: LEAVE_FADE_MS,
+        onComplete: () => {
+          this.npcs = this.npcs.filter((other) => other !== entry);
+          entry.sprite.destroy();
+          gone();
+        },
+      });
     });
   }
 

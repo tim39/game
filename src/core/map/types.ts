@@ -191,6 +191,21 @@ export interface ConditionalTerrain {
   readonly otherwise: string;
 }
 
+/**
+ * How a map looks and sounds once something has happened: while `when` holds, the music, shade
+ * and mist it gives take the place of the map's own, and those it leaves out stay as they were.
+ * Saltmere at dusk after the Kindling, and dark and misty once the Beacon is out.
+ */
+export interface MapMood {
+  readonly when: Condition;
+  /** The music arriving plays, `bgm.*` in the asset manifest, or null for silence. */
+  readonly music?: string | null;
+  /** The colour the map is multiplied by, or null for none (see `MapDef.shade`). */
+  readonly shade?: number | null;
+  /** Whether the Gloam's mist drifts over the map. */
+  readonly mist?: boolean;
+}
+
 export interface MapDef {
   /** Kebab-case, like `saltmere` or `tide-caves-b1`. */
   readonly id: string;
@@ -227,6 +242,13 @@ export interface MapDef {
    * shows in its own colours.
    */
   readonly shade?: number;
+  /** Whether the Gloam's mist drifts over the map. */
+  readonly mist?: boolean;
+  /**
+   * How the map's music, shade and mist change as the story goes on: the first of these whose
+   * condition holds has its say (see `MapMood`).
+   */
+  readonly moods?: readonly MapMood[];
 }
 
 /** The terrains and prefabs maps are built from. Passed in, so tests can use small fixtures. */

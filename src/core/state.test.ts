@@ -19,6 +19,7 @@ import {
   inParty,
   itemCount,
   joinParty,
+  leaveParty,
   learnReactions,
   removeGold,
   removeItem,
@@ -186,6 +187,7 @@ test('no operation changes the state it is given', () => {
     addGold(before, 5),
     removeGold(before, 5),
     joinParty(before, 'bram'),
+    leaveParty(deepFreeze(joinParty(before, 'bram')), 'bram'),
     gainExp(before, 'rowan', 15, CURVE),
     setLevel(before, 'rowan', 3, CURVE),
     equip(addItem(before, 'iron-sword'), 'rowan', 'iron-sword', DB),
@@ -337,6 +339,17 @@ describe('the party', () => {
     const cape = { cape: 'red-cape' } as Equipment;
     expect(() => joinParty(start(), 'bram', cape)).toThrow('"cape", which isn\'t a slot');
     expect(() => joinParty(start(), 'bram', { weapon: 'Hand Axe' })).toThrow(RangeError);
+  });
+
+  test('can be left, and whoever leaves joins afresh if they join again', () => {
+    const leveled = gainExp(joinParty(start(), 'bram', { weapon: 'hand-axe' }), 'bram', 95, CURVE);
+    const left = leaveParty(leveled, 'bram');
+    expect(left.party).toEqual(['rowan']);
+    expect(left.members).not.toHaveProperty('bram');
+    expect(joinParty(left, 'bram').members.bram).toEqual({ level: 1, exp: 0, equipment: {} });
+    // Someone not in it can't leave it, and the last one can't.
+    expect(leaveParty(left, 'bram')).toBe(left);
+    expect(() => leaveParty(left, 'rowan')).toThrow("rowan can't leave: the party would be empty");
   });
 
   test('someone who is already in it can’t join twice', () => {

@@ -181,6 +181,20 @@ export function joinParty(state: GameState, id: CharacterId, equipment: Equipmen
 }
 
 /**
+ * Someone leaves the party, and all they were as a member goes with them: joining again, they
+ * start afresh. Leaving when not in it does nothing; the last one in it can't leave.
+ */
+export function leaveParty(state: GameState, id: CharacterId): GameState {
+  if (!inParty(state, id)) return state;
+  if (state.party.length === 1) throw new RangeError(`${id} can't leave: the party would be empty`);
+  return {
+    ...state,
+    party: state.party.filter((member) => member !== id),
+    members: Object.fromEntries(Object.entries(state.members).filter(([member]) => member !== id)),
+  };
+}
+
+/**
  * A member of the party gains EXP, and levels up as far as it takes them on the curve (see
  * src/core/levels.ts), to its last level at most. EXP past that still counts.
  */

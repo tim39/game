@@ -1,4 +1,5 @@
 import { defineMap } from '../../core/map/types';
+import { INDOOR_MOODS } from './moods';
 
 /** The lamp room at the top of the lighthouse, where the Tide Beacon burns. A draft. */
 export default defineMap({
@@ -6,6 +7,7 @@ export default defineMap({
   name: 'The Lamp Room',
   area: 'saltmere',
   music: 'bgm.saltmere',
+  moods: INDOOR_MOODS,
   terrain: `
     #######
     #.....#

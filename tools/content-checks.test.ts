@@ -276,6 +276,26 @@ describe('checkContent', () => {
     ]);
   });
 
+  test('reports map moods that change nothing, or change things to what can’t be', () => {
+    expect(
+      check({
+        maps: {
+          town: {
+            ...TOWN,
+            moods: [
+              { when: 'story.dusk' },
+              { when: 'story.night', shade: 0x1000000, music: 'Night' },
+            ],
+          },
+        },
+      }),
+    ).toEqual([
+      'Map town: moods[0] changes nothing: give it music, a shade or mist',
+      `Map town: moods[1].music "Night" isn't an asset key, like tiles.floor`,
+      'Map town: moods[1].shade should be at most 16777215, not 16777216',
+    ]);
+  });
+
   test('reports numbers out of range, empty names and lists of the wrong length', () => {
     expect(
       check({
@@ -1014,22 +1034,24 @@ describe('checkEncounters', () => {
 describe('checkStory', () => {
   const ROWAN = CHARACTERS.rowan;
 
-  test('reports story points that aren’t story flags, repeats, and nameless ones', () => {
+  test('reports story points that aren’t story flags, repeats, nameless ones, and strangers', () => {
     expect(
       checkStory({
         story: [
-          { flag: 'story.dawn', name: 'Dawn' },
+          { flag: 'story.dawn', name: 'Dawn', joins: 'rowan' },
           { flag: 'chest.town-01', name: 'A chest' },
           { flag: 'story.dawn', name: 'Dawn again' },
           { flag: 'story.dusk', name: ' ' },
+          { flag: 'story.night', name: 'Night', joins: 'vesh' },
         ],
         maps: {},
-        characters: {},
+        characters: ROWAN ? { rowan: { ...ROWAN, skills: [] } } : {},
       }),
     ).toEqual([
       'The story: point 1 has the flag "chest.town-01"; story flags look like story.beacon-out',
       'The story: point 2 has the flag story.dawn, as an earlier point does',
       'The story: point 3 has no name',
+      "The story: point 4 has vesh join the party, who isn't a character",
     ]);
   });
 
@@ -1045,6 +1067,7 @@ describe('checkStory', () => {
         { type: 'touch', at: [1, 0], script: 'town/step', when: 'story.noon' },
         { type: 'prefab', prefab: 'stall', at: [2, 0], when: 'story.fair' },
       ],
+      moods: [{ when: ['story.dawn', '!story.night'], mist: true }],
     };
     expect(
       checkStory({
@@ -1059,6 +1082,7 @@ describe('checkStory', () => {
       "Map town: npc ada waits on story.dusk, which isn't one of the story's points",
       "Map town: its touch trigger waits on story.noon, which isn't one of the story's points",
       "Map town: the stall at (2, 0) waits on story.fair, which isn't one of the story's points",
+      "Map town: its moods[0] waits on story.night, which isn't one of the story's points",
       "Character rowan: learns tide-edge by story.tide, which isn't one of the story's points",
     ]);
   });

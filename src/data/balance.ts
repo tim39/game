@@ -84,6 +84,15 @@ export const MAP_FADE_MS = 250;
 export const REST_FADE_MS = 500;
 
 /**
+ * Story scenes fade to black and back this slowly where they move on in time or place: the opening,
+ * the Kindling, the night the Beacon goes out, and the way home from its chamber.
+ */
+export const SCENE_FADE_MS = 600;
+
+/** Someone a script sees off, gone out of sight, fades from the map this fast. */
+export const LEAVE_FADE_MS = 300;
+
+/**
  * Pulling a lever in the Tide Caves fades to black this fast, the tide turns, and it fades back in
  * at the same speed, after holding black for `hold` as the sea rushes.
  */
@@ -94,6 +103,12 @@ export const TIDE_FADE_MS = { fade: 300, hold: 500 } as const;
  * slowly, in milliseconds.
  */
 export const AREA_BANNER_MS = { fadeIn: 300, hold: 2000, fadeOut: 500 } as const;
+
+/**
+ * The Gloam's mist, over a map whose mood has it: how much of it shows, and how fast it drifts
+ * across, in pixels a second.
+ */
+export const MIST = { alpha: 0.35, drift: { x: 6, y: 2 } } as const;
 
 /** What a night at each inn costs (see Items and economy in docs/DESIGN.md). */
 export const INN_PRICES = { saltmere: 10, test: 20 } as const;

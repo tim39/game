@@ -48,7 +48,7 @@ async function step(page: Page, key: string, times = 1): Promise<void> {
   }
 }
 
-test('New Game starts afresh: Rowan alone at Tamsin’s door, in their starting gear', async ({
+test('New Game starts afresh: Rowan alone, in bed at Tamsin’s, in their starting gear', async ({
   page,
 }) => {
   await toTitle(page);
@@ -63,19 +63,22 @@ test('New Game starts afresh: Rowan alone at Tamsin’s door, in their starting 
   });
 
   await page.keyboard.press('Enter');
-  // Through the dialogue preview's three pages: Confirm finishes each line, and Confirm goes on.
-  for (let previewPage = 0; previewPage < 3; previewPage++) {
-    await page.waitForFunction(
-      (at) =>
-        window.__game?.inspect('dialogue-sample')?.page === at &&
-        window.__game.inspect('dialogue')?.typing === true,
-      previewPage,
+  // The opening's first line, over black (kindling-day.spec plays the rest of it).
+  await page.waitForFunction(() => {
+    const dialogue = window.__game?.inspect('dialogue');
+    return (
+      String(dialogue?.text).startsWith('Saltmere: a fishing village') && dialogue?.prompt === true
     );
-    await page.keyboard.press('KeyZ');
-    await page.waitForFunction(() => window.__game?.inspect('dialogue')?.prompt === true);
-    await page.keyboard.press('KeyZ');
-  }
-  await arrivedOn(page, NEW_GAME.location.map);
+  });
+  const { map, x, y, facing } = NEW_GAME.location;
+  expect(await page.evaluate(() => window.__game?.inspect('field'))).toMatchObject({
+    map,
+    x,
+    y,
+    facing,
+    dark: true,
+    running: true,
+  });
 
   const { playTimeMs, ...rest } = await state(page);
   expect(rest).toEqual({
@@ -95,6 +98,8 @@ test('New Game starts afresh: Rowan alone at Tamsin’s door, in their starting 
 
 test('the game state follows the player, step by step and from map to map', async ({ page }) => {
   await warp(page, 'saltmere', 7, 6, 'up');
+  // Past the opening, which Tamsin's house plays until Rowan is on lamp duty.
+  await page.evaluate(() => window.__game?.setFlag('story.lamp-duty'));
   expect(await location(page)).toEqual({ map: 'saltmere', x: 7, y: 6, facing: 'up' });
 
   // In at Tamsin's door, and along the back of the house.

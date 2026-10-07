@@ -204,6 +204,19 @@ const BackdropSchema = z.strictObject({
 });
 export type BackdropDef = ContentOf<typeof BackdropSchema>;
 
+/** How a map's music, shade and mist change once something has happened. */
+const MapMoodSchema = z
+  .strictObject({
+    when: ConditionSchema,
+    music: AssetKeySchema.nullable().optional(),
+    shade: ColorSchema.nullable().optional(),
+    mist: z.boolean().optional(),
+  })
+  .refine(
+    (mood) => mood.music !== undefined || mood.shade !== undefined || mood.mist !== undefined,
+    { error: 'changes nothing: give it music, a shade or mist' },
+  );
+
 const MapSchema = z.strictObject({
   id: IdSchema,
   name: TextSchema,
@@ -225,6 +238,10 @@ const MapSchema = z.strictObject({
   encounters: z.strictObject({ table: IdSchema, backdrop: IdSchema }).optional(),
   /** A colour the whole map is multiplied by. */
   shade: ColorSchema.optional(),
+  /** Whether the Gloam's mist drifts over the map. */
+  mist: z.boolean().optional(),
+  /** How its music, shade and mist change as the story goes on: the first that holds wins. */
+  moods: z.array(MapMoodSchema).min(1).optional(),
 });
 
 // Battle: what skills and items do (see src/core/battle/terms.ts).

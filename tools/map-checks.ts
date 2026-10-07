@@ -87,10 +87,19 @@ export function checkMaps({ maps, content, manifest, imageSize }: MapSources): s
   const compiled = new Map<string, CompiledMap>();
   const variants: CompiledMap[] = [];
   for (const map of Object.values(maps)) {
+    const isMusic = (key: string): boolean =>
+      key.startsWith('bgm.') && manifest[key]?.type === 'audio';
     const { music } = map;
-    if (music !== undefined && (!music.startsWith('bgm.') || manifest[music]?.type !== 'audio')) {
+    if (music !== undefined && !isMusic(music)) {
       problems.push(`Map ${map.id}: its music, ${music}, isn't music in the asset manifest`);
     }
+    (map.moods ?? []).forEach((mood, index) => {
+      if (typeof mood.music === 'string' && !isMusic(mood.music)) {
+        problems.push(
+          `Map ${map.id}: its moods[${index}]'s music, ${mood.music}, isn't music in the asset manifest`,
+        );
+      }
+    });
     const flags = mapFlags(map);
     if (flags.length > MAX_MAP_FLAGS) {
       problems.push(
@@ -160,7 +169,7 @@ export function checkMaps({ maps, content, manifest, imageSize }: MapSources): s
  * The most flags a map's terrain and prefabs may change with: the checks compile it every way they
  * can be set, 2 to the power of how many there are.
  */
-const MAX_MAP_FLAGS = 6;
+const MAX_MAP_FLAGS = 10;
 
 /** Every way some flags can be set: as sets of those set, from none of them to all. */
 function subsetsOf(flags: readonly string[]): ReadonlySet<string>[] {

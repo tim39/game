@@ -1,4 +1,5 @@
 import { defineMap } from '../../core/map/types';
+import { INDOOR_MOODS } from './moods';
 
 /**
  * Inside the lighthouse: stairs up to the lamp room, and stairs down to the sea caves under it, the
@@ -9,6 +10,7 @@ export default defineMap({
   name: 'The Lighthouse',
   area: 'saltmere',
   music: 'bgm.saltmere',
+  moods: INDOOR_MOODS,
   terrain: `
     #########
     #.......#

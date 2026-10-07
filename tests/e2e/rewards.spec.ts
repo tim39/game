@@ -198,6 +198,8 @@ test('resting in Rowan’s bed puts the party back on its feet', async ({ page }
   await page.evaluate(() => {
     window.__game?.vitals('rowan', { hp: 5, mp: 0 });
     window.__game?.vitals('bram', { hp: 0 });
+    // Past the opening, which Tamsin's house plays until Rowan is on lamp duty.
+    window.__game?.setFlag('story.lamp-duty');
     // Beside Rowan's bed, in Tamsin's house, facing it.
     window.__game?.warp('saltmere-tamsin', 2, 1, 'left');
   });

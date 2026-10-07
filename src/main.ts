@@ -2,7 +2,6 @@ import Phaser from 'phaser';
 import { BattleScene } from './scenes/battle';
 import { BootScene } from './scenes/boot';
 import { DialogueScene } from './scenes/dialogue';
-import { DialogueSampleScene } from './scenes/dialogue-sample';
 import { FieldScene } from './scenes/field';
 import { GameOverScene } from './scenes/game-over';
 import { MainMenuScene } from './scenes/main-menu';
@@ -42,7 +41,6 @@ const game = new Phaser.Game({
     BootScene,
     PreloadScene,
     TitleScene,
-    DialogueSampleScene,
     FieldScene,
     BattleScene,
     GameOverScene,

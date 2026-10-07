@@ -1,4 +1,5 @@
 import { defineMap } from '../../core/map/types';
+import { INDOOR_MOODS } from './moods';
 
 /**
  * The fisher's cottage in Saltmere, where Hob lives with his daughter Nell: their beds, a table,
@@ -9,6 +10,7 @@ export default defineMap({
   name: "Fisher's Cottage",
   area: 'saltmere',
   music: 'bgm.saltmere',
+  moods: INDOOR_MOODS,
   terrain: `
     ##########
     #........#

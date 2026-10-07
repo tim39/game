@@ -1,6 +1,6 @@
 import type { EventContext } from '../../core/events';
 import { defineEvent } from '../../core/events';
-import { TIDE_FADE_MS } from '../balance';
+import { SCENE_FADE_MS, TIDE_FADE_MS } from '../balance';
 import { CHAMBER_DOOR_OPEN, tideOut } from '../maps/tide';
 import { lightShrine } from './rest';
 
@@ -93,7 +93,48 @@ export const warden = defineEvent(async (ev) => {
   await ev.fadeIn();
 });
 
-/** The Tide Beacon, dead, on its dais at the top of the chamber. */
+/**
+ * The Tide Beacon, dead, on its dais at the top of the chamber. Once the Warden is beaten, a look
+ * at it finds Vesh's mark beside it, and its last spark, which leaps into Rowan: Tide Edge (see
+ * src/data/characters.ts). Then it's home, to Tamsin.
+ */
 export const beacon = defineEvent(async (ev) => {
-  await ev.say('sign', "The Beacon's bowl is cold and dark, and full of black ash.");
+  if (!ev.flag('story.warden-beaten') || ev.flag('story.tide-spark')) {
+    await ev.say('sign', "The Beacon's bowl is cold and dark, and full of black ash.");
+    return;
+  }
+  await ev.say(
+    'sign',
+    "The Beacon's bowl is cold and dark, and full of black ash. Beside it, someone has cut a mark into the stone: a flame, struck through.",
+  );
+  await ev.say(
+    'bram',
+    "I know that mark. It's Vesh's. I served under him, years ago: the best of us, and the High Warden's right hand.",
+  );
+  await ev.say('bram', 'If Vesh did this, he had a reason. I would give a great deal to hear it.');
+  await ev.say('sign', 'Something stirs in the ash: one last spark, blue as the sea.');
+  ev.sfx('sfx.heal');
+  await ev.say(
+    'sign',
+    "It drifts up into Rowan's open hand, and sinks in, warm as a lamp on a cold night.",
+  );
+  ev.setFlag('story.tide-spark');
+  await ev.jingle('sfx.level-up');
+  await ev.say('sign', 'Rowan learned Tide Edge!');
+  await ev.say(
+    'bram',
+    'Never seen a Beacon do that. Never seen one dead, either. The Order will need to hear of this, in Wardenhold.',
+  );
+  await ev.say('bram', 'But home first. Your Tamsin will be counting the minutes.');
+  await ev.fadeOut(SCENE_FADE_MS);
+  await ev.say(
+    'sign',
+    'Rowan and Bram climb back up through the caves, and out into the misty night.',
+  );
+  await ev.teleport('saltmere-tamsin', 'door');
+  await ev.fadeIn(SCENE_FADE_MS);
+  await ev.say(
+    'tamsin',
+    "You came back. With a light in you, too. Don't look at me like that: I've lit enough lamps to know one.",
+  );
 });

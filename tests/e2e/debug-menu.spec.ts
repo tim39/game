@@ -417,24 +417,33 @@ test('the story page jumps to a point in the story, and the field starts over wi
     ['Bram arrives', 'story.bram-arrived'],
     ['The Kindling', 'story.kindling'],
     ['Beacon out', 'story.beacon-out'],
+    ['Bram joins', 'story.bram-joined'],
     ['Warden beaten', 'story.warden-beaten'],
     ['Tide spark', 'story.tide-spark'],
   ]);
   await page.screenshot({ path: 'test-results/screenshots/debug-menu-story.png' });
-  await choose(page, 'Beacon out');
+  // Past the Beacon going out, and Bram joining: Bram is in the party, as the story has it then.
+  await choose(page, 'Bram joins');
   await waitForField(page);
   expect(await field(page)).toMatchObject({ map: 'saltmere', x: 12, y: 10, facing: 'up' });
   expect(await about()).not.toContain('pip');
-  const flags = (await page.evaluate(() => window.__game?.state().flags)) ?? {};
-  expect(Object.keys(flags).filter((flag) => flag.startsWith('story.'))).toEqual([
+  const { flags, party } = (await page.evaluate(() => window.__game?.state())) ?? {};
+  expect(Object.keys(flags ?? {}).filter((flag) => flag.startsWith('story.'))).toEqual([
     'story.lamp-duty',
     'story.lamps-lit',
     'story.bram-arrived',
     'story.kindling',
     'story.beacon-out',
+    'story.bram-joined',
   ]);
+  expect(party).toEqual(['rowan', 'bram']);
 
+  // And back to the morning, before Bram has even arrived: Bram leaves the party.
   await openMenu(page);
-  expect((await menu(page)).items[3]).toMatchObject({ label: 'Story', detail: 'Beacon out' });
+  expect((await menu(page)).items[3]).toMatchObject({ label: 'Story', detail: 'Bram joins' });
+  await choose(page, 'Story');
+  await choose(page, 'Lamp duty');
+  await waitForField(page);
+  expect((await page.evaluate(() => window.__game?.state().party)) ?? []).toEqual(['rowan']);
   expect(errors).toEqual([]);
 });

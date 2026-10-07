@@ -1,7 +1,11 @@
-/** A point the main story reaches: its flag, set once it has, and what the debug menu calls it. */
+/**
+ * A point the main story reaches: its flag, set once it has, what the debug menu calls it, and who
+ * joins the party there, if anyone, so the debug menu's jumps bring them along.
+ */
 export interface StoryPoint {
   readonly flag: string;
   readonly name: string;
+  readonly joins?: string;
 }
 
 /**
@@ -23,6 +27,8 @@ export const STORY: readonly StoryPoint[] = [
   { flag: 'story.kindling', name: 'The Kindling' },
   // That night the Beacon goes dark, the Gloam rolls in and the Hollowed attack.
   { flag: 'story.beacon-out', name: 'Beacon out' },
+  // Bram fights them off beside Rowan in the square, and joins the party for the lighthouse.
+  { flag: 'story.bram-joined', name: 'Bram joins', joins: 'bram' },
   // At the bottom of the Tide Caves, under the lighthouse, the Drowned Warden guards the Beacon.
   { flag: 'story.warden-beaten', name: 'Warden beaten' },
   // Past it, the dead Beacon's last spark leaps into Rowan.

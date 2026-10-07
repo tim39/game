@@ -1,10 +1,14 @@
 import { defineMap } from '../../core/map/types';
+import { GATHERED, atKindling, lamps, pyre } from './kindling';
+import { DUSK_SHADE, OUTDOOR_MOODS } from './moods';
 
 /**
  * Saltmere, the fishing village where the game begins (see STORY.md): the houses around the square
  * with its Kindling pyre, the lamps Rowan lights, Corin's stall, the dock, and the lighthouse out on
  * its point. Every house can be entered: Tamsin's, the fisher's cottage, Hal's forge, the inn,
- * Rhona's and Ewan's. The road north leads out to the North Road.
+ * Rhona's and Ewan's. The road north leads out to the North Road. Kindling day plays out here: Bram
+ * walks in once the lamps are lit, the village gathers round the pyre at dusk, and that night the
+ * Gloam rolls in (src/data/events/saltmere.ts).
  */
 export default defineMap({
   id: 'saltmere',
@@ -71,16 +75,13 @@ export default defineMap({
     { type: 'prefab', prefab: 'house', at: [26, 14], to: { map: 'saltmere-ewan', spawn: 'door' } },
     { type: 'spawn', id: 'ewan', at: [27, 17], facing: 'down' },
 
-    // The square, with the Kindling pyre, the lamps Rowan lights and the notice board.
-    { type: 'prefab', prefab: 'pyre', at: [20, 11] },
-    { type: 'prefab', prefab: 'lamp', at: [17, 9] },
-    { type: 'prefab', prefab: 'lamp', at: [24, 9] },
-    { type: 'prefab', prefab: 'lamp', at: [17, 14] },
-    { type: 'prefab', prefab: 'lamp', at: [24, 14] },
-    { type: 'prefab', prefab: 'lamp', at: [10, 5] },
-    { type: 'prefab', prefab: 'lamp', at: [14, 19] },
-    { type: 'prefab', prefab: 'lamp', at: [36, 13] },
+    // The square, with the Kindling pyre, the lamps Rowan lights and the notice board, and where
+    // the player stands as Bram arrives, and at the Kindling.
+    ...pyre([20, 11], 'saltmere/pyre'),
+    ...lamps(),
     { type: 'prefab', prefab: 'notice-board', at: [26, 11], script: 'saltmere/notice-board' },
+    { type: 'spawn', id: 'square', at: [21, 9], facing: 'up' },
+    { type: 'spawn', id: 'kindling', at: [21, 13], facing: 'up' },
 
     // Corin's market stall: talk to Corin across the baskets. Barrels by the houses, and washing
     // hung out by the cottage.
@@ -122,7 +123,8 @@ export default defineMap({
     { type: 'chest', at: [35, 2], flag: 'chest.saltmere-02', item: 'fire-bomb' },
     { type: 'chest', at: [1, 22], flag: 'chest.saltmere-03', item: 'ether' },
 
-    // Villagers, busy with the Kindling. Once the Beacon is out, Hob and Pip are indoors.
+    // Villagers, busy with the Kindling. Once the Beacon is out, Hob and Pip are indoors; and at the
+    // Kindling itself, they and Dai are at the pyre (below).
     {
       type: 'npc',
       id: 'hob',
@@ -130,7 +132,7 @@ export default defineMap({
       at: [16, 24],
       facing: 'down',
       script: 'saltmere/hob',
-      when: '!story.beacon-out',
+      when: ['!story.beacon-out', `!${GATHERED}`],
     },
     {
       type: 'npc',
@@ -148,7 +150,7 @@ export default defineMap({
       facing: 'up',
       wander: 3,
       script: 'saltmere/pip',
-      when: '!story.beacon-out',
+      when: ['!story.beacon-out', `!${GATHERED}`],
     },
     {
       type: 'npc',
@@ -165,7 +167,55 @@ export default defineMap({
       at: [8, 21],
       facing: 'left',
       script: 'saltmere/dai',
+      when: `!${GATHERED}`,
     },
+
+    // Bram: walking in off the North Road once the lamps are lit, then looking at the lighthouse
+    // until the Kindling, and the night the Beacon goes out, in the square, until joining the party.
+    {
+      type: 'npc',
+      id: 'bram',
+      sprite: 'bram',
+      at: [21, 1],
+      facing: 'down',
+      when: ['story.lamps-lit', '!story.bram-arrived'],
+    },
+    {
+      type: 'npc',
+      id: 'bram-visiting',
+      sprite: 'bram',
+      at: [38, 15],
+      facing: 'right',
+      script: 'saltmere/bram',
+      when: ['story.bram-arrived', '!story.kindling', `!${GATHERED}`],
+    },
+    {
+      type: 'npc',
+      id: 'bram-night',
+      sprite: 'bram',
+      at: [21, 7],
+      facing: 'up',
+      when: ['story.beacon-out', '!story.bram-joined'],
+    },
+    {
+      type: 'auto',
+      script: 'saltmere/bram-arrives',
+      when: ['story.lamps-lit', '!story.bram-arrived'],
+    },
+    { type: 'auto', script: 'saltmere/mist', when: ['story.beacon-out', '!story.bram-joined'] },
+
+    // The Kindling: the village round the pyre, Jory among them where he always is.
+    atKindling('tamsin', 'tamsin', [19, 11], 'right'),
+    atKindling('pip-kindling', 'child', [19, 12], 'right'),
+    atKindling('rhona', 'princess', [18, 12], 'right'),
+    atKindling('hob-kindling', 'old-man-3', [20, 10], 'down'),
+    atKindling('nell', 'woman', [21, 10], 'down'),
+    atKindling('gwen', 'villager-4', [22, 10], 'down'),
+    atKindling('bram-kindling', 'bram', [22, 11], 'left'),
+    atKindling('aled', 'monk', [20, 13], 'up'),
+    atKindling('dai-kindling', 'villager-2', [23, 13], 'left'),
   ],
   edges: { north: { map: 'north-road', spawn: 'south' } },
+  // Dusk falls as the village gathers for the Kindling, and night once it's over.
+  moods: [{ when: GATHERED, shade: DUSK_SHADE }, ...OUTDOOR_MOODS],
 });
