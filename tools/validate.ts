@@ -217,7 +217,8 @@ console.log(
   'Enemies: each has a sprite to fight as, every skill they use exists, only actions aimed at ' +
     'one fighter pick a target, every item they drop exists, and ' +
     'every enemy an encounter table names exists. The areas the simulator plays name a party, ' +
-    'gear, items, an encounter table and a boss that exist, at levels there are. ' +
+    'gear, items, an encounter table and a boss that exist, at levels there are, and a main ' +
+    'path a whole number of steps long. ' +
     'Every name and description is in characters the font has, and fits the battle screen ' +
     'and the main menu.',
 );

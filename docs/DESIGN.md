@@ -223,22 +223,22 @@ Their stats follow their roles at every level: Bram has the most HP and DEF and 
 
 ### Levels
 
-- Levels run from 1 to 30. The EXP curve lives in `balance.ts` and is tuned so that playing the main path at Normal encounter rate brings the party to the **target levels** below. The targets are the real spec; the curve and enemy stats bend to meet them.
+- Levels run from 1 to 30. The EXP curve lives in `balance.ts` and is tuned so that playing the main path at Normal encounter rate brings the party to the **target levels** below. The targets are the real spec; the curve and enemy stats bend to meet them. An area's **main path** is the shortest way from the Light Shrine at its way in to its boss that opens every chest, counted in the steps that bring random battles; most players walk further, and get there a little ahead.
 - Each character's stats are set at level 1 and at level 30, and grow evenly in between, rounded down: each level-up raises a stat by about the same amount.
 - **The EXP curve:** reaching level L takes 12 × (L − 1)^2.5 EXP in all, rounded: 12 for level 2, 384 for level 5, 2,916 for level 10 and 54,347 for level 30. Each level takes more than the last, so enemies in later areas give more EXP. A big win can raise several levels at once. Levels stop at 30, though EXP still counts.
 - Skills are learned at set levels and at story beats.
 
 | Area | Party level on arrival → at the boss |
 |---|---|
-| Tide Caves | 1 → 5 |
+| Tide Caves | 2 → 5 (the fight in the square, before the caves, is worth level 2) |
 | Gale Spire | 7 → 10 |
 | Stone Deeps | 11 → 15 |
 | Ember Caldera | 16 → 20 |
 | The Hollow Below | 23 → 28 |
 
-**Simulator targets** (`npm run sim`): at an area's target level, a party run by simple AI should win that area's normal encounters more than 95% of the time in 3–6 rounds, and beat its boss 60–85% of the time. A round is a turn for each party member, so with two in the party six rounds is twelve of their turns. The normal encounters are played with the party as it arrives in the area and the boss with the party as it reaches it, each time at the level, in the gear and with the items `balance.ts` expects it to have by then.
+**Simulator targets** (`npm run sim`): at an area's target level, a party run by simple AI should win that area's normal encounters more than 95% of the time in 3–6 rounds, and beat its boss 60–85% of the time. A round is a turn for each party member, so with two in the party six rounds is twelve of their turns. The normal encounters are played with the party as it arrives in the area and the boss with the party as it reaches it, each time at the level, in the gear and with the items `balance.ts` expects it to have by then. And walking the area's main path from its arrival, at the Normal encounter rate, battle after battle, keeping what each one leaves (HP, MP, items used, EXP, gold and drops), the party should reach the boss at the boss's target level, on average, and fall on the way in no more than 5% of walks.
 
-The simulator's party plays as a sensible but unadventurous player would. It gets a fallen ally back up; heals an ally below half their HP; Guards when it's below 70% HP and an enemy has telegraphed an attack at it, or at the whole party; hits a weakness the party knows of with a skill; uses a skill that hits every enemy when there are three or more; and otherwise attacks the enemy with the least HP. It keeps back the MP its healing takes, never flees, and leaves bombs, buffs and statuses alone, so a player who uses them has an easier time of it.
+The simulator's party plays as a sensible but unadventurous player would. It gets a fallen ally back up; heals an ally below half their HP; Guards when it's below 70% HP and an enemy has telegraphed an attack at it, or at the whole party; hits a weakness the party knows of with a skill; uses a skill that hits every enemy when there are three or more; and otherwise attacks the enemy with the least HP. It keeps back the MP its healing takes, never flees, and leaves bombs, buffs and statuses alone, so a player who uses them has an easier time of it. Between battles it heals the same way: anyone below half their HP, the worst hurt first, with a healing skill while anyone has the MP for one, or else a Potion.
 
 ## Items and economy
 

@@ -1167,7 +1167,7 @@ describe('checkAreas', () => {
     expect(checkAreas(SOURCES)).toEqual([]);
   });
 
-  test('reports a party, encounter table, boss, items and gear that don’t exist or don’t fit', () => {
+  test('reports a party, encounter table, boss, items and gear that don’t exist or don’t fit, and a path of part-steps', () => {
     expect(
       checkAreas({
         ...SOURCES,
@@ -1177,6 +1177,7 @@ describe('checkAreas', () => {
             party: ['rowan', 'bram', 'nobody'],
             encounters: 'nowhere',
             boss: ['kraken'],
+            steps: 12.5,
             arrival: { level: 1, items: { potion: 1, ambrosia: 2 } },
             atBoss: {
               level: 5,
@@ -1190,6 +1191,7 @@ describe('checkAreas', () => {
       "Area cave: nobody is in its party, but isn't a character",
       "Area cave: its encounter table, nowhere, doesn't exist",
       "Area cave: its boss, kraken, isn't an enemy",
+      'Area cave: its main path is 12.5 steps, not a whole number of them',
       "Area cave: arrival carries ambrosia, which isn't an item",
       "Area cave: atBoss gives rowan hand-axe, which they can't equip",
       "Area cave: atBoss gives rowan excalibur, which isn't an item",

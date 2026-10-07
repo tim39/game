@@ -1,6 +1,11 @@
 import { describe, expect, test } from 'vitest';
+import { battleAftermath } from '../src/core/battle/aftermath';
 import { DB as TEST_DB, TUNING } from '../src/core/battle/fixtures';
+import { encounterCountdown, rollEncounter, type EncounterTuning } from '../src/core/encounters';
+import { memberVitals } from '../src/core/party';
+import { Rng } from '../src/core/rng';
 import type { EncounterTable } from '../src/core/schema';
+import { setVitals, type GameState } from '../src/core/state';
 import { AREAS, EXP_CURVE, type AreaBalance, type SimTargets } from '../src/data/balance';
 import { DB } from '../src/data/db';
 import {
@@ -9,24 +14,44 @@ import {
   formatArea,
   groupName,
   partyAt,
+  patchUp,
   playBattle,
   simulate,
   simulateArea,
+  simulateWalks,
+  walkArea,
+  walkProblems,
+  type AreaRun,
   type Row,
+  type WalkSummary,
 } from './simulate';
 
 // The test content from src/core/battle/fixtures.ts: Rowan, Bram and Liora, whose stats are the
-// same at every level, against Wolves (60 HP), Slimes (40 HP) and the Warden (500 HP, a boss).
+// same at every level and who know every skill (Heal among them), against Wolves (60 HP), Slimes
+// (40 HP) and the Warden (500 HP, a boss).
 
-const TARGETS: SimTargets = { battles: { won: 0.95, rounds: [3, 6] }, boss: { won: [0.6, 0.85] } };
+const TARGETS: SimTargets = {
+  battles: { won: 0.95, rounds: [3, 6] },
+  boss: { won: [0.6, 0.85] },
+  walk: { fell: 0.05 },
+};
 const ENCOUNTERS: Readonly<Record<string, EncounterTable>> = {
   test: { groups: [{ enemies: ['slime'] }, { enemies: ['wolf', 'wolf'], weight: 3 }] },
+};
+/** A random battle every 10 steps exactly, with nobody getting the jump. */
+const EVERY_TEN: EncounterTuning = {
+  steps: [10, 10],
+  rates: { off: 0, low: 0.5, normal: 1, high: 2 },
+  preemptive: 0,
+  ambush: 0,
 };
 const AREA: AreaBalance = {
   name: 'the test caves',
   party: ['rowan', 'bram'],
   encounters: 'test',
   boss: ['warden'],
+  // Three battles on the way: at the 10th, 20th and 30th steps.
+  steps: 35,
   arrival: { level: 1, items: {} },
   // With the Flame Sword, Rowan's Attack is fire, which the Warden is weak to.
   atBoss: { level: 1, gear: { rowan: ['flame-sword'] }, items: { potion: 2 } },
@@ -35,8 +60,24 @@ const CONTENT = {
   db: TEST_DB,
   encounters: ENCOUNTERS,
   tuning: TUNING,
+  encounterTuning: EVERY_TEN,
   curve: EXP_CURVE,
   targets: TARGETS,
+};
+/** The test caves, walked in with a couple of Potions. */
+const STOCKED: AreaBalance = { ...AREA, arrival: { level: 1, items: { potion: 2 } } };
+/** The test content, with nothing on the way but a Slime nobody could beat. */
+const SLIME = TEST_DB.enemies.slime!;
+const DOOMED = {
+  ...CONTENT,
+  db: {
+    ...TEST_DB,
+    enemies: {
+      ...TEST_DB.enemies,
+      slime: { ...SLIME, stats: { ...SLIME.stats, hp: 9999, atk: 999 } },
+    },
+  },
+  encounters: { test: { groups: [{ enemies: ['slime'] }] } },
 };
 
 describe('partyAt', () => {
@@ -128,7 +169,7 @@ describe('simulate', () => {
 
 describe('simulateArea', () => {
   test('plays each group in the encounter table and the boss, and says what misses the targets', () => {
-    const rows = simulateArea(AREA, CONTENT, 20);
+    const { rows } = simulateArea(AREA, CONTENT, 20);
     expect(rows.map(({ name, chance, boss }) => ({ name, chance, boss }))).toEqual([
       { name: 'Slime', chance: 0.25, boss: false },
       { name: 'Wolf ×2', chance: 0.75, boss: false },
@@ -149,7 +190,7 @@ describe('simulateArea', () => {
     const arrival = partyAt(AREA.party, AREA.arrival, TEST_DB, EXP_CURVE);
     const atBoss = partyAt(AREA.party, AREA.atBoss, TEST_DB, EXP_CURVE);
     // Each from seeds of its own, so the report is the same every time.
-    expect(simulateArea(AREA, CONTENT, 5).map(({ summary }) => summary)).toEqual([
+    expect(simulateArea(AREA, CONTENT, 5).rows.map(({ summary }) => summary)).toEqual([
       simulate({ enemies: ['slime'] }, arrival, CONTENT, 5, 'the test caves 0'),
       simulate({ enemies: ['wolf', 'wolf'] }, arrival, CONTENT, 5, 'the test caves 1'),
       simulate({ enemies: ['warden'] }, atBoss, CONTENT, 5, 'the test caves boss'),
@@ -188,7 +229,162 @@ test('bossProblems wants the boss beaten within its targets, both ends included'
   ]);
 });
 
-test('formatArea lays the rows out as a table, with what misses the targets after it', () => {
+describe('walkArea', () => {
+  const arrival = partyAt(AREA.party, AREA.arrival, TEST_DB, EXP_CURVE);
+
+  test('fights a battle each time the countdown runs out, and keeps what each leaves', () => {
+    // One battle, drawn as the field draws it, played from a seed of its own, then patched up.
+    const rng = Rng.fromSeed('walk');
+    encounterCountdown(rng, EVERY_TEN);
+    const setup = rollEncounter(ENCOUNTERS.test!, rng, EVERY_TEN);
+    encounterCountdown(rng, EVERY_TEN);
+    const { battle } = playBattle(setup, arrival, CONTENT, 'walk 0');
+    const after = battleAftermath(arrival, battle, TEST_DB, EXP_CURVE, rng);
+    expect(walkArea({ ...AREA, steps: 10 }, CONTENT, 'walk')).toEqual({
+      game: patchUp(after.state, CONTENT),
+      battles: 1,
+      found: after.rewards?.items,
+      fell: false,
+    });
+  });
+
+  test('walks every step of the way, the same way from the same seed', () => {
+    const walk = walkArea(AREA, CONTENT, 'walk');
+    expect(walk).toMatchObject({ battles: 3, fell: false });
+    expect(walkArea(AREA, CONTENT, 'walk')).toEqual(walk);
+    // Everyone gains every battle's EXP: three of a Slime's 3 or two Wolves' 12.
+    const { rowan, bram } = walk.game.members;
+    expect(rowan?.exp).toBe(bram?.exp);
+    expect([9, 18, 27, 36]).toContain(rowan?.exp);
+    expect(walk.game.gold).toBeGreaterThan(0);
+    // Short of the first battle, nothing happens.
+    expect(walkArea({ ...AREA, steps: 9 }, CONTENT, 'walk')).toEqual({
+      game: arrival,
+      battles: 0,
+      found: {},
+      fell: false,
+    });
+  });
+
+  test('ends where the party falls, leaving the game as it was before that battle', () => {
+    expect(walkArea(AREA, DOOMED, 'doomed')).toEqual({
+      game: arrival,
+      battles: 1,
+      found: {},
+      fell: true,
+    });
+  });
+});
+
+describe('patchUp', () => {
+  /** The test party with Rowan on `rowan` HP and Bram on `bram`, and that much MP each. */
+  function hurt(rowan: number, bram: number, mp: number, items = { potion: 2 }): GameState {
+    let game = partyAt(['rowan', 'bram'], { level: 1, items }, TEST_DB, EXP_CURVE);
+    for (const [id, hp] of [
+      ['rowan', rowan],
+      ['bram', bram],
+    ] as const) {
+      game = setVitals(game, id, { hp, mp }, memberVitals(game, id, TEST_DB).most);
+    }
+    return game;
+  }
+  const vitals = (game: GameState, id: string) => memberVitals(game, id, TEST_DB).now;
+
+  test('leaves the party be while nobody is below half their HP', () => {
+    const game = hurt(50, 75, 10);
+    expect(patchUp(game, CONTENT)).toBe(game);
+  });
+
+  test('heals the worst hurt first, with a healing skill while anyone has the MP for one', () => {
+    // Rowan (30 of 100) is worse than Bram (60 of 150): Rowan's Heal gives 20, to half, then
+    // another goes to Bram. Rowan heals first, as first in the party to know it.
+    const healed = patchUp(hurt(30, 60, 10), CONTENT);
+    expect(vitals(healed, 'rowan')).toEqual({ hp: 50, mp: 2 });
+    expect(vitals(healed, 'bram')).toEqual({ hp: 80, mp: 10 });
+    expect(healed.inventory).toEqual({ potion: 2 });
+  });
+
+  test('falls back on Potions, and stops when there’s nothing left to heal with', () => {
+    const potions = patchUp(hurt(30, 60, 0), CONTENT);
+    expect(vitals(potions, 'rowan').hp).toBe(80);
+    expect(vitals(potions, 'bram').hp).toBe(110);
+    expect(potions.inventory).toEqual({});
+    const stuck = hurt(30, 60, 0, { potion: 1 });
+    const once = patchUp(stuck, CONTENT);
+    expect(vitals(once, 'rowan').hp).toBe(80);
+    expect(vitals(once, 'bram').hp).toBe(60);
+  });
+});
+
+describe('simulateWalks', () => {
+  test('sums walks up, each from a seed of its own', () => {
+    const walks = [0, 1, 2, 3].map((index) =>
+      walkArea(STOCKED, CONTENT, `the test caves walk ${index}`),
+    );
+    const average = (numbers: number[]): number =>
+      numbers.reduce((sum, number) => sum + number, 0) / numbers.length;
+    const summary = simulateWalks(STOCKED, CONTENT, 4);
+    expect(summary).toMatchObject({ walks: 4, fell: 0, battles: 3 });
+    expect(summary.exp).toBeCloseTo(average(walks.map(({ game }) => game.members.rowan?.exp ?? 0)));
+    expect(summary.gold).toBeCloseTo(average(walks.map(({ game }) => game.gold)));
+    expect(Object.values(summary.levels).reduce((sum, share) => sum + share, 0)).toBeCloseTo(1);
+    const potions = walks.map(
+      ({ game, found }) => 2 + (found.potion ?? 0) - (game.inventory.potion ?? 0),
+    );
+    expect(summary.used.potion ?? 0).toBeCloseTo(average(potions));
+  });
+
+  test('sums up only the walks that reached the boss', () => {
+    expect(simulateWalks(STOCKED, DOOMED, 2)).toEqual({
+      walks: 2,
+      fell: 1,
+      battles: 1,
+      exp: Number.NaN,
+      levels: {},
+      gold: Number.NaN,
+      used: {},
+    });
+  });
+});
+
+test('walkProblems wants few walks to fall, and the party at the boss’s level when it gets there', () => {
+  const walk: WalkSummary = {
+    walks: 200,
+    fell: 0.05,
+    battles: 3,
+    exp: 12,
+    levels: { 2: 1 },
+    gold: 20,
+    used: {},
+  };
+  // Level 2 takes 12 EXP, and level 3 takes 68.
+  const area = { ...AREA, atBoss: { ...AREA.atBoss, level: 2 } };
+  expect(walkProblems(walk, area, CONTENT)).toEqual([]);
+  expect(walkProblems({ ...walk, exp: 67.9 }, area, CONTENT)).toEqual([]);
+  expect(walkProblems({ ...walk, fell: 0.06, exp: 11.9 }, area, CONTENT)).toEqual([
+    'The party fell on the way to the boss in 6% of walks, and should in no more than 5%',
+    'The party reached the boss with 11 EXP on average, and should with 12 to 67, for level 2',
+  ]);
+  expect(walkProblems({ ...walk, exp: 68 }, area, CONTENT)).toEqual([
+    'The party reached the boss with 68 EXP on average, and should with 12 to 67, for level 2',
+  ]);
+  // With nobody getting there, falling is the problem.
+  expect(walkProblems({ ...walk, fell: 1, exp: Number.NaN }, area, CONTENT)).toEqual([
+    'The party fell on the way to the boss in 100% of walks, and should in no more than 5%',
+  ]);
+  // There's no level past the last.
+  const last = { ...AREA, atBoss: { ...AREA.atBoss, level: EXP_CURVE.maxLevel } };
+  expect(walkProblems({ ...walk, exp: 1e6 }, last, CONTENT)).toEqual([]);
+});
+
+test('simulateArea walks the main path as many times as it plays each battle', () => {
+  expect(simulateArea(AREA, CONTENT, 3).walk).toEqual({
+    summary: simulateWalks(AREA, CONTENT, 3),
+    problems: walkProblems(simulateWalks(AREA, CONTENT, 3), AREA, CONTENT),
+  });
+});
+
+test('formatArea lays the rows out as a table, then the walk, with what misses the targets after', () => {
   const summary = { battles: 200, won: 1, rounds: 4.25, hpLeft: 0.8 };
   const rows: Row[] = [
     { name: 'Slime', chance: 0.25, boss: false, summary, problems: [] },
@@ -206,7 +402,20 @@ test('formatArea lays the rows out as a table, with what misses the targets afte
       problems: [],
     },
   ];
-  expect(formatArea(AREA, rows, TEST_DB)).toEqual([
+  const walk: WalkSummary = {
+    walks: 200,
+    fell: 0.02,
+    battles: 3,
+    exp: 30.4,
+    levels: { 3: 0.75, 2: 0.25 },
+    gold: 21.6,
+    // Too little of a Feather to speak of.
+    used: { potion: 1.2, feather: 0.01 },
+  };
+  const level =
+    'The party reached the boss with 30 EXP on average, and should with 0 to 11, for level 1';
+  const run: AreaRun = { rows, walk: { summary: walk, problems: [level] } };
+  expect(formatArea(AREA, run, TEST_DB)).toEqual([
     'The test caves: Rowan and Bram at level 1 for its battles, and 1 for its boss. 200 battles each.',
     '',
     '  Battle                             Chance    Won  Rounds  HP left',
@@ -214,9 +423,23 @@ test('formatArea lays the rows out as a table, with what misses the targets afte
     '  Wolf ×2                               75%    90%     4.3      80%  ✗',
     '  Drowned Warden (boss)                        70%    12.0      80%',
     '',
+    '  The way to the boss, 35 steps, walked 200 times: 3.0 battles, and the party fell in 2%.',
+    '  It got there at level 2 (25%) or 3 (75%), with 30 EXP and 22 gold on average.',
+    '  On the way it used up Potion ×1.2, on average.',
+    '',
     '  ✗ Wolf ×2 won 90% of the time, and should be over 95%.',
+    `  ✗ ${level}.`,
   ]);
-  expect(formatArea(AREA, rows.slice(0, 1), TEST_DB).at(-1)).toBe('  All within the targets.');
+  const fine = { rows: rows.slice(0, 1), walk: { summary: { ...walk, used: {} }, problems: [] } };
+  expect(formatArea(AREA, fine, TEST_DB).slice(-3)).toEqual([
+    '  It used up nothing on the way.',
+    '',
+    '  All within the targets.',
+  ]);
+  const lost = { ...walk, fell: 1, exp: Number.NaN, levels: {}, gold: Number.NaN, used: {} };
+  expect(formatArea(AREA, { rows, walk: { summary: lost, problems: [] } }, TEST_DB)).toContain(
+    '  It never got there.',
+  );
 });
 
 test('groupName counts each kind of enemy', () => {

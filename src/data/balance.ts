@@ -187,8 +187,10 @@ export interface PartyCheckpoint {
 
 /**
  * An area, as the simulator plays it (`npm run sim`, see Levels in docs/DESIGN.md): who's in the
- * party, its encounter table and its boss, and the party as they arrive and as they reach the boss,
- * at the area's target levels. Its battles are played at the first, and its boss at the second.
+ * party, its encounter table and its boss, how long its main path is, and the party as they arrive
+ * and as they reach the boss, at the area's target levels. Its battles are played at the first,
+ * and its boss at the second; its main path is walked from the first, to see that it brings the
+ * party to the second's level.
  */
 export interface AreaBalance {
   readonly name: string;
@@ -197,6 +199,12 @@ export interface AreaBalance {
   readonly encounters: string;
   /** The boss's group of enemies. */
   readonly boss: readonly string[];
+  /**
+   * How many steps its main path takes, from the Light Shrine at the way in to the boss: the
+   * shortest walk that opens every chest, counting only the steps that count towards random
+   * battles (see Encounters in docs/DESIGN.md), measured on its maps.
+   */
+  readonly steps: number;
   readonly arrival: PartyCheckpoint;
   readonly atBoss: PartyCheckpoint;
 }
@@ -208,11 +216,22 @@ export const AREAS: Readonly<Record<string, AreaBalance>> = {
     party: ['rowan', 'bram'],
     encounters: 'tide-caves',
     boss: ['drowned-warden'],
-    // On arrival, in the gear they started in, with a couple of Potions.
-    arrival: { level: 1, items: { potion: 2 } },
-    // At the Warden, Rowan has the Iron Sword from one of the caves' chests, and the Leather Vest
-    // from Hal's forge in Saltmere, bought with what the caves paid.
-    atBoss: { level: 5, gear: { rowan: ['iron-sword', 'leather-vest'] }, items: { potion: 4 } },
+    // From the Light Shrine on the first floor to the door of the Beacon chamber, opening every
+    // chest and pulling the levers that takes: 77 steps on the first floor, 118 on the second and
+    // 84 on the third.
+    steps: 279,
+    // On arrival, at level 2 from the fight in the square, in the gear they started in, with what
+    // Saltmere gives: Tamsin's Potion and two more bought with the village's chest gold, its Ether
+    // and Ember Feather, and two Fire Bombs, its chest's and Bram's.
+    arrival: { level: 2, items: { potion: 3, ether: 1, 'ember-feather': 1, 'fire-bomb': 2 } },
+    // At the Warden, Rowan has the Iron Sword from the second floor's chest. Of the Potions the
+    // party brings and the first and third floors' chests give, the way down uses up all but about
+    // one; the chests give an Ether and a Fire Bomb more.
+    atBoss: {
+      level: 5,
+      gear: { rowan: ['iron-sword'] },
+      items: { potion: 1, ether: 2, 'ember-feather': 1, 'fire-bomb': 3 },
+    },
   },
 };
 
@@ -222,13 +241,21 @@ export interface SimTargets {
   readonly battles: { readonly won: number; readonly rounds: readonly [min: number, max: number] };
   /** The boss is beaten this share of the time. */
   readonly boss: { readonly won: readonly [min: number, max: number] };
+  /**
+   * Walking the main path, the party falls on the way at most this share of the time; and it
+   * reaches the boss at the boss's target level, on average.
+   */
+  readonly walk: { readonly fell: number };
 }
 
 /**
  * At an area's target level, a party run by simple AI wins its normal battles more than 95% of the
- * time in 3 to 6 rounds, and beats its boss 60% to 85% of the time.
+ * time in 3 to 6 rounds, and beats its boss 60% to 85% of the time. Walking its main path from
+ * the target level on arrival, it gets to the boss at the boss's target level, and falls on the
+ * way no more than 5% of the time.
  */
 export const SIM_TARGETS: SimTargets = {
   battles: { won: 0.95, rounds: [3, 6] },
   boss: { won: [0.6, 0.85] },
+  walk: { fell: 0.05 },
 };

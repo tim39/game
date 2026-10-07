@@ -1,16 +1,23 @@
 // `npm run sim`: the battle simulator (see Battle engine in docs/TECH.md). It plays every area's
-// battles with the party and the enemies following their AI, and reports how they went against the
-// targets in docs/DESIGN.md, exiting 1 if any are outside them. With --log, it plays one battle and
-// tells it turn by turn instead.
+// battles with the party and the enemies following their AI, walks each area's main path battle
+// after battle, and reports how they went against the targets in docs/DESIGN.md, exiting 1 if any
+// are outside them. With --log, it plays one battle and tells it turn by turn instead.
 import { parseArgs } from 'node:util';
-import { AREAS, BATTLE_TUNING, EXP_CURVE, SIM_TARGETS } from '../src/data/balance';
+import {
+  AREAS,
+  BATTLE_TUNING,
+  ENCOUNTER_TUNING,
+  EXP_CURVE,
+  SIM_TARGETS,
+} from '../src/data/balance';
 import { DB } from '../src/data/db';
 import { ENCOUNTERS } from '../src/data/encounters';
 import { battleLog } from './battle-log';
 import { formatArea, groupName, partyAt, playBattle, simulateArea } from './simulate';
 
-const HELP = `npm run sim                     Plays every area's battles, and says how they went.
-npm run sim -- --battles 500    ...this many of each, not 200.
+const HELP = `npm run sim                     Plays every area's battles, and walks its way to the boss,
+                                and says how they went.
+npm run sim -- --battles 500    ...this many of each, and walks, not 200.
 npm run sim -- --log wolf,wolf  Plays one battle against these enemies, turn by turn, with the
                                 first area's party as they arrive there.
   --boss                        ...against the area's boss, with the party as they reach it.
@@ -34,6 +41,7 @@ const content = {
   db: DB,
   encounters: ENCOUNTERS,
   tuning: BATTLE_TUNING,
+  encounterTuning: ENCOUNTER_TUNING,
   curve: EXP_CURVE,
   targets: SIM_TARGETS,
 };
@@ -73,15 +81,18 @@ if (values.help) {
   const battles = whole(values.battles, 'battles');
   let problems = 0;
   for (const area of Object.values(AREAS)) {
-    const rows = simulateArea(area, content, battles);
-    problems += rows.reduce((sum, row) => sum + row.problems.length, 0);
-    console.log(formatArea(area, rows, DB).join('\n'));
+    const run = simulateArea(area, content, battles);
+    problems += run.rows.reduce((sum, row) => sum + row.problems.length, 0);
+    problems += run.walk.problems.length;
+    console.log(formatArea(area, run, DB).join('\n'));
   }
   console.log(
     `\nThe targets (Levels in docs/DESIGN.md): normal battles won over ` +
       `${SIM_TARGETS.battles.won * 100}% of the time in ${SIM_TARGETS.battles.rounds.join(' to ')} ` +
       `rounds, and bosses beaten ${SIM_TARGETS.boss.won.map((share) => share * 100).join('% to ')}% ` +
-      'of the time, by a party following its AI. A round is a turn for each party member.',
+      'of the time, by a party following its AI. A round is a turn for each party member. Walking ' +
+      'its main path at the Normal encounter rate, battle after battle, the party reaches the boss ' +
+      `at its level, and falls on the way in no more than ${SIM_TARGETS.walk.fell * 100}% of walks.`,
   );
   if (problems > 0) process.exit(1);
 }

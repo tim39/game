@@ -1,3 +1,4 @@
+import { battleAftermath } from '../src/core/battle/aftermath';
 import { chooseEnemyAction } from '../src/core/battle/ai';
 import {
   activeFighter,
@@ -9,28 +10,47 @@ import {
 import { choosePartyAction } from '../src/core/battle/party-ai';
 import type { BattleTuning } from '../src/core/battle/tuning';
 import type { GameDb } from '../src/core/db';
+import {
+  countStep,
+  encounterCountdown,
+  rollEncounter,
+  type EncounterTuning,
+} from '../src/core/encounters';
+import { castSkill, itemTargets, skillTargets, useItem } from '../src/core/field-use';
 import { expToReach, type ExpCurve } from '../src/core/levels';
-import { startGame } from '../src/core/party';
+import { knownSkills, memberVitals, startGame } from '../src/core/party';
 import { Rng } from '../src/core/rng';
 import type { EncounterTable } from '../src/core/schema';
-import { addItem, equip, gainExp, type GameState } from '../src/core/state';
+import {
+  addItem,
+  equip,
+  gainExp,
+  itemCount,
+  type CharacterId,
+  type GameState,
+} from '../src/core/state';
 import type { AreaBalance, PartyCheckpoint, SimTargets } from '../src/data/balance';
 import type { Step } from './battle-log';
 
 /**
  * The battle simulator behind `npm run sim` (see Battle engine in docs/TECH.md): it plays battles
- * to their end with the party and the enemies following their AI, and sums them up against the
- * targets in docs/DESIGN.md.
+ * to their end with the party and the enemies following their AI, walks each area's main path
+ * battle after battle, and sums them up against the targets in docs/DESIGN.md.
  */
 
 /** A battle that goes on this long is stuck, which is a bug. */
 const MOST_TURNS = 1000;
+
+/** Between battles, as in them (src/core/battle/party-ai.ts), the party heals anyone below this. */
+const HURT = 0.5;
 
 /** What the content and tuning the simulator plays with. */
 export interface SimContent {
   readonly db: GameDb;
   readonly encounters: Readonly<Record<string, EncounterTable>>;
   readonly tuning: BattleTuning;
+  /** How often random battles come, for walking an area. */
+  readonly encounterTuning: EncounterTuning;
   readonly curve: ExpCurve;
   readonly targets: SimTargets;
 }
@@ -139,14 +159,33 @@ export interface Row {
   readonly problems: readonly string[];
 }
 
+/** How an area played: each of its battles, and the walks along its main path. */
+export interface AreaRun {
+  readonly rows: readonly Row[];
+  readonly walk: { readonly summary: WalkSummary; readonly problems: readonly string[] };
+}
+
 /**
- * Plays an area's battles: each group in its encounter table with the party as they arrive, and
- * its boss with the party as they reach it.
+ * Plays an area: each group in its encounter table with the party as they arrive, and its boss
+ * with the party as they reach it, `battles` times each; and walks its main path as many times.
  */
-export function simulateArea(area: AreaBalance, content: SimContent, battles: number): Row[] {
-  const { db, encounters, targets, curve } = content;
-  const table = encounters[area.encounters];
+export function simulateArea(area: AreaBalance, content: SimContent, battles: number): AreaRun {
+  const rows = simulateBattles(area, content, battles);
+  const summary = simulateWalks(area, content, battles);
+  return { rows, walk: { summary, problems: walkProblems(summary, area, content) } };
+}
+
+/** The area's encounter table, which must exist. */
+function tableOf(area: AreaBalance, content: SimContent): EncounterTable {
+  const table = content.encounters[area.encounters];
   if (!table) throw new RangeError(`There's no encounter table called ${area.encounters}`);
+  return table;
+}
+
+/** Plays each group in the area's encounter table, and its boss. */
+function simulateBattles(area: AreaBalance, content: SimContent, battles: number): Row[] {
+  const { db, targets, curve } = content;
+  const table = tableOf(area, content);
   const arrival = partyAt(area.party, area.arrival, db, curve);
   const total = table.groups.reduce((sum, group) => sum + (group.weight ?? 1), 0);
   const rows = table.groups.map((group, index): Row => {
@@ -195,6 +234,198 @@ export function bossProblems(summary: Summary, targets: SimTargets): string[] {
   ];
 }
 
+/** A walk along an area's main path, as it went. */
+export interface Walk {
+  /** The game as the walk left it: at the boss, or where the party fell. */
+  readonly game: GameState;
+  /** How many battles came on the way. */
+  readonly battles: number;
+  /** The items the enemies dropped on the way, by ID. */
+  readonly found: Readonly<Record<string, number>>;
+  /** Whether the party lost one of them, which ends the walk there. */
+  readonly fell: boolean;
+}
+
+/**
+ * Walks an area's main path from the party as they arrive, a step at a time at the Normal
+ * encounter rate, as the field counts them: fighting each random battle that comes, with both
+ * sides following their AI, and keeping what it leaves (HP and MP, items used, EXP, gold and
+ * drops). Between battles, the party heals anyone below half their HP (`patchUp`). The battles'
+ * groups and the countdown between them are drawn as the field draws them, from the walk's seed,
+ * and each battle is played from a seed of its own.
+ */
+export function walkArea(area: AreaBalance, content: SimContent, seed: string): Walk {
+  const { db, curve, encounterTuning } = content;
+  const table = tableOf(area, content);
+  const rng = Rng.fromSeed(seed);
+  let game = partyAt(area.party, area.arrival, db, curve);
+  let countdown = encounterCountdown(rng, encounterTuning);
+  let battles = 0;
+  const found: Record<string, number> = {};
+  for (let step = 0; step < area.steps; step++) {
+    countdown = countStep(countdown, 'normal', encounterTuning);
+    if (countdown > 0) continue;
+    const setup = rollEncounter(table, rng, encounterTuning);
+    countdown = encounterCountdown(rng, encounterTuning);
+    const { battle } = playBattle(setup, game, content, `${seed} ${battles}`);
+    battles++;
+    if (battle.outcome === 'defeat') return { game, battles, found, fell: true };
+    const { state, rewards } = battleAftermath(game, battle, db, curve, rng);
+    for (const [item, count] of Object.entries(rewards?.items ?? {})) {
+      found[item] = (found[item] ?? 0) + count;
+    }
+    game = patchUp(state, content);
+  }
+  return { game, battles, found, fell: false };
+}
+
+/**
+ * Heals the party between battles as it does in them: anyone below half their HP, the worst hurt
+ * first, gets a healing skill from whoever has one and the MP for it, or else an item that
+ * restores HP, for as long as there's any to give (see Levels in docs/DESIGN.md).
+ */
+export function patchUp(
+  game: GameState,
+  { db, tuning }: Pick<SimContent, 'db' | 'tuning'>,
+): GameState {
+  for (;;) {
+    const worst = game.party
+      .map((id) => ({ id, share: hpShare(game, id, db) }))
+      .filter(({ share }) => share < HURT)
+      .sort((a, b) => a.share - b.share)
+      .at(0)?.id;
+    const healed = worst === undefined ? undefined : heal(game, worst, db, tuning);
+    if (healed === undefined) return game;
+    game = healed;
+  }
+}
+
+/** A member's HP, as a share of their most. */
+function hpShare(game: GameState, id: CharacterId, db: GameDb): number {
+  const { now, most } = memberVitals(game, id, db);
+  return now.hp / most.hp;
+}
+
+/** The game once `id` is healed by the first healing skill or HP item that helps them, if any. */
+function heal(
+  game: GameState,
+  id: CharacterId,
+  db: GameDb,
+  tuning: BattleTuning,
+): GameState | undefined {
+  for (const caster of game.party) {
+    for (const skill of knownSkills(game, caster, db)) {
+      if (db.skills[skill]?.kind !== 'healing') continue;
+      const { all, members } = skillTargets(game, caster, skill, db);
+      if (members.includes(id)) {
+        return castSkill(game, caster, skill, all ? members : [id], db, tuning);
+      }
+    }
+  }
+  for (const item of Object.keys(game.inventory)) {
+    const def = db.items[item];
+    const restoresHp =
+      def?.kind === 'consumable' &&
+      def.effects.some((effect) => effect.type === 'restore' && effect.hp !== undefined);
+    if (!restoresHp) continue;
+    const { all, members } = itemTargets(game, item, db);
+    if (members.includes(id)) return useItem(game, item, all ? members : [id], db);
+  }
+  return undefined;
+}
+
+/** How walks along an area's main path went. */
+export interface WalkSummary {
+  readonly walks: number;
+  /** The share of them in which the party fell on the way. */
+  readonly fell: number;
+  /** How many battles came on the way, on average. */
+  readonly battles: number;
+  /**
+   * Of the walks that reached the boss: the party's EXP there on average, the share of the party
+   * at each level, by level, and the gold its battles gave, on average.
+   */
+  readonly exp: number;
+  readonly levels: Readonly<Record<number, number>>;
+  readonly gold: number;
+  /** How many of each item the party used up on the way there, on average, by ID. */
+  readonly used: Readonly<Record<string, number>>;
+}
+
+/** Walks an area's main path `walks` times, each from a seed of its own, and sums them up. */
+export function simulateWalks(area: AreaBalance, content: SimContent, walks: number): WalkSummary {
+  const start = partyAt(area.party, area.arrival, content.db, content.curve);
+  let fell = 0;
+  let battles = 0;
+  let exp = 0;
+  let gold = 0;
+  const levels: Record<number, number> = {};
+  const used: Record<string, number> = {};
+  for (let index = 0; index < walks; index++) {
+    const walk = walkArea(area, content, `${area.name} walk ${index}`);
+    battles += walk.battles;
+    if (walk.fell) {
+      fell++;
+      continue;
+    }
+    gold += walk.game.gold - start.gold;
+    for (const id of walk.game.party) {
+      const member = walk.game.members[id];
+      if (!member) continue;
+      exp += member.exp / walk.game.party.length;
+      levels[member.level] = (levels[member.level] ?? 0) + 1 / walk.game.party.length;
+    }
+    for (const item of new Set([...Object.keys(start.inventory), ...Object.keys(walk.found)])) {
+      const gone = itemCount(start, item) + (walk.found[item] ?? 0) - itemCount(walk.game, item);
+      if (gone > 0) used[item] = (used[item] ?? 0) + gone;
+    }
+  }
+  const got = walks - fell;
+  const average = (record: Record<string | number, number>): Record<string, number> =>
+    Object.fromEntries(Object.entries(record).map(([key, sum]) => [key, sum / got]));
+  return {
+    walks,
+    fell: fell / walks,
+    battles: battles / walks,
+    exp: got === 0 ? Number.NaN : exp / got,
+    levels: got === 0 ? {} : average(levels),
+    gold: got === 0 ? Number.NaN : gold / got,
+    used: got === 0 ? {} : average(used),
+  };
+}
+
+/**
+ * What's outside the targets about walking an area's main path: the party falls on the way no
+ * more than so often, and reaches the boss with the EXP for the boss's target level, on average,
+ * and not the next one's. With nobody reaching it, falling is the problem.
+ */
+export function walkProblems(
+  summary: WalkSummary,
+  area: AreaBalance,
+  { targets, curve }: Pick<SimContent, 'targets' | 'curve'>,
+): string[] {
+  const problems: string[] = [];
+  if (summary.fell > targets.walk.fell) {
+    problems.push(
+      `The party fell on the way to the boss in ${percent(summary.fell)} of walks, and should in ` +
+        `no more than ${percent(targets.walk.fell)}`,
+    );
+  }
+  const { level } = area.atBoss;
+  const least = expToReach(level, curve);
+  const next = level < curve.maxLevel ? expToReach(level + 1, curve) : Number.POSITIVE_INFINITY;
+  if (!Number.isNaN(summary.exp) && (summary.exp < least || summary.exp >= next)) {
+    const range =
+      next === Number.POSITIVE_INFINITY ? `${least} or more` : `${least} to ${next - 1}`;
+    // Rounded down, so it's never inside the range it misses.
+    problems.push(
+      `The party reached the boss with ${Math.floor(summary.exp)} EXP on average, and should ` +
+        `with ${range}, for level ${level}`,
+    );
+  }
+  return problems;
+}
+
 /** A group of enemies by name: `Cave Bat ×2 + Reef Snail`. */
 export function groupName(enemies: readonly string[], db: GameDb): string {
   const counts = new Map<string, number>();
@@ -209,8 +440,11 @@ export function groupName(enemies: readonly string[], db: GameDb): string {
 
 const percent = (share: number): string => `${Math.round(share * 100)}%`;
 
-/** An area's rows as a table, with what's outside the targets after it. */
-export function formatArea(area: AreaBalance, rows: readonly Row[], db: GameDb): string[] {
+/**
+ * An area's rows as a table, then how walking its main path went, with what's outside the targets
+ * after them.
+ */
+export function formatArea(area: AreaBalance, { rows, walk }: AreaRun, db: GameDb): string[] {
   const party = area.party.map((id) => db.characters[id]?.name ?? id);
   const who = `${party.slice(0, -1).join(', ')}${party.length > 1 ? ' and ' : ''}${party.at(-1)}`;
   const battles = rows[0]?.summary.battles ?? 0;
@@ -233,11 +467,38 @@ export function formatArea(area: AreaBalance, rows: readonly Row[], db: GameDb):
         `${rounds.padStart(8)}${hpLeft.padStart(9)}${flag}`,
     );
   }
-  lines.push('');
-  const problems = rows.flatMap((row) => row.problems.map((problem) => `${row.name} ${problem}.`));
+  lines.push('', ...walkLines(area, walk.summary, db), '');
+  const problems = [
+    ...rows.flatMap((row) => row.problems.map((problem) => `${row.name} ${problem}.`)),
+    ...walk.problems.map((problem) => `${problem}.`),
+  ];
   if (problems.length === 0) lines.push('  All within the targets.');
   else lines.push(...problems.map((problem) => `  ✗ ${problem}`));
   return lines;
+}
+
+/** How walking an area's main path went, in words. */
+function walkLines(area: AreaBalance, summary: WalkSummary, db: GameDb): string[] {
+  const lines = [
+    `  The way to the boss, ${area.steps} steps, walked ${summary.walks} times: ` +
+      `${summary.battles.toFixed(1)} battles, and the party fell in ${percent(summary.fell)}.`,
+  ];
+  const levels = Object.entries(summary.levels)
+    .sort(([a], [b]) => Number(a) - Number(b))
+    .map(([level, share]) => `${level} (${percent(share)})`);
+  if (levels.length === 0) return [...lines, '  It never got there.'];
+  const used = Object.entries(summary.used)
+    .filter(([, count]) => count >= 0.05)
+    .map(([item, count]) => `${db.items[item]?.name ?? item} ×${count.toFixed(1)}`);
+  return [
+    ...lines,
+    `  It got there at level ${levels.slice(0, -1).join(', ')}${levels.length > 1 ? ' or ' : ''}` +
+      `${levels.at(-1)}, with ${Math.round(summary.exp)} EXP and ${Math.round(summary.gold)} ` +
+      'gold on average.',
+    used.length === 0
+      ? '  It used up nothing on the way.'
+      : `  On the way it used up ${used.join(', ')}, on average.`,
+  ];
 }
 
 const capitalised = (text: string): string => text.charAt(0).toUpperCase() + text.slice(1);

@@ -520,7 +520,8 @@ export interface AreaSources {
 /**
  * Checks the areas the simulator plays (AREAS in src/data/balance.ts) against the content. One
  * line per problem: their party, gear, items, encounter table and boss exist, the gear fits its
- * wearer, and their levels are levels there are, the boss's no lower than the arrival's.
+ * wearer, their main path is a whole number of steps, and their levels are levels there are, the
+ * boss's no lower than the arrival's.
  */
 export function checkAreas({
   areas,
@@ -544,6 +545,9 @@ export function checkAreas({
     for (const enemy of area.boss) {
       if (!Object.hasOwn(enemies, enemy))
         problems.push(`${owner}: its boss, ${enemy}, isn't an enemy`);
+    }
+    if (!Number.isSafeInteger(area.steps) || area.steps < 0) {
+      problems.push(`${owner}: its main path is ${area.steps} steps, not a whole number of them`);
     }
     for (const [when, checkpoint] of [
       ['arrival', area.arrival],
