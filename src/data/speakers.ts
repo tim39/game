@@ -15,6 +15,8 @@ export const SPEAKERS: Readonly<Record<string, Speaker>> = {
   ewan: { name: 'Ewan', portrait: 'portrait.ewan' },
   jory: { name: 'Jory', portrait: 'portrait.jory' },
   dai: { name: 'Dai', portrait: 'portrait.dai' },
+  // The Tide Caves' boss, a Hollowed knight, who still mutters what it was.
+  'drowned-warden': { name: 'Drowned Warden', portrait: 'portrait.drowned-warden' },
   // Anyone else, on the test maps.
   villager: { name: 'Villager' },
   // Signs and notices: no name.

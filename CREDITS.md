@@ -31,6 +31,7 @@ By **Pixel-boy** and **AAA**: https://pixel-boy.itch.io/ninja-adventure-asset-pa
 | `public/assets/portraits/princess.png` | Rhona's portrait | `Actor/Character/Princess/Faceset.png` | None |
 | `public/assets/portraits/villager-5.png` | Jory's portrait | `Actor/Character/Villager5/Faceset.png` | None |
 | `public/assets/portraits/villager-2.png` | Dai's portrait | `Actor/Character/Villager2/Faceset.png` | None |
+| `public/assets/portraits/giant-blue-samurai.png` | The Drowned Warden's portrait | `Actor/Boss/GiantBlueSamurai/Faceset.png` | None |
 | `public/assets/sprites/hunter.png` | Rowan (a placeholder look) | `Actor/Character/Hunter/SpriteSheet.png` | None |
 | `public/assets/sprites/knight.png` | Bram | `Actor/Character/Knight/SpriteSheet.png` | None |
 | `public/assets/sprites/old-woman.png` | Tamsin | `Actor/Character/OldWoman/SpriteSheet.png` | None |
@@ -87,6 +88,7 @@ By **Pixel-boy** and **AAA**: https://pixel-boy.itch.io/ninja-adventure-asset-pa
 | `public/assets/bgm/calm-village.ogg`, `public/assets/bgm/calm-village.m4a` | Saltmere's music | `Audio/Musics/33 - Calm Village.ogg` | Turned down 1.3 dB, to −20 LUFS; re-encoded as Ogg Vorbis (quality 4) and AAC (128 kbps) |
 | `public/assets/bgm/fight.ogg`, `public/assets/bgm/fight.m4a` | Battle music | `Audio/Musics/17 - Fight.ogg` | Turned up 2.5 dB, to −20 LUFS; re-encoded as Ogg Vorbis (quality 4) and AAC (128 kbps) |
 | `public/assets/bgm/aquatic.ogg`, `public/assets/bgm/aquatic.m4a` | The Tide Caves' music | `Audio/Musics/18 - Aquatic.ogg` | Turned up 4 dB, to −20 LUFS; re-encoded as Ogg Vorbis (quality 4) and AAC (128 kbps) |
+| `public/assets/bgm/tension.ogg`, `public/assets/bgm/tension.m4a` | Boss battle music | `Audio/Musics/28 - Tension.ogg` | Turned down 0.4 dB, to −20 LUFS; re-encoded as Ogg Vorbis (quality 4) and AAC (128 kbps) |
 | `public/assets/sfx/secret-2.ogg`, `public/assets/sfx/secret-2.m4a` | A chest opening | `Audio/Jingles/Secret2.wav` | Encoded as Ogg Vorbis (quality 4) and AAC (128 kbps) |
 | `public/assets/sfx/success-3.ogg`, `public/assets/sfx/success-3.m4a` | Winning a battle | `Audio/Jingles/Success3.wav` | Encoded as Ogg Vorbis (quality 4) and AAC (128 kbps) |
 | `public/assets/sfx/level-up-1.ogg`, `public/assets/sfx/level-up-1.m4a` | A level-up | `Audio/Jingles/LevelUp1.wav` | Encoded as Ogg Vorbis (quality 4) and AAC (128 kbps) |
@@ -100,4 +102,5 @@ By **Pixel-boy** and **AAA**: https://pixel-boy.itch.io/ninja-adventure-asset-pa
 | `public/assets/sfx/move-4.ogg`, `public/assets/sfx/move-4.m4a` | Going back in a menu | `Audio/Sounds/Menu/Move4.wav` | Encoded as Ogg Vorbis (quality 4) and AAC (128 kbps) |
 | `public/assets/sfx/menu-11.ogg`, `public/assets/sfx/menu-11.m4a` | Choosing something that can't be chosen now | `Audio/Sounds/Menu/Menu11.wav` | Encoded as Ogg Vorbis (quality 4) and AAC (128 kbps) |
 | `public/assets/sfx/gold-1.ogg`, `public/assets/sfx/gold-1.m4a` | Buying or selling in a shop | `Audio/Sounds/Bonus/Gold1.wav` | Encoded as Ogg Vorbis (quality 4) and AAC (128 kbps) |
+| `public/assets/tiles/drowned-warden.png` | The Drowned Warden, standing guard in the Beacon chamber | `Actor/Boss/GiantBlueSamurai/Idle.png`, its first frame | Cut down to the 80×48 middle of the 96×48 frame, from one blade's tip to the other's, so it divides into 16 px tiles |
 | `public/assets/tiles/lighthouse.png` | Saltmere's lighthouse | `Backgrounds/Tilesets/TilesetDesert.png`, the domed tower (columns 3–5, rows 0–4) | Cut out; the dome recoloured from greens to the pack's reds, and the two windows lit in its yellows |

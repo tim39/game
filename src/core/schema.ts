@@ -448,9 +448,13 @@ const EnemyActionSchema = z.discriminatedUnion('type', [
 export type EnemyActionDef = ContentOf<typeof EnemyActionSchema>;
 const EnemyActionsSchema = z.array(EnemyActionSchema).min(1);
 
-/** A later phase of a boss's: from when its HP first falls below this share, it acts this way. */
+/**
+ * A later phase of a boss's: from when its HP first falls below this share, it acts this way. The
+ * battle's banner says `banner`, if it has one, as the phase starts.
+ */
 const PhaseSchema = z.strictObject({
   below: z.number().gt(0).max(1),
+  banner: TextSchema.optional(),
   actions: EnemyActionsSchema,
 });
 

@@ -23,6 +23,8 @@ export const STORY: readonly StoryPoint[] = [
   { flag: 'story.kindling', name: 'The Kindling' },
   // That night the Beacon goes dark, the Gloam rolls in and the Hollowed attack.
   { flag: 'story.beacon-out', name: 'Beacon out' },
-  // Under the lighthouse, past the Drowned Warden, the dead Beacon's last spark leaps into Rowan.
+  // At the bottom of the Tide Caves, under the lighthouse, the Drowned Warden guards the Beacon.
+  { flag: 'story.warden-beaten', name: 'Warden beaten' },
+  // Past it, the dead Beacon's last spark leaps into Rowan.
   { flag: 'story.tide-spark', name: 'Tide spark' },
 ];

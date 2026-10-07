@@ -1,11 +1,12 @@
 import type { EventContext } from '../../core/events';
 import { defineEvent } from '../../core/events';
 import { TIDE_FADE_MS } from '../balance';
-import { tideOut } from '../maps/tide';
+import { CHAMBER_DOOR_OPEN, tideOut } from '../maps/tide';
 import { lightShrine } from './rest';
 
 // The Tide Caves, under the lighthouse: sluice levers that turn each floor's tide (see
-// src/data/maps/tide.ts), its Light Shrines, and the door to the Beacon chamber.
+// src/data/maps/tide.ts), its Light Shrines, the door to the Beacon chamber, and its boss, the
+// Drowned Warden, who guards the dead Beacon there.
 
 /**
  * A lever cranking over, and the sea rushing in or out, as a lever turns the tide. Not exported:
@@ -58,9 +59,41 @@ export const shrine = defineEvent(async (ev) => {
   await lightShrine(ev);
 });
 
+/** The door to the Beacon chamber, until it's pushed open; then it leads there. */
 export const wardenDoor = defineEvent(async (ev) => {
   await ev.say(
     'sign',
-    "A heavy door, green with age and carved with the Wardens' flame. Cold seeps from under it. It won't budge.",
+    "A heavy door, green with age and carved with the Wardens' flame. Cold seeps from under it.",
   );
+  if ((await ev.choice(['Push it open', 'Leave it'])) !== 0) return;
+  ev.setFlag(CHAMBER_DOOR_OPEN);
+  await ev.say(
+    'sign',
+    'Rowan sets a shoulder to the door. Stone grinds on stone, and it swings open.',
+  );
+});
+
+/**
+ * The Drowned Warden, standing across the causeway in the Beacon chamber: examined, it stirs, and
+ * the fight begins. Beaten (there's no getting away from a boss), it crumbles while the screen is
+ * still black from the battle, so the causeway is clear when it comes back.
+ */
+export const warden = defineEvent(async (ev) => {
+  await ev.say(
+    'sign',
+    'A knight in barnacled armor stands before the dead Beacon, still as stone. Seawater runs from its visor.',
+  );
+  await ev.say('drowned-warden', '...Keep the flame... Feed the flame...');
+  await ev.battle(['drowned-warden'], 'beacon-chamber');
+  ev.setFlag('story.warden-beaten');
+  await ev.say(
+    'sign',
+    'The Drowned Warden falls to its knees, and crumbles away into rust and seawater.',
+  );
+  await ev.fadeIn();
+});
+
+/** The Tide Beacon, dead, on its dais at the top of the chamber. */
+export const beacon = defineEvent(async (ev) => {
+  await ev.say('sign', "The Beacon's bowl is cold and dark, and full of black ash.");
 });

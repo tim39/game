@@ -1,8 +1,20 @@
 import { wrapText } from '../src/ui/text-wrap';
 import type { MeasuredFont } from './font-metrics';
 
-/** A collection of things with text the game shows: a name, and maybe a description. */
-type Named = Readonly<Record<string, { readonly name: string; readonly description?: string }>>;
+/**
+ * A collection of things with text the game shows: a name, maybe a description, and for a boss,
+ * maybe what the battle's banner says as each of its phases starts.
+ */
+type Named = Readonly<
+  Record<
+    string,
+    {
+      readonly name: string;
+      readonly description?: string;
+      readonly phases?: readonly { readonly banner?: string }[];
+    }
+  >
+>;
 
 export interface TextSources {
   readonly characters: Named;
@@ -29,10 +41,11 @@ const OWNERS: Readonly<Record<keyof TextSources, string>> = {
  */
 export function checkText(sources: TextSources, font: MeasuredFont): string[] {
   return (Object.keys(OWNERS) as (keyof TextSources)[]).flatMap((kind) =>
-    Object.entries(sources[kind]).flatMap(([id, { name, description }]) =>
+    Object.entries(sources[kind]).flatMap(([id, { name, description, phases = [] }]) =>
       [
         ['name', name],
         ['description', description],
+        ...phases.map(({ banner }, index) => [phaseBanner(index), banner]),
       ].flatMap(([field, text]) => {
         if (text === undefined) return [];
         const missing = [...new Set([...text].filter((char) => !font.has(char)))];
@@ -46,24 +59,27 @@ export function checkText(sources: TextSources, font: MeasuredFont): string[] {
   );
 }
 
+/** What a problem with the banner a boss's phase shows calls it: the first is phase 1. */
+const phaseBanner = (index: number): string => `banner for phase ${index + 1}`;
+
 /** How wide the battle screen's text can be, in font pixels: BATTLE_LAYOUT.room. */
 export interface BattleTextRoom {
   /** A party member's name, in the status panel. */
   readonly name: number;
   /** A skill's or item's name, in its list beside its cost or count. */
   readonly listLabel: number;
-  /** What a skill or item does, in the help line. */
+  /** What a skill or item does, in the help line; and the banner, which the help line is. */
   readonly help: number;
 }
 
 /**
  * Checks that the battle screen has room for the text it shows: each character's name in the
- * status panel, and the name of each skill and of each item that can be used up, in its list, and
- * what it does, in the help line. Returns one line per problem. Text with characters the font lacks
- * is `checkText`'s to report.
+ * status panel, the name of each skill and of each item that can be used up, in its list, and
+ * what it does, in the help line, and what a boss's phases say in the banner. Returns one line per
+ * problem. Text with characters the font lacks is `checkText`'s to report.
  */
 export function checkBattleText(
-  sources: Pick<TextSources, 'characters' | 'skills'> & {
+  sources: Pick<TextSources, 'characters' | 'skills' | 'enemies'> & {
     readonly items: Readonly<Record<string, Named[string] & { readonly kind: string }>>;
   },
   font: MeasuredFont,
@@ -93,7 +109,20 @@ export function checkBattleText(
       ),
     ]),
   );
-  return [...characters, ...listed];
+  const banners = Object.entries(sources.enemies).flatMap(([id, { phases = [] }]) =>
+    phases.flatMap(({ banner }, index) =>
+      banner === undefined
+        ? []
+        : fits(
+            `Enemy ${id}`,
+            phaseBanner(index),
+            banner,
+            room.help,
+            'the battle banner has room for',
+          ),
+    ),
+  );
+  return [...characters, ...listed, ...banners];
 }
 
 /** How wide the main menu's text can be, in font pixels (MENU_LAYOUT.room), and its info lines. */

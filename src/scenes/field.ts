@@ -1,8 +1,9 @@
 import Phaser from 'phaser';
 import { chestScript } from '../core/chest';
 import { DIRECTIONS, STEP, directionTowards, isDirection, type Direction } from '../core/direction';
+import { MAX_ENEMIES, type BattleSetup } from '../core/battle/battle';
 import { battleDue, countStep, encounterCountdown, rollEncounter } from '../core/encounters';
-import { PLAYER, type EventContext, type EventScript } from '../core/events';
+import { PLAYER, type BattleEnd, type EventContext, type EventScript } from '../core/events';
 import {
   autoTrigger,
   chestAt,
@@ -44,6 +45,7 @@ import {
   MAP_FADE_MS,
   NPC_TUNING,
 } from '../data/balance';
+import { BACKDROPS } from '../data/backdrops';
 import { DB } from '../data/db';
 import { ENCOUNTERS } from '../data/encounters';
 import { EVENTS } from '../data/events';
@@ -67,7 +69,7 @@ import { showAreaBanner, type AreaBannerBox } from '../ui/area-banner-box';
 import { playBattleTransition } from '../ui/battle-transition';
 import type { DialogueLine } from '../ui/dialogue-box';
 import { MAX_CHOICES } from '../ui/dialogue-layout';
-import { BATTLE_MUSIC, BATTLE_SCENE, type BattleStart } from './battle';
+import { BATTLE_SCENE, battleMusic, type BattleStart } from './battle';
 import type { DialogueRequest } from './dialogue';
 import { MAIN_MENU_SCENE, type MainMenuStart } from './main-menu';
 import { SHOP_SCENE, type ShopStart } from './shop';
@@ -493,12 +495,7 @@ export class FieldScene extends Phaser.Scene {
     );
   }
 
-  /**
-   * A random battle from the map's encounter table, with a fresh countdown to the next: the battle
-   * music starts, the screen breaks up into black, and the battle starts over the field, which
-   * sleeps until it's won or fled. Lost, the Game Over screen takes over from the battle, and the
-   * field sleeps on through any retry, until it's won or fled, or the screen leaves it for good.
-   */
+  /** A random battle from the map's encounter table, with a fresh countdown to the next. */
   private encounter(map: CompiledMap): void {
     const area = map.encounters;
     const table =
@@ -506,6 +503,46 @@ export class FieldScene extends Phaser.Scene {
     if (!area || !table) return;
     const setup = rollEncounter(table, encounters.rng, ENCOUNTER_TUNING);
     encounters.countdown = encounterCountdown(encounters.rng, ENCOUNTER_TUNING);
+    this.fight(map, setup, area.backdrop, () => this.afterBattle(false));
+  }
+
+  /**
+   * A battle a script fights: it comes as a random battle does, and once it's won or fled the
+   * field wakes but stays black, for the script to set the scene, and the promise keeps with how
+   * it ended. Lost, it's the Game Over screen, as after any battle.
+   */
+  private scriptBattle(enemies: readonly string[], backdrop: string): Promise<BattleEnd> {
+    const unknown = enemies.find((id) => !Object.hasOwn(DB.enemies, id));
+    if (unknown !== undefined) {
+      return Promise.reject(new Error(`There's no enemy called ${unknown}`));
+    }
+    if (enemies.length < 1 || enemies.length > MAX_ENEMIES) {
+      return Promise.reject(
+        new RangeError(`A battle is against 1 to ${MAX_ENEMIES} enemies, not ${enemies.length}`),
+      );
+    }
+    if (!Object.hasOwn(BACKDROPS, backdrop)) {
+      return Promise.reject(new Error(`There's no backdrop called ${backdrop}`));
+    }
+    const { map } = this;
+    if (!map) return Promise.reject(new Error('There is no map to fight on'));
+    return new Promise((resolve) => {
+      this.fight(map, { enemies }, backdrop, (end) => this.afterBattle(true, () => resolve(end)));
+    });
+  }
+
+  /**
+   * Starts a battle over the field: the battle's music starts, the screen breaks up into black,
+   * and the battle starts, while the field sleeps until it's won or fled; then `onEnd`, with how
+   * it ended. Lost, the Game Over screen takes over from the battle, and the field sleeps on
+   * through any retry, until it's won or fled, or the screen leaves it for good.
+   */
+  private fight(
+    map: CompiledMap,
+    setup: BattleSetup,
+    backdrop: string,
+    onEnd: (end: BattleEnd) => void,
+  ): void {
     const seed = encounters.rng.nextUint32();
     this.encountering = true;
     this.transitioning = true;
@@ -513,7 +550,7 @@ export class FieldScene extends Phaser.Scene {
     this.menuPending = false;
     // A battle cuts the banner short.
     this.banner?.destroy();
-    audio.interruptMusic(BATTLE_MUSIC);
+    audio.interruptMusic(battleMusic(setup.enemies));
     void playBattleTransition(this, DEPTH.transition, !settings.reduceFlashing).then((curtain) => {
       // The field may have started over meanwhile: a debug warp, say.
       if (this.map !== map) {
@@ -524,22 +561,30 @@ export class FieldScene extends Phaser.Scene {
       this.curtain = curtain;
       this.scene.launch(BATTLE_SCENE, {
         setup,
-        backdrop: area.backdrop,
+        backdrop,
         seed,
-        onEnd: () => this.afterBattle(),
+        onEnd: (end) => onEnd(end),
       } satisfies BattleStart);
       this.scene.sleep();
     });
   }
 
-  /** Once a battle is won or fled, the field wakes and fades back in where it was. */
-  private afterBattle(): void {
+  /**
+   * Once a battle is won or fled, the field wakes where it was and fades back in; or, for a
+   * script to fade in once it has set the scene, stays black. Then `woken`: not before, as the
+   * field only wakes on the next frame, and a script that faded in before then would be left black.
+   */
+  private afterBattle(dark: boolean, woken?: () => void): void {
     this.events.once(Phaser.Scenes.Events.WAKE, () => {
       this.curtain?.destroy();
       this.curtain = undefined;
       this.encountering = false;
       this.lastDirection = null;
-      this.cameras.main.fadeIn(MAP_FADE_MS, 0, 0, 0);
+      const camera = this.cameras.main;
+      this.dark = dark;
+      if (dark) camera.fade(0, 0, 0, 0, true);
+      else camera.fadeIn(MAP_FADE_MS, 0, 0, 0);
+      woken?.();
     });
     this.scene.wake();
   }
@@ -683,6 +728,7 @@ export class FieldScene extends Phaser.Scene {
         new Promise((resolve) => {
           this.scene.launch(SHOP_SCENE, { shop: id, onClose: () => resolve() } satisfies ShopStart);
         }),
+      battle: (enemies, backdrop) => this.scriptBattle(enemies, backdrop),
       jingle: (sound) => this.jingle(sound),
       bgm: (track) => audio.playMusic(track),
       sfx: (sound) => audio.playSound(sound),

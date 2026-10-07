@@ -130,6 +130,16 @@ test('the lighthouse’s stairs lead down to the caves once the Beacon is out', 
   await page.keyboard.press('ArrowUp');
   await arrivedOn(page, 'saltmere-lighthouse');
   expect(await field(page)).toMatchObject({ x: 2, y: 2, facing: 'down' });
+
+  // Up in the lamp room, the Beacon at (3, 2) is dark.
+  await step(page, 'ArrowRight', 4);
+  await page.keyboard.press('ArrowUp');
+  await arrivedOn(page, 'saltmere-lighthouse-top');
+  await step(page, 'ArrowRight');
+  await page.keyboard.press('KeyZ');
+  await untilSaid(page, 'The Beacon is dark, and the lamp room is cold. It smells of ash.');
+  await page.screenshot({ path: 'test-results/screenshots/saltmere-lamp-room-dark.png' });
+  await closeOn(page, 'The Beacon is dark, and the lamp room is cold. It smells of ash.');
   expect(errors).toEqual([]);
 });
 
@@ -190,7 +200,7 @@ test('rafts float out to the island while the tide is in, and sink while it’s 
   expect(errors).toEqual([]);
 });
 
-test('the Light Shrines heal, and the door to the Beacon chamber is sealed', async ({ page }) => {
+test('the Light Shrines heal, by the way in and on the last floor', async ({ page }) => {
   const errors = watchErrors(page);
   // The shrine by the way in, at (6, 1).
   await startOn(page, ['tide-caves-b1', 6, 2, 'up']);
@@ -199,15 +209,13 @@ test('the Light Shrines heal, and the door to the Beacon chamber is sealed', asy
   await closeOn(page, "The shrine's warm light washes over the party. Everyone is restored.");
   expect((await state(page)).members.rowan).not.toHaveProperty('hp');
 
-  // On the last floor, past the shallows: the shrine at (24, 1) and the door at (27, 0).
-  await startOn(page, ['tide-caves-b3', 27, 1, 'up'], { flags: ['tide.b3-out'] });
+  // On the last floor, past the shallows, the shrine at (24, 1) before the Beacon chamber's door
+  // (see boss.spec.ts).
+  await startOn(page, ['tide-caves-b3', 24, 2, 'up'], { flags: ['tide.b3-out'] });
+  await page.evaluate(() => window.__game?.vitals('rowan', { hp: 1 }));
   await page.keyboard.press('KeyZ');
-  await untilSaid(
-    page,
-    "A heavy door, green with age and carved with the Wardens' flame. Cold seeps from under it. It won't budge.",
-  );
-  await page.screenshot({ path: 'test-results/screenshots/tide-caves-b3-door.png' });
-  await page.keyboard.press('KeyZ');
+  await closeOn(page, "The shrine's warm light washes over the party. Everyone is restored.");
+  expect((await state(page)).members.rowan).not.toHaveProperty('hp');
   expect(errors).toEqual([]);
 });
 

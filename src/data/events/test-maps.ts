@@ -100,3 +100,12 @@ export const innkeeper = defineEvent(async (ev) => {
 export const shrine = defineEvent(async (ev) => {
   await lightShrine(ev);
 });
+
+/**
+ * A battle, and nothing after it but, with `test.ambush-fade-in` set, a fade back in: either way,
+ * the screen comes back once it's won or fled.
+ */
+export const ambush = defineEvent(async (ev) => {
+  await ev.battle(['wolf'], 'meadow');
+  if (ev.flag('test.ambush-fade-in')) await ev.fadeIn();
+});

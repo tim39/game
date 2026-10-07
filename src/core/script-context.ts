@@ -30,6 +30,7 @@ export type Stage = Pick<
   | 'fadeIn'
   | 'teleport'
   | 'shop'
+  | 'battle'
   | 'jingle'
   | 'bgm'
   | 'sfx'
@@ -60,6 +61,7 @@ export function createScriptContext(stage: Stage, store: StateStore, db: GameDb)
     fadeIn: (ms) => stage.fadeIn(ms),
     teleport: (map, spawn) => stage.teleport(map, spawn),
     shop: (id) => stage.shop(id),
+    battle: (enemies, backdrop) => stage.battle(enemies, backdrop),
     jingle: (sound) => stage.jingle(sound),
     bgm: (track) => stage.bgm(track),
     sfx: (sound) => stage.sfx(sound),

@@ -73,6 +73,22 @@ const ROOM_WALL: BlobLayout = [
 ];
 const ALL_WALL = 'N NE E SE S SW W NW';
 
+/**
+ * A 3×3 block that only has the shapes a filled rectangle needs, its four corners, four sides and
+ * middle, so its terrain comes in rectangles, at least two cells each way.
+ */
+const RECTANGLE: BlobLayout = [
+  [0, 0, 'E SE S'],
+  [1, 0, 'E SE S SW W'],
+  [2, 0, 'S SW W'],
+  [0, 1, 'N NE E SE S'],
+  [1, 1, 'N NE E SE S SW W NW'],
+  [2, 1, 'N S SW W NW'],
+  [0, 2, 'N NE E'],
+  [1, 2, 'N NE E W NW'],
+  [2, 2, 'N W NW'],
+];
+
 export const TERRAINS = defineTerrains({
   grass: {
     kind: 'fill',
@@ -145,6 +161,9 @@ export const TERRAINS = defineTerrains({
     layout: [...ROOM_WALL, [0, -1, ALL_WALL]],
     solid: true,
   },
+  // Worked stone, in green panels with a carved border, which the Beacon stands on at the bottom of
+  // the caves.
+  dais: { kind: 'blob', sheet: 'tiles.interior-floor', origin: [11, 6], layout: RECTANGLE },
 });
 
 export const PREFABS = definePrefabs({
@@ -251,6 +270,14 @@ export const PREFABS = definePrefabs({
   'cave-rock': { sheet: 'tiles.nature', origin: [16, 8], layout: ['##', '##'] },
   'blue-rock': { sheet: 'tiles.nature', origin: [0, 12], layout: ['##', '##'] },
   stone: { sheet: 'tiles.nature', origin: [18, 9], layout: ['#'] },
+  // The Beacon chamber, at the bottom of the caves: the Beacon, dead, its bowl dark; and the Drowned
+  // Warden, the caves' boss, standing guard before it, its blades lowered.
+  'beacon-dead': { sheet: 'tiles.dungeon', origin: [2, 3], layout: ['#'] },
+  'drowned-warden': {
+    sheet: 'tiles.drowned-warden',
+    origin: [0, 0],
+    layout: [' ### ', ' ### ', '#####'],
+  },
 });
 
 export const MAP_CONTENT: MapContent = { terrains: TERRAINS, prefabs: PREFABS };

@@ -6,7 +6,7 @@ import { CAVE_SHADE } from './maps/tide';
  * screen, 20 cells across and 12 down (see src/core/map/backdrop.ts). The enemies stand on the left
  * and the party on the right, from the third row down to the ninth; the rows above are the far side,
  * under the timeline, and the last three are under the menus. So far, a meadow by a wood and a
- * beach, for the fights around Saltmere, and the Tide Caves' cavern.
+ * beach, for the fights around Saltmere, and the Tide Caves' cavern and its Beacon chamber.
  */
 export const BACKDROPS: Readonly<Record<string, BackdropDef>> = {
   meadow: {
@@ -60,6 +60,27 @@ export const BACKDROPS: Readonly<Record<string, BackdropDef>> = {
       ....................
     `,
     legend: { '#': 'cave-wall', '~': 'sea', '.': 'sand' },
+    shade: CAVE_SHADE,
+  },
+  // The Beacon chamber, at the bottom of the caves: the cavern, with the dead Beacon on its dais at
+  // the foot of the wall, for the fight with the Drowned Warden.
+  'beacon-chamber': {
+    terrain: `
+      ####################
+      ####################
+      ~~~~~~~~+++~~~~~~~~~
+      ~~~~~~..+++...~~~~~~
+      ....................
+      ....................
+      ....................
+      ....................
+      ....................
+      ....................
+      ....................
+      ....................
+    `,
+    legend: { '#': 'cave-wall', '~': 'sea', '.': 'sand', '+': 'dais' },
+    objects: [{ type: 'prefab', prefab: 'beacon-dead', at: [9, 3] }],
     shade: CAVE_SHADE,
   },
 };

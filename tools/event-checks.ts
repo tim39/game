@@ -1,3 +1,4 @@
+import { MAX_ENEMIES } from '../src/core/battle/battle';
 import { chestScript, type ChestText } from '../src/core/chest';
 import { isDirection } from '../src/core/direction';
 import { PLAYER, type EventContext, type EventScript } from '../src/core/events';
@@ -34,6 +35,10 @@ export interface EventSources {
   readonly items: Readonly<Record<string, unknown>>;
   /** Every shop, by ID, as in src/data/shops.ts. */
   readonly shops: Readonly<Record<string, unknown>>;
+  /** Every enemy, by ID, as in src/data/enemies.ts, and which are bosses. */
+  readonly enemies: Readonly<Record<string, { readonly boss?: boolean }>>;
+  /** Every battle backdrop, by ID, as in src/data/backdrops.ts. */
+  readonly backdrops: Readonly<Record<string, unknown>>;
   /** Logical key → entry, as in src/systems/asset-manifest.ts. */
   readonly manifest: Readonly<Record<string, AssetEntry>>;
   /** The body font, which dialogue is drawn in. */
@@ -72,10 +77,12 @@ class LongPath extends Error {}
  * - every script, run against a stand-in context that answers at once, finishes without an error,
  *   down every path it can take. A path is an answer to each question the script asks: which
  *   choice the player picks, whether a flag it hasn't set itself is set, whether the party has an
- *   item, or gold. It starts on each map that runs it, and must only name speakers, items and
- *   characters that exist, move and turn people who are on the map it's on, teleport to spawns
- *   that exist, wait and fade for real lengths of time, play music and sound effects that are in
- *   the asset manifest, and only read and set `story.` flags that are the story's points;
+ *   item, or gold, and whether a battle that can be fled is won or fled. It starts on each map
+ *   that runs it, and must only name speakers, items and characters that exist, move and turn
+ *   people who are on the map it's on, teleport to spawns that exist, fight 1 to 6 enemies that
+ *   exist in front of a backdrop that does, wait and fade for real lengths of time, play music and
+ *   sound effects that are in the asset manifest, and only read and set `story.` flags that are
+ *   the story's points;
  * - every line it says fits in the dialogue box (three lines, narrower beside a portrait), every
  *   choice it offers fits the choice box, it offers one to four at a time, and the font has every
  *   character they use;
@@ -91,6 +98,8 @@ export async function checkEvents({
   characters,
   items,
   shops,
+  enemies,
+  backdrops,
   manifest,
   font,
   chestText,
@@ -296,6 +305,20 @@ export async function checkEvents({
           shop: (id) => {
             if (!Object.hasOwn(shops, id)) report(`it opens the shop ${id}, which isn't a shop`);
             return Promise.resolve();
+          },
+          battle: (foes, backdrop) => {
+            if (foes.length < 1 || foes.length > MAX_ENEMIES) {
+              report(`it fights ${foes.length} enemies; a battle has 1 to ${MAX_ENEMIES}`);
+            }
+            for (const foe of foes) {
+              if (!Object.hasOwn(enemies, foe)) report(`it fights ${foe}, which isn't an enemy`);
+            }
+            if (!Object.hasOwn(backdrops, backdrop)) {
+              report(`it fights in front of ${backdrop}, which isn't a backdrop`);
+            }
+            // Nobody gets away from a boss; any other battle can go either way.
+            const boss = foes.some((foe) => Object.hasOwn(enemies, foe) && enemies[foe]?.boss);
+            return Promise.resolve(boss || ask(2) === 0 ? 'victory' : 'fled');
           },
           jingle: (sound) => {
             checkSound(sound, 'sfx.');

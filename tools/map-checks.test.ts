@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, test } from 'vitest';
 import type { MapContent, MapDef } from '../src/core/map/types';
 import { CHARACTERS } from '../src/data/characters';
+import { ENEMIES } from '../src/data/enemies';
 import { EVENTS } from '../src/data/events';
 import { ITEMS } from '../src/data/items';
 import { BACKDROPS } from '../src/data/backdrops';
@@ -254,6 +255,8 @@ describe('reaching maps', () => {
       characters: CHARACTERS,
       items: ITEMS,
       shops: SHOPS,
+      enemies: ENEMIES,
+      backdrops: BACKDROPS,
       manifest: ASSETS,
       font,
       chestText: CHEST_TEXT,

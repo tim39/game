@@ -107,9 +107,9 @@ export const ENEMIES: Readonly<Record<string, EnemyDef>> = {
       { type: 'skill', skill: 'venom-bite', weight: 2, target: 'lowest-hp' },
     ],
   },
-  // The boss, a Hollowed knight (see docs/STORY.md). Every fourth turn it telegraphs Undertow, and
-  // below half its HP every third, cleaving whoever's worst hurt in between. The pack's
-  // GiantBlueSamurai.
+  // The boss, a Hollowed knight (see docs/STORY.md), who waits in the Beacon chamber. Every fourth
+  // turn it telegraphs Undertow, and below half its HP, as the sea pours from its cracked armor,
+  // every third, cleaving whoever's worst hurt in between. The pack's GiantBlueSamurai.
   'drowned-warden': {
     name: 'Drowned Warden',
     stats: { hp: 470, mp: 60, atk: 60, def: 16, mag: 44, res: 14, spd: 8 },
@@ -126,6 +126,7 @@ export const ENEMIES: Readonly<Record<string, EnemyDef>> = {
     phases: [
       {
         below: 0.5,
+        banner: "The Warden's armor cracks, and the sea pours out!",
         actions: [
           { type: 'attack', weight: 2 },
           { type: 'skill', skill: 'tide-cleave', weight: 3, target: 'lowest-hp' },

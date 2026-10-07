@@ -102,6 +102,7 @@ export const ASSETS = {
   'tiles.dungeon': sheet('tiles/dungeon.png'), // orbs on pedestals, crystals
   'tiles.boat': sheet('tiles/boat.png'), // a fishing boat, 5×2 tiles
   'tiles.lighthouse': sheet('tiles/lighthouse.png'), // Saltmere's lighthouse, 3×5 tiles
+  'tiles.drowned-warden': sheet('tiles/drowned-warden.png'), // the boss, standing guard, 5×3 tiles
 
   // Characters: one column per direction (down, up, left, right) and a row per pose. Most sheets
   // have 7 rows (walk 0–3, attack, jump, special); tamsin and child have just 2 walk rows.
@@ -151,7 +152,8 @@ export const ASSETS = {
   'vfx.ailment': frames('vfx/aura.png', 25, 24),
   'vfx.guard': frames('vfx/shield-blue.png', 24, 26),
 
-  // Dialogue portraits, 38×38: the party, then Saltmere's people, each matching their sprite.
+  // Dialogue portraits, 38×38: the party, then Saltmere's people, each matching their sprite, and
+  // the Drowned Warden.
   'portrait.rowan': image('portraits/hunter.png'),
   'portrait.bram': image('portraits/knight.png'),
   'portrait.tamsin': image('portraits/old-woman.png'),
@@ -166,12 +168,14 @@ export const ASSETS = {
   'portrait.rhona': image('portraits/princess.png'),
   'portrait.jory': image('portraits/villager-5.png'),
   'portrait.dai': image('portraits/villager-2.png'),
+  'portrait.drowned-warden': image('portraits/giant-blue-samurai.png'),
 
   // Music, which loops (see Draft soundtrack in DESIGN.md), and sound effects.
   'bgm.title': sound('bgm/intro'),
   'bgm.saltmere': sound('bgm/calm-village'),
   'bgm.tide-caves': sound('bgm/aquatic'),
   'bgm.battle': sound('bgm/fight'),
+  'bgm.boss': sound('bgm/tension'),
   'sfx.chest': sound('sfx/secret-2'),
   'sfx.victory': sound('sfx/success-3'),
   'sfx.level-up': sound('sfx/level-up-1'),

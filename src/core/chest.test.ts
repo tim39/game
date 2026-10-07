@@ -40,6 +40,7 @@ function talkingStage(said: string[]): Stage {
     fadeIn: offStage,
     teleport: offStage,
     shop: offStage,
+    battle: offStage,
     jingle: offStage,
     bgm: silent,
     sfx: silent,

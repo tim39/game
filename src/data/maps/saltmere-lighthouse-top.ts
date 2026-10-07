@@ -22,6 +22,20 @@ export default defineMap({
       to: { map: 'saltmere-lighthouse', spawn: 'stairs' },
     },
     { type: 'spawn', id: 'stairs', at: [1, 2], facing: 'right' },
-    { type: 'prefab', prefab: 'beacon', at: [3, 2], script: 'saltmere/beacon' },
+    // The Tide Beacon, burning until the night it goes out.
+    {
+      type: 'prefab',
+      prefab: 'beacon',
+      at: [3, 2],
+      script: 'saltmere/beacon',
+      when: '!story.beacon-out',
+    },
+    {
+      type: 'prefab',
+      prefab: 'beacon-dead',
+      at: [3, 2],
+      script: 'saltmere/beacon',
+      when: 'story.beacon-out',
+    },
   ],
 });

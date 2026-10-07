@@ -10,6 +10,9 @@ import type { ConditionalTerrain, GridPoint, MapObject } from '../../core/map/ty
 /** The caves' gloom, which their floors and their battles' backdrop are shaded with: a cool grey. */
 export const CAVE_SHADE = 0x98a4c0;
 
+/** Set once the door to the Beacon chamber, on the last floor, has been pushed open. */
+export const CHAMBER_DOOR_OPEN = 'tide-caves.door-open';
+
 /** A floor's tide: the flag set while it's out, like `tide.b1-out`. */
 export const tideOut = (floor: string): string => `tide.${floor}-out`;
 

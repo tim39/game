@@ -1,4 +1,8 @@
+import type { Outcome } from './battle/battle';
 import type { Direction } from './direction';
+
+/** How a battle a script fights ends, for the script to go on from: won, or got away from. */
+export type BattleEnd = Exclude<Outcome, 'ongoing' | 'defeat'>;
 
 /**
  * Event scripts: cutscenes and interactions, written as async functions run against an
@@ -44,6 +48,14 @@ export interface EventContext {
    * bought and sold whatever they liked.
    */
   shop(id: string): Promise<void>;
+  /**
+   * Fights a battle, as a random battle is fought: against `enemies`, by their IDs in
+   * src/data/enemies.ts, left to right, in front of `backdrop`, one of src/data/backdrops.ts.
+   * Resolves once it's won or fled, saying which, with the screen left black for the script to
+   * set the scene before it fades back in (as it does once the script ends). Lost, it's the Game
+   * Over screen, and the script carries on only if the battle is fought again and won or fled.
+   */
+  battle(enemies: readonly string[], backdrop: string): Promise<BattleEnd>;
   /**
    * Plays a jingle, a sound effect from the asset manifest like `sfx.rest`, with the music paused,
    * and resolves once it's over. The music then carries on where it was.

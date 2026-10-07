@@ -4,7 +4,9 @@ import { expect, test } from 'vitest';
 import type { ChestText } from '../src/core/chest';
 import { defineEvent } from '../src/core/events';
 import type { MapDef } from '../src/core/map/types';
+import { BACKDROPS } from '../src/data/backdrops';
 import { CHARACTERS } from '../src/data/characters';
+import { ENEMIES } from '../src/data/enemies';
 import { EVENTS } from '../src/data/events';
 import { ITEMS } from '../src/data/items';
 import { MAPS } from '../src/data/maps';
@@ -66,6 +68,8 @@ const sources = (overrides: Partial<EventSources>): EventSources => ({
   characters: { rowan: {}, bram: {} },
   items: { potion: { name: 'Potion' }, 'old-key': { name: 'Old Key' } },
   shops: { market: {} },
+  enemies: { wolf: {}, kraken: { boss: true } },
+  backdrops: { meadow: {} },
   manifest: MANIFEST,
   font: FONT,
   chestText: CHEST_TEXT_ADA,
@@ -428,6 +432,34 @@ test('reports shops that do not exist, and jingles that are not sound effects', 
   ]);
 });
 
+test('follows a battle either way it can end, and checks who it is against and where', async () => {
+  const problems = await check({
+    events: {
+      hunt: defineEvent(async (ev) => {
+        if ((await ev.battle(['wolf', 'wolf'], 'meadow')) === 'fled') {
+          await ev.say('nobody', 'Only after getting away.');
+        }
+      }),
+      // Nobody gets away from a boss, so this line is never said.
+      lair: defineEvent(async (ev) => {
+        if ((await ev.battle(['kraken'], 'meadow')) === 'fled') await ev.say('nobody', 'Never.');
+      }),
+      wrong: defineEvent(async (ev) => {
+        await ev.battle(['wolf', 'bear'], 'cave');
+        await ev.battle([], 'meadow');
+        await ev.battle(Array<string>(7).fill('wolf'), 'meadow');
+      }),
+    },
+  });
+  expect(problems).toEqual([
+    "Event hunt: there's no speaker called nobody",
+    "Event wrong: it fights bear, which isn't an enemy",
+    "Event wrong: it fights in front of cave, which isn't a backdrop",
+    'Event wrong: it fights 0 enemies; a battle has 1 to 6',
+    'Event wrong: it fights 7 enemies; a battle has 1 to 6',
+  ]);
+});
+
 test('reports scripts that triggers run but do not exist', async () => {
   const problems = await check({
     maps: {
@@ -493,6 +525,8 @@ test('the real event scripts, speakers and maps check out', async () => {
     characters: CHARACTERS,
     items: ITEMS,
     shops: SHOPS,
+    enemies: ENEMIES,
+    backdrops: BACKDROPS,
     manifest: ASSETS,
     font: measureBodyFont(
       readFileSync(join(import.meta.dirname, '../public', ASSETS['font.body'].url)),

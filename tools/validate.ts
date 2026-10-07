@@ -91,6 +91,8 @@ const events = await checkEvents({
   characters: CHARACTERS,
   items: ITEMS,
   shops: SHOPS,
+  enemies: ENEMIES,
+  backdrops: BACKDROPS,
   manifest: ASSETS,
   font,
   chestText: CHEST_TEXT,
@@ -146,7 +148,7 @@ const problems = [
     font,
   ),
   ...checkBattleText(
-    { characters: CHARACTERS, skills: SKILLS, items: ITEMS },
+    { characters: CHARACTERS, skills: SKILLS, items: ITEMS, enemies: ENEMIES },
     font,
     BATTLE_LAYOUT.room,
   ),

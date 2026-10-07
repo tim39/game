@@ -417,6 +417,7 @@ test('the story page jumps to a point in the story, and the field starts over wi
     ['Bram arrives', 'story.bram-arrived'],
     ['The Kindling', 'story.kindling'],
     ['Beacon out', 'story.beacon-out'],
+    ['Warden beaten', 'story.warden-beaten'],
     ['Tide spark', 'story.tide-spark'],
   ]);
   await page.screenshot({ path: 'test-results/screenshots/debug-menu-story.png' });

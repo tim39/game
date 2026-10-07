@@ -107,3 +107,4 @@ Memory Shards, fragments of things the Beacons burned, are scattered through the
 - The cast's looks. For now Rowan uses the pack's *Hunter* sprite and portrait as a placeholder, and Bram its *Knight*. Any of the pack's ~90 characters can stand in instead: just say which.
 - Is the ending too bittersweet? One alternative: each party member gives up one memory, sharing the cost.
 - How dark should Act 3 get?
+- Where does the Tide Beacon burn? The lighthouse's lamp room shows it burning, and dark once it goes out, but the plot has the party find it dead in a chamber at the bottom of the Tide Caves, past the Drowned Warden. For now the Beacon chamber has the Beacon's bowl on a dais, and both go dark. One way to square it: the chamber holds the Beacon's heart, and the lamp room is where its light shines out.

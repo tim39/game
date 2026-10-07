@@ -54,6 +54,10 @@ function fakeStage(answers: number[] = []): { stage: Stage; log: string[] } {
     fadeIn: (ms) => done(`fadeIn ${ms ?? 'default'}`),
     teleport: (map, spawn) => done(`teleport ${map} ${spawn}`),
     shop: (id) => done(`shop ${id}`),
+    battle: (enemies, backdrop) => {
+      log.push(`battle ${enemies.join(' ')} at ${backdrop}`);
+      return Promise.resolve('victory');
+    },
     jingle: (sound) => done(`jingle ${sound}`),
     bgm: (track) => {
       log.push(`bgm ${track ?? 'off'}`);
@@ -181,6 +185,22 @@ describe('the on-screen verbs', () => {
       'choice Yes / No',
       'say tamsin: Suit yourself.',
     ]);
+  });
+
+  test('fight battles, and go on from how they ended', async () => {
+    const ambush = defineEvent(async (ev) => {
+      const end = await ev.battle(['wolf', 'wolf'], 'meadow');
+      await ev.say('sign', end === 'fled' ? 'The wolves howl after you.' : 'The wolves lie still.');
+    });
+    expect((await run(ambush)).log).toEqual([
+      'battle wolf wolf at meadow',
+      'say sign: The wolves lie still.',
+    ]);
+
+    const { stage, log } = fakeStage();
+    stage.battle = () => Promise.resolve('fled');
+    await ambush(createScriptContext(stage, { get: () => START, set: () => undefined }, DB));
+    expect(log).toEqual(['say sign: The wolves howl after you.']);
   });
 
   test('hold the script until they finish', async () => {

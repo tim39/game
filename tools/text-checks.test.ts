@@ -52,7 +52,9 @@ test('reports names and descriptions with characters the font lacks', () => {
         ...NOTHING,
         skills: { sweep: { name: 'Sweep', description: 'It’s a “wide” swing.' } },
         items: { 'old-key': { name: 'Tamsin’s Key', description: 'Old.' } },
-        enemies: { 'tide-wraith': { name: 'Tide “Wraith”' } },
+        enemies: {
+          'tide-wraith': { name: 'Tide “Wraith”', phases: [{}, { banner: 'It’s angry!' }] },
+        },
         speakers: { tamsin: { name: 'Tamsin’' } },
       },
       FONT,
@@ -61,6 +63,7 @@ test('reports names and descriptions with characters the font lacks', () => {
     'Skill sweep: its description, "It’s a “wide” swing.", uses "’", "“", "”", which the font lacks',
     'Item old-key: its name, "Tamsin’s Key", uses "’", which the font lacks',
     'Enemy tide-wraith: its name, "Tide “Wraith”", uses "“", "”", which the font lacks',
+    'Enemy tide-wraith: its banner for phase 2, "It’s angry!", uses "’", which the font lacks',
     'Speaker tamsin: its name, "Tamsin’", uses "’", which the font lacks',
   ]);
 });
@@ -103,6 +106,12 @@ test('reports names and descriptions too wide for the battle screen', () => {
           // Equipment never shows in a battle list.
           'iron-sword': { name: 'Iron Sword of Old', description: 'Heavy.', kind: 'weapon' },
         },
+        enemies: {
+          kraken: {
+            name: 'Kraken',
+            phases: [{ banner: 'It rises!' }, {}, { banner: 'The sea itself rises up in a rage!' }],
+          },
+        },
       },
       FONT,
       room,
@@ -116,6 +125,8 @@ test('reports names and descriptions too wide for the battle screen', () => {
       'the battle help line has room for 120',
     'Item potion: its description, "Restores 50 HP to one ally.", is 162 pixels wide; the ' +
       'battle help line has room for 120',
+    'Enemy kraken: its banner for phase 3, "The sea itself rises up in a rage!", is 204 pixels ' +
+      'wide; the battle banner has room for 120',
   ]);
 });
 
@@ -125,7 +136,7 @@ test('the real names and descriptions fit the battle screen, measured with the r
   );
   expect(
     checkBattleText(
-      { characters: CHARACTERS, skills: SKILLS, items: ITEMS },
+      { characters: CHARACTERS, skills: SKILLS, items: ITEMS, enemies: ENEMIES },
       font,
       BATTLE_LAYOUT.room,
     ),

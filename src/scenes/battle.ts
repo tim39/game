@@ -72,6 +72,14 @@ export const BATTLE_SCENE = 'battle';
 
 /** What battles are fought to: it pauses whatever was playing, which carries on afterwards. */
 export const BATTLE_MUSIC = 'bgm.battle';
+/** What a battle with a boss in it is fought to, in its place. */
+export const BOSS_MUSIC = 'bgm.boss';
+
+/** The music for a battle against `enemies`, by their IDs: a boss's, if any of them is a boss. */
+export function battleMusic(enemies: readonly string[]): string {
+  const boss = enemies.some((id) => Object.hasOwn(DB.enemies, id) && DB.enemies[id]?.boss);
+  return boss ? BOSS_MUSIC : BATTLE_MUSIC;
+}
 
 /** How a battle ended: won, lost, or got away from. */
 export type BattleResult = Exclude<Outcome, 'ongoing'>;
@@ -236,7 +244,7 @@ export class BattleScene extends Phaser.Scene {
       if (!this.gameOver) audio.resumeMusic();
     });
     this.start = start;
-    audio.interruptMusic(BATTLE_MUSIC);
+    audio.interruptMusic(battleMusic(start.setup.enemies));
     this.cameras.main.setZoom(BATTLE_SCALE).centerOn(BATTLE_WIDTH / 2, BATTLE_HEIGHT / 2);
     this.drawBackdrop(start.backdrop);
 
@@ -587,7 +595,13 @@ export class BattleScene extends Phaser.Scene {
         this.catchUp(event);
         const figure = this.figure(event.fighter);
         if (settings.screenShake) this.cameras.main.shake(BATTLE_PACING.hit, 0.004);
+        // The banner says what the boss's new phase brings, if anything.
+        const battle = this.current();
+        const { kind } = fighterOf(battle, event.fighter);
+        const said = battle.rules.enemies[kind]?.phases?.[event.phase - 1]?.banner;
+        if (said !== undefined) this.panels?.banner(said);
         await this.flash(figure, COLOURS.alert, 3);
+        if (said !== undefined) await this.wait(BATTLE_PACING.banner);
         return;
       }
       case 'asleep': {

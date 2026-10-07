@@ -177,7 +177,11 @@ describe('checkContent', () => {
         boss: true,
         actions: [{ type: 'attack' }],
         phases: [
-          { below: 0.6, actions: [{ type: 'skill', skill: 'crush', telegraph: true }] },
+          {
+            below: 0.6,
+            banner: 'The Warden rises!',
+            actions: [{ type: 'skill', skill: 'crush', telegraph: true }],
+          },
           { below: 0.3, actions: [{ type: 'attack', when: { every: 2 }, target: 'healer' }] },
         ],
       },
@@ -563,7 +567,7 @@ describe('checkContent', () => {
           warden: {
             ...warden,
             phases: [
-              { below: 0.5, actions: [] },
+              { below: 0.5, banner: 'It rises! ', actions: [] },
               { below: 0.6, actions: [{ type: 'attack' }] },
             ],
           },
@@ -582,6 +586,7 @@ describe('checkContent', () => {
         '"healer", not "weakest"',
       'Enemy wolf: actions[5].telegraph should be true, not false',
       'Enemy wolf: actions[6].type should be one of "attack", "guard", "skill", not "cast"',
+      'Enemy warden: phases[0].banner "It rises! " starts or ends with a space',
       'Enemy warden: phases[0].actions is empty',
       'Enemy warden: phases should each start at less HP than the one before',
     ]);
