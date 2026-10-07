@@ -18,7 +18,8 @@ jobs:
   check:
     name: Checks and smoke test
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # The e2e suite alone takes 12 to 15 minutes on GitHub's runners.
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v4

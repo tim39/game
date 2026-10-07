@@ -434,7 +434,7 @@ What just happened, like "Exported Slot 1." or why an import failed, shows at th
 
 ## CI/CD
 
-- `.github/workflows/ci.yml` runs on every push to `main`, every PR, and on demand: `npm ci` → `npm run check` → build → Playwright smoke test. It uploads screenshots and reports as the `e2e-results` artifact.
+- `.github/workflows/ci.yml` runs on every push to `main`, every PR, and on demand: `npm ci` → `npm run check` → build → Playwright smoke test. It uploads screenshots and reports as the `e2e-results` artifact. The job has 25 minutes: the e2e suite alone takes 12 to 15 on GitHub's runners, so raise it again if the suite outgrows it (a run cut off by it shows as cancelled, not failed).
 - Its deploy job runs only for pushes to `main`, and only after the checks pass: build → GitHub Pages. One workflow, so a failing build can never deploy. Vite's `base` is `./`, so the same build works at `/game/` and anywhere else.
 - The deploy also builds the game with the debug menu (`npm run build:debug`: the `e2e` mode, which the e2e tests play, into `dist/debug/`) after the production build's check, which it would fail, so it's at https://tim39.github.io/game/debug/ for playtesting. It shares the site's origin, so it shares saves with the game at `/game/`. Its tab says "(debug build)", and its title screen says how to open the menu.
 - Cloud sessions can't reach `tim39.github.io`, so confirm a deploy from the run's "Deploy to GitHub Pages" job instead.
