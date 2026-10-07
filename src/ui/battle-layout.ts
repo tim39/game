@@ -44,6 +44,20 @@ const STATUS_WIDTH = BOTTOM.width - COMMANDS_WIDTH - GAP;
 const LIST_COLUMN = (STATUS_WIDTH - 2 * (FRAME + INSET.x)) / 2;
 /** Room for the ▶ before a command, skill or item. */
 const CURSOR = 5;
+/**
+ * In the status panel, from the text's left edge: where each part of a party member's line
+ * starts, or ends for the numbers, which are right-aligned. MP shows just what's left.
+ */
+const STATUS_COLUMNS = {
+  name: 0,
+  hpLabel: 35,
+  hpRight: 106,
+  mpLabel: 111,
+  mpRight: 145,
+  tags: 151,
+};
+/** How wide HP and MP's labels are, in the body font, and the gap kept after a name or a label. */
+const LABELS = { hp: 12, mp: 13, gap: 3 };
 
 export const BATTLE_LAYOUT = {
   /**
@@ -77,20 +91,18 @@ export const BATTLE_LAYOUT = {
   cursor: CURSOR,
   /** In the command window, from the text's left edge: where Flee starts, beside Guard. */
   secondCommand: 40,
-  /**
-   * In the status panel, from the text's left edge: where each part of a party member's line
-   * starts, or ends for the numbers, which are right-aligned. MP shows just what's left.
-   */
-  statusColumns: { name: 0, hpLabel: 36, hpRight: 106, mpLabel: 112, mpRight: 145, tags: 151 },
+  statusColumns: STATUS_COLUMNS,
   /** Each column of a skill or item list, and where its cost or count ends, from its left edge. */
   listColumn: { width: LIST_COLUMN, detailRight: LIST_COLUMN - 6 },
   /**
-   * How wide text can be, in font pixels: a party member's name in the status panel, a skill's or
-   * an item's name in its list, beside its cost or count, and the help line in the banner, which
-   * says what a skill or item does.
+   * How wide text can be, in font pixels: a party member's name in the status panel, and their HP
+   * (now/most) and MP after their labels there, a skill's or an item's name in its list, beside
+   * its cost or count, and the help line in the banner, which says what a skill or item does.
    */
   room: {
-    name: 34,
+    name: STATUS_COLUMNS.hpLabel - LABELS.gap,
+    hp: STATUS_COLUMNS.hpRight - STATUS_COLUMNS.hpLabel - LABELS.hp - LABELS.gap,
+    mp: STATUS_COLUMNS.mpRight - STATUS_COLUMNS.mpLabel - LABELS.mp - LABELS.gap,
     listLabel: LIST_COLUMN - CURSOR - 6 - 14 - 3,
     help: BOTTOM.width - 2 * (FRAME + INSET.x),
     /** A line of the victory panel. */

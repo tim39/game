@@ -33,6 +33,8 @@ export interface AudioInfo {
   readonly paused: readonly string[];
   /** The latest sound effects played, oldest first. */
   readonly sounds: readonly string[];
+  /** How many sound effects have played in all, so that what's new in `sounds` can be told. */
+  readonly soundCount: number;
   /** The sound effects playing right now. */
   readonly playing: readonly string[];
 }
@@ -54,6 +56,7 @@ class AudioManager {
   /** When each sound effect last played, in the game's time. */
   private readonly lastPlayed = new Map<string, number>();
   private readonly played: string[] = [];
+  private soundCount = 0;
   private starts = 0;
 
   /** Keeps the music in step with the mix, every frame. */
@@ -128,6 +131,7 @@ class AudioManager {
     this.lastPlayed.set(key, now);
     game.sound.play(key, { volume: settings.soundVolume });
     this.played.push(key);
+    this.soundCount += 1;
     if (this.played.length > SOUNDS_LISTED) this.played.shift();
   }
 
@@ -169,6 +173,7 @@ class AudioManager {
       starts: this.starts,
       paused: [...(this.interrupted?.tracks.keys() ?? [])],
       sounds: [...this.played],
+      soundCount: this.soundCount,
       playing: (this.game?.sound.getAllPlaying() ?? [])
         .map((sound) => sound.key)
         .filter((key) => key.startsWith('sfx.')),

@@ -179,7 +179,9 @@ export class GameOverScene extends Phaser.Scene {
       onClose: () => this.scene.resume(),
       onLoad: (state) => {
         loadGame(state);
-        this.leave('field', state.location satisfies FieldStart);
+        // The screen, paused under the save menu, carries on to fade out for the save's place.
+        this.scene.resume();
+        this.fadeOut(() => this.leave('field', state.location satisfies FieldStart));
       },
     } satisfies SaveMenuStart);
   }

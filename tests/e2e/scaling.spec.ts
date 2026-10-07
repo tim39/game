@@ -16,9 +16,11 @@ const CASES: readonly Case[] = [
   { name: 'phone-portrait', view: [390, 844], canvas: [390, 219.375] },
 ];
 
+/** Opens the title screen, once it has faded in. */
 async function openTitle(page: Page): Promise<void> {
   await page.goto('/');
   await page.waitForFunction(() => window.__game?.activeScenes().includes('title') ?? false);
+  await page.waitForFunction(() => window.__game?.inspect('title')?.fading === false);
 }
 
 async function expectCanvasCentered(page: Page, view: Case['view'], canvas: Case['canvas']) {

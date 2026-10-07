@@ -87,12 +87,17 @@ test('the real names and descriptions are in characters the font has', () => {
   ).toEqual([]);
 });
 
-test('reports names and descriptions too wide for the battle screen', () => {
-  const room = { name: 30, listLabel: 48, help: 120 };
+test('reports names, numbers and descriptions too wide for the battle screen', () => {
+  const room = { name: 30, hp: 50, mp: 12, listLabel: 48, help: 120 };
   expect(
     checkBattleText(
       {
-        characters: { rowan: { name: 'Rowan' }, cassandra: { name: 'Cassandra' } },
+        characters: {
+          rowan: { name: 'Rowan', stats: { hp: [60, 900], mp: [12, 99] } },
+          cassandra: { name: 'Cassandra' },
+          // The HP and MP a character has at level 30, at their most, are the widest they show.
+          brute: { name: 'Bram', stats: { hp: [90, 1300], mp: [6, 180] } },
+        },
         skills: {
           sweep: { name: 'Sweep', description: 'A wide swing.' },
           'flying-dragon-kick': { name: 'Flying Dragon', description: 'Up, up, and down again.' },
@@ -119,6 +124,10 @@ test('reports names and descriptions too wide for the battle screen', () => {
   ).toEqual([
     'Character cassandra: its name, "Cassandra", is 54 pixels wide; the battle status panel ' +
       'has room for 30',
+    'Character brute: its HP at level 30, "1300/1300", is 54 pixels wide; the battle status ' +
+      'panel has room for 50',
+    'Character brute: its MP at level 30, "180", is 18 pixels wide; the battle status panel ' +
+      'has room for 12',
     'Skill flying-dragon-kick: its name, "Flying Dragon", is 78 pixels wide; battle lists have ' +
       'room for 48',
     'Skill flying-dragon-kick: its description, "Up, up, and down again.", is 138 pixels wide; ' +

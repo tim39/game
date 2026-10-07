@@ -114,9 +114,11 @@ test('walking the North Road meets wolves, to battle music, and the field carrie
   await page.keyboard.down('ArrowUp');
   await page.waitForFunction(() => window.__game?.inspect('field')?.encountering === true);
   await page.keyboard.up('ArrowUp');
-  // The walk stops where the battle comes, and the battle music pauses the field's.
+  // The walk stops where the battle comes, and the battle music pauses the field's, as a whoosh
+  // sounds the battle coming.
   expect(await field(page)).toMatchObject({ x: 11, y: 12, moving: false });
   expect(await audio(page)).toMatchObject({ music: 'bgm.battle', paused: ['bgm.saltmere'] });
+  expect((await audio(page))?.sounds).toContain('sfx.encounter');
   await page.waitForTimeout(250);
   await page.screenshot({ path: 'test-results/screenshots/encounter-transition.png' });
 

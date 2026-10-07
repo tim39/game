@@ -203,6 +203,28 @@ export const ASSETS = {
   'sfx.cancel': sound('sfx/move-4'),
   'sfx.buzzer': sound('sfx/menu-11'),
   'sfx.trade': sound('sfx/gold-1'),
+  // Battles (see src/ui/battle-effects.ts): a hit from the party's weapons, an enemy's, a critical
+  // hit over either, and each element's hits; a whoosh for a miss, a status shrugged off and the
+  // party running off; statuses that help and hurt, a raised guard, a knock back in line, a KO, a
+  // telegraphed attack being readied, and a boss changing; and a random battle coming.
+  'sfx.slash': sound('sfx/sword-2'),
+  'sfx.hit': sound('sfx/hit-9'),
+  'sfx.critical': sound('sfx/hit-7'),
+  'sfx.hit-fire': sound('sfx/fireball'),
+  'sfx.hit-water': sound('sfx/water-4'),
+  'sfx.hit-wind': sound('sfx/whoosh-2'),
+  'sfx.hit-earth': sound('sfx/impact-3'),
+  'sfx.hit-light': sound('sfx/magic-1'),
+  'sfx.hit-gloam': sound('sfx/magic-4'),
+  'sfx.whoosh': sound('sfx/whoosh'),
+  'sfx.buff': sound('sfx/power-up-1'),
+  'sfx.ailment': sound('sfx/magic-5'),
+  'sfx.guard': sound('sfx/impact-4'),
+  'sfx.knock': sound('sfx/impact-5'),
+  'sfx.ko': sound('sfx/explosion'),
+  'sfx.alert': sound('sfx/alert-4'),
+  'sfx.phase': sound('sfx/explosion-2'),
+  'sfx.encounter': sound('sfx/slash-2'),
 } as const satisfies Record<string, AssetEntry>;
 
 export type AssetKey = keyof typeof ASSETS;

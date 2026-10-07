@@ -124,6 +124,7 @@ test('the controls show beside the game, clear of the dialogue box, and the titl
   expect((await page.evaluate(() => window.__game?.inspect('title')))?.hint).toBe(
     UI_TEXT.chooseWithTouch,
   );
+  await page.waitForFunction(() => window.__game?.inspect('title')?.fading === false);
   await page.screenshot({ path: 'test-results/screenshots/touch-title.png' });
 
   // Talking to Tamsin opens the dialogue box: none of the controls may cover it.

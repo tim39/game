@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { MAP_FADE_MS, SCENE_FADE_MS } from '../data/balance';
 import { UI_TEXT } from '../data/ui-text';
 import { audio } from '../systems/audio';
 import { GAME_HEIGHT, GAME_WIDTH } from '../systems/display';
@@ -68,6 +69,8 @@ export class TitleScene extends Phaser.Scene {
   private picture?: DrawnPicture;
   private cursor?: Phaser.GameObjects.Graphics;
   private hint?: Phaser.GameObjects.BitmapText;
+  /** Fading out for a new game or a save, it takes no more choices. */
+  private leaving = false;
 
   constructor() {
     super('title');
@@ -79,10 +82,15 @@ export class TitleScene extends Phaser.Scene {
     this.menu = menuItems(canContinue);
     this.selected = canContinue ? 1 : 0;
     this.cursorMoves = 0;
+    this.leaving = false;
     // It starts with the player's first key press or touch, which browsers wait for.
     audio.playMusic(MUSIC);
 
-    this.cameras.main.setZoom(TITLE_SCALE).centerOn(WIDTH / 2, HEIGHT / 2);
+    // It fades in, as the game does wherever it goes, though it takes choices at once.
+    this.cameras.main
+      .setZoom(TITLE_SCALE)
+      .centerOn(WIDTH / 2, HEIGHT / 2)
+      .fadeIn(MAP_FADE_MS, 0, 0, 0);
     this.picture = drawPicture(this, PICTURE);
     this.drawName();
     this.drawMenu();
@@ -99,6 +107,7 @@ export class TitleScene extends Phaser.Scene {
     this.picture?.update(Math.min(delta, MAX_FRAME_MS));
     // A laptop with a touchscreen can switch to touch mode at any moment.
     this.showHint();
+    if (this.leaving) return;
     // Confirm first, so a press that lands in the same frame as a move picks what was on screen.
     if (input.pressed('confirm')) this.choose();
     if (input.pressedOrRepeated('down')) this.moveCursor(1);
@@ -113,6 +122,7 @@ export class TitleScene extends Phaser.Scene {
       cursorMoves: this.cursorMoves,
       hint: this.hint?.text,
       picture: this.picture?.id ?? null,
+      fading: this.cameras.main.fadeEffect.isRunning,
     };
   }
 
@@ -203,9 +213,12 @@ export class TitleScene extends Phaser.Scene {
       } satisfies OptionsStart);
       return;
     }
-    // A new game starts black, for its opening to fade in (see src/data/events/saltmere.ts).
-    startNewGame();
-    this.scene.start('field', { ...session.state.location, dark: true } satisfies FieldStart);
+    // A new game fades out slowly, as story scenes do, and starts black, for its opening to fade
+    // in (see src/data/events/saltmere.ts).
+    this.leave(SCENE_FADE_MS, () => {
+      startNewGame();
+      this.scene.start('field', { ...session.state.location, dark: true } satisfies FieldStart);
+    });
   }
 
   /** Opens the save menu to pick a save, and carries on from it where it was saved. */
@@ -216,9 +229,21 @@ export class TitleScene extends Phaser.Scene {
       onClose: () => this.scene.resume(),
       onLoad: (state) => {
         loadGame(state);
-        this.scene.start('field', state.location satisfies FieldStart);
+        // The screen, paused under the save menu, carries on to fade out for the save's place.
+        this.scene.resume();
+        this.leave(MAP_FADE_MS, () =>
+          this.scene.start('field', state.location satisfies FieldStart),
+        );
       },
     } satisfies SaveMenuStart);
+  }
+
+  /** Fades out, taking no more choices, and then goes where was chosen. */
+  private leave(ms: number, then: () => void): void {
+    this.leaving = true;
+    const camera = this.cameras.main;
+    camera.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, then);
+    camera.fadeOut(ms, 0, 0, 0);
   }
 
   /** How to choose: with keys, or with the touch controls' A button. */

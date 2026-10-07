@@ -220,5 +220,5 @@ console.log(
     'gear, items, an encounter table and a boss that exist, at levels there are, and a main ' +
     'path a whole number of steps long. ' +
     'Every name and description is in characters the font has, and fits the battle screen ' +
-    'and the main menu.',
+    'and the main menu, and so does every character’s HP and MP at level 30.',
 );

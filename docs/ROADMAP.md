@@ -103,7 +103,7 @@ Start a session and say **"next task"**, or name one. Claude takes the first unc
 - [x] Cutscenes: the opening on Kindling day (lighting the village lamps, Bram arriving, the festival), the Beacon going out, the Beacon chamber, Rowan gaining Tide Edge.
 - [x] Title screen art and a short intro.
 - [x] Balance pass with the simulator. **Done when** `npm run sim` walks the Tide Caves' main path, battle after battle, to the Warden at its target level, with every battle and the Warden within the targets. The playtest is yours, at the ★★ checkpoint below.
-- [ ] Bug bash and juice: screen shake, hit-stop, transitions, sound everywhere.
+- [x] Bug bash and juice: screen shake, hit-stop, transitions, sound everywhere. **Done when** every blow, status and KO in a battle has a sound, and so does a battle coming; hits hold still as they land and heavy ones shake the screen; the title screen fades in and out; and the bugs found on the way are fixed.
 
 ★★ **Checkpoint:** play from the title screen through the Drowned Warden without debug tools. Then stop and ask: is this fun? Change DESIGN.md before building any more.
 

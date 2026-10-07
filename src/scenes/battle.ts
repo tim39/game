@@ -31,10 +31,13 @@ import { settings } from '../systems/settings';
 import { createTilemap, shadeMap } from '../systems/tilemap';
 import {
   AILMENT_EFFECT,
+  BATTLE_SOUNDS,
+  BUFF_EFFECT,
   GUARD_EFFECT,
   HEAL_EFFECT,
   SMOKE_EFFECT,
   hitEffect,
+  isHeavyHit,
   type Effect,
 } from '../ui/battle-effects';
 import {
@@ -533,6 +536,7 @@ export class BattleScene extends Phaser.Scene {
         return;
       case 'miss': {
         const figure = this.figure(event.target);
+        audio.playSound(BATTLE_SOUNDS.miss);
         this.pop(figure, [{ text: BATTLE_TEXT.pop.miss, tint: COLOURS.dim }]);
         await this.dodge(figure);
         return;
@@ -566,6 +570,7 @@ export class BattleScene extends Phaser.Scene {
       }
       case 'status-resisted': {
         const figure = this.figure(event.target);
+        audio.playSound(BATTLE_SOUNDS.miss);
         this.pop(figure, [{ text: BATTLE_TEXT.pop.resisted, tint: COLOURS.dim }]);
         await this.wait(BATTLE_PACING.hit);
         return;
@@ -574,6 +579,7 @@ export class BattleScene extends Phaser.Scene {
       case 'delay': {
         const figure = this.figure(event.target);
         const word = event.type === 'stagger' ? BATTLE_TEXT.pop.stagger : BATTLE_TEXT.pop.delay;
+        audio.playSound(BATTLE_SOUNDS.knock);
         this.pop(figure, [{ text: word, tint: COLOURS.word }]);
         await this.knockBack(figure);
         return;
@@ -583,6 +589,7 @@ export class BattleScene extends Phaser.Scene {
         return;
       case 'ko':
         this.catchUp(event);
+        audio.playSound(BATTLE_SOUNDS.ko);
         await this.fall(this.figure(event.target));
         return;
       case 'revive': {
@@ -600,6 +607,7 @@ export class BattleScene extends Phaser.Scene {
       case 'phase': {
         this.catchUp(event);
         const figure = this.figure(event.fighter);
+        audio.playSound(BATTLE_SOUNDS.phase);
         if (settings.screenShake) this.cameras.main.shake(BATTLE_PACING.hit, 0.004);
         // The banner says what the boss's new phase brings, if anything.
         const battle = this.current();
@@ -668,6 +676,7 @@ export class BattleScene extends Phaser.Scene {
         const target = action.target === undefined ? undefined : this.nameOf(action.target);
         const skill = skills[action.skill]?.name ?? action.skill;
         this.panels?.banner(BATTLE_TEXT.readies(this.nameOf(event.actor), skill, target));
+        audio.playSound(BATTLE_SOUNDS.telegraph);
         await this.flash(actor, COLOURS.alert, 2);
         await this.wait(BATTLE_PACING.banner);
         return;
@@ -682,6 +691,7 @@ export class BattleScene extends Phaser.Scene {
     const figure = this.figure(event.target);
     if (event.cause === 'poison') {
       this.catchUp(event);
+      audio.playSound(BATTLE_SOUNDS.poison);
       void this.flash(figure, COLOURS.poison, 1);
       this.pop(figure, [{ text: String(event.amount), tint: COLOURS.poison }]);
       await this.wait(BATTLE_PACING.hit);
@@ -700,9 +710,12 @@ export class BattleScene extends Phaser.Scene {
     this.pop(figure, [...words, { text: String(event.amount), tint }]);
     if (event.amount > 0) {
       void this.flash(figure, 0xffffff, 1);
-      if (event.critical && settings.screenShake) {
-        this.cameras.main.shake(BATTLE_PACING.lunge, 0.003);
-      }
+      if (event.critical) audio.playSound(BATTLE_SOUNDS.critical);
+      // A heavy hit shakes the screen, and holds everything still a little longer as it lands.
+      const { maxHp } = fighterView(this.view, event.target);
+      const heavy = isHeavyHit(event.amount, maxHp, event.critical === true);
+      if (heavy && settings.screenShake) this.cameras.main.shake(BATTLE_PACING.lunge, 0.003);
+      await this.hitStop(heavy ? BATTLE_PACING.heavyHitStop : BATTLE_PACING.hitStop);
       await this.shake(figure);
     }
     await this.wait(BATTLE_PACING.hit / 2);
@@ -731,7 +744,7 @@ export class BattleScene extends Phaser.Scene {
       return;
     }
     const helpful = isHelpful(event.status);
-    void this.effect(figure, helpful ? HEAL_EFFECT : AILMENT_EFFECT);
+    void this.effect(figure, helpful ? BUFF_EFFECT : AILMENT_EFFECT);
     const tint = helpful ? COLOURS.helpful : COLOURS.harmful;
     this.pop(figure, [{ text: BATTLE_TEXT.statuses[event.status].name, tint }]);
     await this.wait(BATTLE_PACING.hit);
@@ -803,6 +816,23 @@ export class BattleScene extends Phaser.Scene {
     const { x, y } = figure.home;
     await this.tweenTo(figure, x + away, y, BATTLE_PACING.lunge / 2);
     await this.tweenTo(figure, x, y, BATTLE_PACING.lunge / 2);
+  }
+
+  /**
+   * Holds the battle still for a moment as a hit lands, its hit-stop: every tween and animation of
+   * the scene pauses, numbers and all, and carries on from where it was, at the battle's speed.
+   * Its timers run on, so the hit's flash still blinks, and the screen still shakes.
+   */
+  private async hitStop(ms: number): Promise<void> {
+    const playing = this.children.list.filter(
+      (child): child is Phaser.GameObjects.Sprite =>
+        child instanceof Phaser.GameObjects.Sprite && child.anims.isPlaying,
+    );
+    for (const sprite of playing) sprite.anims.pause();
+    this.tweens.pauseAll();
+    await this.wait(ms);
+    this.tweens.resumeAll();
+    for (const sprite of playing) if (sprite.active) sprite.anims.resume();
   }
 
   /** A shudder from a hit. */
@@ -892,9 +922,10 @@ export class BattleScene extends Phaser.Scene {
     if (figure.side === 'party' && this.down(figure.id)) figure.sprite.setTint(COLOURS.down);
   }
 
-  /** Plays an effect over a fighter, once through. Resolves as it ends. */
+  /** Plays an effect over a fighter, once through, with its sound. Resolves as it ends. */
   private effect(figure: Figure, effect: Effect): Promise<void> {
     const { x, y } = figure.middle;
+    audio.playSound(effect.sound);
     const sprite = this.add.sprite(x, y, effect.key).setDepth(DEPTH.effects);
     if (effect.tint !== undefined) sprite.setTint(effect.tint);
     return new Promise((resolve) => {

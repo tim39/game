@@ -66,6 +66,9 @@ const phaseBanner = (index: number): string => `banner for phase ${index + 1}`;
 export interface BattleTextRoom {
   /** A party member's name, in the status panel. */
   readonly name: number;
+  /** A party member's HP, as now/most, and the MP they have left, after their labels there. */
+  readonly hp: number;
+  readonly mp: number;
   /** A skill's or item's name, in its list beside its cost or count. */
   readonly listLabel: number;
   /** What a skill or item does, in the help line; and the banner, which the help line is. */
@@ -74,12 +77,25 @@ export interface BattleTextRoom {
 
 /**
  * Checks that the battle screen has room for the text it shows: each character's name in the
- * status panel, the name of each skill and of each item that can be used up, in its list, and
- * what it does, in the help line, and what a boss's phases say in the banner. Returns one line per
- * problem. Text with characters the font lacks is `checkText`'s to report.
+ * status panel, and their HP and MP there at their most, at level 30, the name of each skill and
+ * of each item that can be used up, in its list, and what it does, in the help line, and what a
+ * boss's phases say in the banner. Returns one line per problem. Text with characters the font
+ * lacks is `checkText`'s to report.
  */
 export function checkBattleText(
-  sources: Pick<TextSources, 'characters' | 'skills' | 'enemies'> & {
+  sources: Pick<TextSources, 'skills' | 'enemies'> & {
+    readonly characters: Readonly<
+      Record<
+        string,
+        Named[string] & {
+          /** Each stat at level 1 and at level 30, the last level. */
+          readonly stats?: {
+            readonly hp: readonly [number, number];
+            readonly mp: readonly [number, number];
+          };
+        }
+      >
+    >;
     readonly items: Readonly<Record<string, Named[string] & { readonly kind: string }>>;
   },
   font: MeasuredFont,
@@ -93,9 +109,22 @@ export function checkBattleText(
     if (width <= most) return [];
     return [`${owner}: its ${field}, "${text}", is ${width} pixels wide; ${where} ${most}`];
   };
-  const characters = Object.entries(sources.characters).flatMap(([id, { name }]) =>
-    fits(`Character ${id}`, 'name', name, room.name, 'the battle status panel has room for'),
-  );
+  const panel = 'the battle status panel has room for';
+  const characters = Object.entries(sources.characters).flatMap(([id, { name, stats }]) => [
+    ...fits(`Character ${id}`, 'name', name, room.name, panel),
+    ...(stats === undefined
+      ? []
+      : [
+          ...fits(
+            `Character ${id}`,
+            'HP at level 30',
+            `${stats.hp[1]}/${stats.hp[1]}`,
+            room.hp,
+            panel,
+          ),
+          ...fits(`Character ${id}`, 'MP at level 30', String(stats.mp[1]), room.mp, panel),
+        ]),
+  ]);
   const lists = { skills: sources.skills, items: consumables };
   const listed = (['skills', 'items'] as const).flatMap((kind) =>
     Object.entries(lists[kind]).flatMap(([id, { name, description = '' }]) => [

@@ -19,6 +19,8 @@ test('the game boots without errors', async ({ page }) => {
     selected: 'New Game',
   });
 
+  // It fades in.
+  await page.waitForFunction(() => window.__game?.inspect('title')?.fading === false);
   await page.screenshot({ path: 'test-results/screenshots/title.png' });
   expect(errors).toEqual([]);
 });

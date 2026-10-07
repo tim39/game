@@ -3,6 +3,7 @@ import type { Direction } from '../../src/core/direction';
 import type {} from '../../src/debug/api';
 import { SOUND_REPEAT_MS } from '../../src/data/balance';
 import type { AudioInfo } from '../../src/systems/audio';
+import { MENU_SOUNDS } from '../../src/ui/menu-sound';
 
 const audio = (page: Page): Promise<AudioInfo | undefined> =>
   page.evaluate(() => window.__game?.audio());
@@ -264,6 +265,69 @@ test('buying in a shop rings up the gold', async ({ page }) => {
   });
   await pressFor(page, 'KeyX', 'sfx.cancel');
   await pressFor(page, 'KeyX', 'sfx.cancel');
+  expect(errors).toEqual([]);
+});
+
+test('a battle sounds each blow, bomb and KO as it lands, and ends in its jingle', async ({
+  page,
+}) => {
+  const errors = watchErrors(page);
+  await toTitle(page);
+  // Every sound effect from here on, in order, as `sounds` lists only the latest few.
+  await page.evaluate(() => {
+    const heard: string[] = [];
+    let counted = window.__game?.audio().soundCount ?? 0;
+    Object.assign(window, { heard });
+    setInterval(() => {
+      const info = window.__game?.audio();
+      if (!info) return;
+      const fresh = info.soundCount - counted;
+      if (fresh > 0) heard.push(...info.sounds.slice(-fresh));
+      counted = info.soundCount;
+    }, 10);
+    window.__game?.battleSpeed(4);
+    window.__game?.join('bram');
+    window.__game?.setFlag('story.lamp-duty');
+    window.__game?.give('fire-bomb');
+    window.__game?.battle(['wolf', 'wolf'], { seed: 1, start: 'preemptive' });
+  });
+  const heard = () => page.evaluate(() => (window as unknown as { heard: string[] }).heard);
+  const turn = async (): Promise<{ waiting: boolean }> => {
+    await page.waitForFunction(
+      () => {
+        const battle = window.__game?.inspect('battle');
+        return battle?.choosing === true || battle?.waiting === true;
+      },
+      undefined,
+      { timeout: 30_000 },
+    );
+    return (await page.evaluate(() => window.__game?.inspect('battle'))) as { waiting: boolean };
+  };
+  const press = async (...keys: string[]) => {
+    for (const key of keys) {
+      await page.keyboard.press(key);
+      await nextFrames(page);
+    }
+  };
+
+  // Rowan's sword at the first Wolf; then the Fire Bomb at it, which it's weak to.
+  await turn();
+  await press('KeyZ', 'KeyZ');
+  await page.waitForFunction(() =>
+    (window as unknown as { heard: string[] }).heard.includes('sfx.slash'),
+  );
+  await turn();
+  await press('ArrowDown', 'ArrowDown', 'KeyZ', 'KeyZ', 'KeyZ');
+  await page.waitForFunction(() =>
+    (window as unknown as { heard: string[] }).heard.includes('sfx.hit-fire'),
+  );
+  // Then the sword, until it's won: the lone Wolf howls itself ATK Up, bites, and goes down too.
+  for (let turns = 0; turns < 30 && !(await turn()).waiting; turns++) await press('KeyZ', 'KeyZ');
+  const battle = (await heard()).filter(
+    (sound) => !Object.values<string>(MENU_SOUNDS).includes(sound),
+  );
+  expect(battle).toEqual(expect.arrayContaining(['sfx.slash', 'sfx.hit-fire', 'sfx.ko']));
+  expect(battle.at(-1)).toBe('sfx.victory');
   expect(errors).toEqual([]);
 });
 

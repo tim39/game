@@ -106,6 +106,8 @@ const CHEST_SPRITE = 'object.chest';
 const CHEST_FRAME = { shut: 0, open: 1 } as const;
 /** Plays as a chest opens. */
 const CHEST_SOUND = 'sfx.chest';
+/** A battle coming, as the field breaks up for it. */
+const ENCOUNTER_SOUND = 'sfx.encounter';
 
 /** A character on screen: their sprite, and how many rows their sheet has. */
 interface Figure {
@@ -602,6 +604,7 @@ export class FieldScene extends Phaser.Scene {
     // A battle cuts the banner short.
     this.banner?.destroy();
     audio.interruptMusic(battleMusic(setup.enemies));
+    audio.playSound(ENCOUNTER_SOUND);
     void playBattleTransition(this, DEPTH.transition, !settings.reduceFlashing).then((curtain) => {
       // The field may have started over meanwhile: a debug warp, say.
       if (this.map !== map) {
