@@ -122,7 +122,9 @@ export class TitleScene extends Phaser.Scene {
       cursorMoves: this.cursorMoves,
       hint: this.hint?.text,
       picture: this.picture?.id ?? null,
-      fading: this.cameras.main.fadeEffect.isRunning,
+      // Once it has gone, it has no camera to fade.
+      fading:
+        (this.sys.isActive() || this.sys.isPaused()) && this.cameras.main.fadeEffect.isRunning,
     };
   }
 

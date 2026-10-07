@@ -4,7 +4,6 @@ import type { GameState } from '../../src/core/state';
 import type {} from '../../src/debug/api';
 import { NEW_GAME } from '../../src/data/new-game';
 import type { AudioInfo } from '../../src/systems/audio';
-import { MENU_SOUNDS } from '../../src/ui/menu-sound';
 
 // Battles take a while to play out, even at 4×, more so with other tests running beside them, and
 // these lose one before fighting it again.
@@ -45,8 +44,9 @@ const audio = async (page: Page): Promise<AudioInfo> =>
   (await page.evaluate(() => window.__game?.audio())) as AudioInfo;
 
 /** The jingles playing: every sound effect playing but a menu's, which come with every press. */
-const jingles = (info: AudioInfo): string[] =>
-  info.playing.filter((key) => !Object.values<string>(MENU_SOUNDS).includes(key));
+const JINGLES: readonly string[] = ['sfx.victory', 'sfx.level-up', 'sfx.game-over'];
+/** The jingles playing: not the battle's last blows and KOs, which can ring on at 4x speed. */
+const jingles = (info: AudioInfo): string[] => info.playing.filter((key) => JINGLES.includes(key));
 const state = async (page: Page): Promise<GameState> =>
   (await page.evaluate(() => window.__game?.state())) as GameState;
 const field = (page: Page) => page.evaluate(() => window.__game?.inspect('field'));

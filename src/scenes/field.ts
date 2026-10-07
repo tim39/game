@@ -419,10 +419,15 @@ export class FieldScene extends Phaser.Scene {
     this.run(id);
   }
 
+  /** Running, paused or asleep: not stopped, or starting over, when there's no camera to read. */
+  private live(): boolean {
+    return this.sys.isActive() || this.sys.isPaused() || this.sys.isSleeping();
+  }
+
   /** Read by `window.__game.inspect('field')` in dev and test builds. */
   debugInfo(): Record<string, unknown> {
     const { map, world, overhead, player, walker } = this;
-    if (!map || !world || !overhead || !player) return {};
+    if (!map || !world || !overhead || !player || !this.live()) return {};
     const camera = this.cameras.main;
     const view = camera.worldView;
     const sprite = player.sprite;
