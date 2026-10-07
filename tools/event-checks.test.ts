@@ -10,6 +10,7 @@ import { ENEMIES } from '../src/data/enemies';
 import { EVENTS } from '../src/data/events';
 import { ITEMS } from '../src/data/items';
 import { MAPS } from '../src/data/maps';
+import { PICTURES } from '../src/data/pictures';
 import { SHOPS } from '../src/data/shops';
 import { SPEAKERS } from '../src/data/speakers';
 import { STORY } from '../src/data/story';
@@ -70,6 +71,7 @@ const sources = (overrides: Partial<EventSources>): EventSources => ({
   shops: { market: {} },
   enemies: { wolf: {}, kraken: { boss: true } },
   backdrops: { meadow: {} },
+  pictures: { dawn: {} },
   manifest: MANIFEST,
   font: FONT,
   chestText: CHEST_TEXT_ADA,
@@ -439,6 +441,19 @@ test('reports shops that do not exist, and jingles that are not sound effects', 
   ]);
 });
 
+test('checks the pictures a script shows', async () => {
+  const problems = await check({
+    events: {
+      dawn: defineEvent(async (ev) => {
+        await ev.picture('dawn');
+        await ev.picture('dusk');
+        await ev.picture(null);
+      }),
+    },
+  });
+  expect(problems).toEqual(["Event dawn: it shows the picture dusk, which isn't a picture"]);
+});
+
 test('follows a battle either way it can end, and checks who it is against and where', async () => {
   const problems = await check({
     events: {
@@ -534,6 +549,7 @@ test('the real event scripts, speakers and maps check out', async () => {
     shops: SHOPS,
     enemies: ENEMIES,
     backdrops: BACKDROPS,
+    pictures: PICTURES,
     manifest: ASSETS,
     font: measureBodyFont(
       readFileSync(join(import.meta.dirname, '../public', ASSETS['font.body'].url)),

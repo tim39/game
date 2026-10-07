@@ -13,6 +13,11 @@ test('the game boots without errors', async ({ page }) => {
 
   await page.waitForFunction(() => window.__game?.activeScenes().includes('title') ?? false);
   expect(await page.evaluate(() => window.__game?.activeScenes())).toEqual(['title']);
+  // Over its picture: Saltmere's lighthouse at night.
+  expect(await page.evaluate(() => window.__game?.inspect('title'))).toMatchObject({
+    picture: 'title',
+    selected: 'New Game',
+  });
 
   await page.screenshot({ path: 'test-results/screenshots/title.png' });
   expect(errors).toEqual([]);

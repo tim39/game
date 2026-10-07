@@ -1,11 +1,14 @@
 import Phaser from 'phaser';
 import { UI_TEXT } from '../data/ui-text';
 import { audio } from '../systems/audio';
+import { GAME_HEIGHT, GAME_WIDTH } from '../systems/display';
 import { input } from '../systems/input/game-input';
 import { touchMode } from '../systems/input/touch-controls';
 import { saveSlots } from '../systems/saves';
 import { loadGame, session, startNewGame } from '../systems/session';
-import { FONT } from '../ui/fonts';
+import { CHOICE_BOX } from '../ui/dialogue-layout';
+import { FONT, textMeasurer } from '../ui/fonts';
+import { addGlow, drawPicture, type DrawnPicture } from '../ui/picture';
 import type { FieldStart } from './field';
 import { OPTIONS_SCENE, type OptionsStart } from './options';
 import { SAVE_MENU_SCENE, type SaveMenuStart } from './save-menu';
@@ -23,19 +26,46 @@ const menuItems = (canContinue: boolean): readonly MenuItem[] => [
   { id: 'options', label: 'Options', enabled: true },
 ];
 
+/** Drawn at the world's scale, 2×, so its picture is a backdrop's size: 320×180 pixels. */
+export const TITLE_SCALE = 2;
+const WIDTH = GAME_WIDTH / TITLE_SCALE;
+const HEIGHT = GAME_HEIGHT / TITLE_SCALE;
+
+/** Saltmere's lighthouse at night (src/data/pictures.ts), under everything else. */
+const PICTURE = 'title';
+/** The name, the menu and the hint, over the picture and its lights. */
+export const TITLE_DEPTH = 10;
+
 const GOLD = 0xf5c46b;
-const TEXT = 0xe8e0f5;
-const DIM = 0x5a5270;
-const MENU_X = 264;
-const MENU_TOP = 192;
-const MENU_SPACING = 24;
+const SHADOW = 0x0b001e;
+const INK = 0x0b001e; // the pack's own glyph color, made for the light panel
+const GREYED = 0x9a8fae;
+const HINT = 0xd8d0e8;
+const FLAME_GLOW = 0xffc870;
+
+/** The game's name, with its flame over it, centred towards the top. */
+const NAME_Y = 48;
+const FLAME_Y = 22;
+/** The flame's frames that flicker, of its sheet's rise and fall, and how fast. */
+const FLAME_FRAMES = [2, 3, 4, 5, 4, 3];
+const FLAME_FPS = 8;
+/** The menu: a choice box, centred, its top this far down. */
+const MENU_TOP = 88;
+const HINT_Y = 168;
+
+const MAX_FRAME_MS = 100;
 const MUSIC = 'bgm.title';
 
-/** Placeholder title screen until the real one arrives with the vertical slice (M6). */
+/**
+ * The title screen (see Screens in docs/DESIGN.md): Saltmere's lighthouse at night, the Tide
+ * Beacon's beam turning over the sea; the game's name, with a flame over it; and New Game,
+ * Continue and Options, in a choice box.
+ */
 export class TitleScene extends Phaser.Scene {
   private menu: readonly MenuItem[] = menuItems(false);
   private selected = 0;
   private cursorMoves = 0;
+  private picture?: DrawnPicture;
   private cursor?: Phaser.GameObjects.Graphics;
   private hint?: Phaser.GameObjects.BitmapText;
 
@@ -44,7 +74,6 @@ export class TitleScene extends Phaser.Scene {
   }
 
   create(): void {
-    const centerX = this.scale.width / 2;
     // With a save to continue from, the cursor starts on Continue.
     const canContinue = saveSlots.hasAny();
     this.menu = menuItems(canContinue);
@@ -53,43 +82,21 @@ export class TitleScene extends Phaser.Scene {
     // It starts with the player's first key press or touch, which browsers wait for.
     audio.playMusic(MUSIC);
 
-    const ember = this.add.circle(centerX, 56, 8, 0xffa040);
-    this.tweens.add({
-      targets: ember,
-      scale: 1.35,
-      alpha: 0.6,
-      duration: 700,
-      yoyo: true,
-      repeat: -1,
-      ease: 'Sine.easeInOut',
-    });
-
-    this.add
-      .bitmapText(centerX, 104, FONT.display, 'The Fifth Flame')
-      .setScale(4)
-      .setOrigin(0.5)
-      .setTint(GOLD);
-
-    this.menu.forEach((item, index) => {
-      this.add
-        .bitmapText(MENU_X, MENU_TOP + index * MENU_SPACING, FONT.body, item.label)
-        .setScale(2)
-        .setOrigin(0, 0.5)
-        .setTint(item.enabled ? TEXT : DIM);
-    });
-
+    this.cameras.main.setZoom(TITLE_SCALE).centerOn(WIDTH / 2, HEIGHT / 2);
+    this.picture = drawPicture(this, PICTURE);
+    this.drawName();
+    this.drawMenu();
     this.hint = this.add
-      .bitmapText(centerX, 330, FONT.body, '')
-      .setScale(2)
+      .bitmapText(WIDTH / 2, HINT_Y, FONT.body, '')
       .setOrigin(0.5)
-      .setTint(DIM);
+      .setTint(HINT)
+      .setDropShadow(1, 1, SHADOW, 1)
+      .setDepth(TITLE_DEPTH);
     this.showHint();
-
-    this.cursor = this.add.graphics();
-    this.drawCursor();
   }
 
-  override update(): void {
+  override update(_time: number, delta: number): void {
+    this.picture?.update(Math.min(delta, MAX_FRAME_MS));
     // A laptop with a touchscreen can switch to touch mode at any moment.
     this.showHint();
     // Confirm first, so a press that lands in the same frame as a move picks what was on screen.
@@ -105,7 +112,72 @@ export class TitleScene extends Phaser.Scene {
       items: this.menu.map(({ label, enabled }) => ({ label, enabled })),
       cursorMoves: this.cursorMoves,
       hint: this.hint?.text,
+      picture: this.picture?.id ?? null,
     };
+  }
+
+  /** The game's name in gold, and over it a little flame, flickering in its glow. */
+  private drawName(): void {
+    this.add
+      .bitmapText(WIDTH / 2, NAME_Y, FONT.display, 'The Fifth Flame')
+      .setScale(2)
+      .setOrigin(0.5)
+      .setTint(GOLD)
+      .setDropShadow(1, 1, SHADOW, 1)
+      .setDepth(TITLE_DEPTH);
+    addGlow(this, WIDTH / 2, FLAME_Y, 16, FLAME_GLOW, TITLE_DEPTH);
+    if (!this.anims.exists('vfx.flame')) {
+      this.anims.create({
+        key: 'vfx.flame',
+        frames: this.anims.generateFrameNumbers('vfx.flame', { frames: FLAME_FRAMES }),
+        frameRate: FLAME_FPS,
+        repeat: -1,
+      });
+    }
+    this.add
+      .sprite(WIDTH / 2, FLAME_Y, 'vfx.flame')
+      .setScale(2)
+      .setDepth(TITLE_DEPTH)
+      .play('vfx.flame');
+  }
+
+  /** The menu, in the pack's choice box like a script's choices, with the ▶ by the one chosen. */
+  private drawMenu(): void {
+    const { frame, inset, cursor: cursorRoom, lineHeight } = CHOICE_BOX;
+    const widthOf = textMeasurer(this, FONT.body);
+    const textWidth = Math.max(...this.menu.map(({ label }) => widthOf(label)));
+    const width = (frame + inset.x) * 2 + cursorRoom + textWidth;
+    const height = (frame + inset.y) * 2 + this.menu.length * lineHeight;
+    const left = Math.round((WIDTH - width) / 2);
+    this.add
+      .nineslice(
+        left,
+        MENU_TOP,
+        'ui.choice-box',
+        undefined,
+        width,
+        height,
+        frame,
+        frame,
+        frame,
+        frame,
+      )
+      .setOrigin(0)
+      .setDepth(TITLE_DEPTH);
+    this.menu.forEach((item, index) => {
+      this.add
+        .bitmapText(
+          left + frame + inset.x + cursorRoom,
+          MENU_TOP + frame + inset.y + index * lineHeight,
+          FONT.body,
+          item.label,
+        )
+        .setTint(item.enabled ? INK : GREYED)
+        .setDepth(TITLE_DEPTH);
+    });
+    this.cursor = this.add.graphics().setDepth(TITLE_DEPTH);
+    this.cursor.setPosition(left + frame + inset.x, MENU_TOP + frame + inset.y + 1);
+    this.drawCursor();
   }
 
   private moveCursor(step: number): void {
@@ -155,12 +227,13 @@ export class TitleScene extends Phaser.Scene {
     if (this.hint && this.hint.text !== text) this.hint.setText(text);
   }
 
+  /** The ▶, 3 pixels wide and 5 tall, level with the middle of the chosen line's letters. */
   private drawCursor(): void {
     if (!this.cursor) return;
-    const x = MENU_X - 20;
-    const y = MENU_TOP + this.selected * MENU_SPACING;
-    this.cursor.clear();
-    this.cursor.fillStyle(GOLD);
-    this.cursor.fillTriangle(x, y - 6, x, y + 6, x + 8, y);
+    const y = this.selected * CHOICE_BOX.lineHeight;
+    this.cursor
+      .clear()
+      .fillStyle(INK)
+      .fillTriangle(0, y, 0, y + 5, 3, y + 2.5);
   }
 }

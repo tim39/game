@@ -63,12 +63,10 @@ test('New Game starts afresh: Rowan alone, in bed at Tamsin’s, in their starti
   });
 
   await page.keyboard.press('Enter');
-  // The opening's first line, over black (kindling-day.spec plays the rest of it).
+  // The opening's first line, over the intro's first picture (kindling-day.spec plays the rest).
   await page.waitForFunction(() => {
     const dialogue = window.__game?.inspect('dialogue');
-    return (
-      String(dialogue?.text).startsWith('Saltmere: a fishing village') && dialogue?.prompt === true
-    );
+    return String(dialogue?.text).startsWith('Aurel lives') && dialogue?.prompt === true;
   });
   const { map, x, y, facing } = NEW_GAME.location;
   expect(await page.evaluate(() => window.__game?.inspect('field'))).toMatchObject({
@@ -78,6 +76,7 @@ test('New Game starts afresh: Rowan alone, in bed at Tamsin’s, in their starti
     facing,
     dark: true,
     running: true,
+    picture: 'beacons',
   });
 
   const { playTimeMs, ...rest } = await state(page);

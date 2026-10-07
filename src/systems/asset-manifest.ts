@@ -129,6 +129,9 @@ export const ASSETS = {
   // The Gloam's mist, tiled over a map whose mood has it (see src/scenes/field.ts).
   'overlay.mist': image('vfx/fog.png'),
 
+  // The flame over the title screen's name: a small flame rising and dying, some of which loops.
+  'vfx.flame': frames('vfx/flame.png', 8, 12),
+
   // Things on the map that change, drawn as sprites rather than tiles.
   'object.chest': frames('sprites/treasure-chest.png', 16, 14), // shut, then open
 

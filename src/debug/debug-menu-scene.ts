@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { TITLE_DEPTH, TITLE_SCALE } from '../scenes/title';
 import { GAME_HEIGHT, GAME_WIDTH } from '../systems/display';
 import { input } from '../systems/input/game-input';
 import { touchMode } from '../systems/input/touch-controls';
@@ -186,6 +187,8 @@ export class DebugMenuScene extends Phaser.Scene {
 const TITLE_HINT = {
   keys: 'Debug build: backtick (`) opens the debug menu',
   touch: 'Debug build: three fingers open the debug menu',
+  color: 0xb8aed0,
+  shadow: 0x0b001e,
 };
 
 /**
@@ -206,12 +209,19 @@ export function installDebugMenu(
   const hintOnTitle = (): void => {
     const title = game.scene.getScene('title') as Phaser.Scene | null;
     if (!title) return;
+    // Drawn at the title's scale, over its picture (see src/scenes/title.ts).
     const hint = (): void => {
       title.add
-        .bitmapText(GAME_WIDTH / 2, 12, FONT.body, touchMode() ? TITLE_HINT.touch : TITLE_HINT.keys)
-        .setScale(SCALE)
+        .bitmapText(
+          GAME_WIDTH / TITLE_SCALE / 2,
+          6,
+          FONT.body,
+          touchMode() ? TITLE_HINT.touch : TITLE_HINT.keys,
+        )
         .setOrigin(0.5, 0)
-        .setTint(DIM);
+        .setTint(TITLE_HINT.color)
+        .setDropShadow(1, 1, TITLE_HINT.shadow, 1)
+        .setDepth(TITLE_DEPTH);
     };
     title.events.on(Phaser.Scenes.Events.CREATE, hint);
     if (game.scene.isActive('title')) hint();

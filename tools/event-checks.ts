@@ -39,6 +39,8 @@ export interface EventSources {
   readonly enemies: Readonly<Record<string, { readonly boss?: boolean }>>;
   /** Every battle backdrop, by ID, as in src/data/backdrops.ts. */
   readonly backdrops: Readonly<Record<string, unknown>>;
+  /** Every picture, by ID, as in src/data/pictures.ts. */
+  readonly pictures: Readonly<Record<string, unknown>>;
   /** Logical key → entry, as in src/systems/asset-manifest.ts. */
   readonly manifest: Readonly<Record<string, AssetEntry>>;
   /** The body font, which dialogue is drawn in. */
@@ -100,6 +102,7 @@ export async function checkEvents({
   shops,
   enemies,
   backdrops,
+  pictures,
   manifest,
   font,
   chestText,
@@ -301,6 +304,12 @@ export async function checkEvents({
           },
           fadeIn: (ms) => {
             checkTime('fade in', ms);
+            return Promise.resolve();
+          },
+          picture: (id) => {
+            if (id !== null && !Object.hasOwn(pictures, id)) {
+              report(`it shows the picture ${id}, which isn't a picture`);
+            }
             return Promise.resolve();
           },
           teleport: (map, spawn) => {

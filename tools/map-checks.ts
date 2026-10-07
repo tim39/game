@@ -1,7 +1,7 @@
-import { compileBackdrop } from '../src/core/map/backdrop';
+import { compileBackdrop, compilePicture } from '../src/core/map/backdrop';
 import { compileMap, mapFlags, type CompiledMap } from '../src/core/map/compile';
 import type { GridPoint, MapContent, MapDef, WarpTarget } from '../src/core/map/types';
-import type { BackdropDef } from '../src/core/schema';
+import type { BackdropDef, PictureDef } from '../src/core/schema';
 import type { AssetEntry } from '../src/systems/asset-manifest';
 import { AREA_BANNER } from '../src/ui/area-banner';
 import { SAVE_MENU } from '../src/ui/save-menu-layout';
@@ -292,6 +292,24 @@ export function checkBackdrops(
   return Object.entries(backdrops).flatMap(([id, backdrop]) => {
     try {
       compileBackdrop(id, backdrop, content);
+      return [];
+    } catch (error) {
+      return [error instanceof Error ? error.message : String(error)];
+    }
+  });
+}
+
+/**
+ * Compiles every picture, as the title screen and the intro draw them: each must compile, fill the
+ * screen as a backdrop does, and keep its lights on it.
+ */
+export function checkPictures(
+  pictures: Readonly<Record<string, PictureDef>>,
+  content: MapContent,
+): string[] {
+  return Object.entries(pictures).flatMap(([id, picture]) => {
+    try {
+      compilePicture(id, picture, content);
       return [];
     } catch (error) {
       return [error instanceof Error ? error.message : String(error)];

@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
-import type { BackdropDef } from '../schema';
-import { BACKDROP_SIZE, compileBackdrop } from './backdrop';
+import type { BackdropDef, PictureDef } from '../schema';
+import { BACKDROP_SIZE, compileBackdrop, compilePicture } from './backdrop';
 import type { MapContent } from './types';
 
 const CONTENT: MapContent = {
@@ -53,6 +53,46 @@ describe('compileBackdrop', () => {
     const lost = { ...FIELD, legend: { '.': 'grass' } };
     expect(() => compileBackdrop('lost', lost, CONTENT)).toThrow(
       `Backdrop lost: "s" at (0, 0) isn't in its legend`,
+    );
+  });
+});
+
+describe('compilePicture', () => {
+  const NIGHT: PictureDef = {
+    ...FIELD,
+    shade: 0x5a68a0,
+    mist: true,
+    lights: [{ at: [3, 5], color: 0xffd98a, radius: 2, beam: true }],
+  };
+
+  test('compiles a picture as a backdrop, whatever it has over it', () => {
+    expect(compilePicture('night', NIGHT, CONTENT)).toEqual(
+      compileBackdrop('night', FIELD, CONTENT),
+    );
+  });
+
+  test('names the picture when it doesn’t compile, or doesn’t fill the screen', () => {
+    const lost = { ...NIGHT, legend: { '.': 'grass' } };
+    expect(() => compilePicture('lost', lost, CONTENT)).toThrow(
+      `Picture lost: "s" at (0, 0) isn't in its legend`,
+    );
+    const short = { ...NIGHT, terrain: rows(20, ['.', 11]) };
+    expect(() => compilePicture('short', short, CONTENT)).toThrow(
+      "Picture short: it's 20×11 cells, not 20×12, the screen's size",
+    );
+  });
+
+  test('keeps its lights on it', () => {
+    const { width, height } = BACKDROP_SIZE;
+    const light = { color: 0xffd98a, radius: 1 };
+    const corner = { ...NIGHT, lights: [{ ...light, at: [width - 1, height - 1] as const }] };
+    expect(() => compilePicture('corner', corner, CONTENT)).not.toThrow();
+    const off = {
+      ...NIGHT,
+      lights: [light, light].map((l, i) => ({ ...l, at: [i * width, 0] as const })),
+    };
+    expect(() => compilePicture('off', off, CONTENT)).toThrow(
+      'Picture off: lights[1] is at (20, 0), off the picture',
     );
   });
 });

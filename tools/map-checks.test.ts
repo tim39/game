@@ -10,6 +10,7 @@ import { ITEMS } from '../src/data/items';
 import { BACKDROPS } from '../src/data/backdrops';
 import { MAPS } from '../src/data/maps';
 import { NEW_GAME } from '../src/data/new-game';
+import { PICTURES } from '../src/data/pictures';
 import { SHOPS } from '../src/data/shops';
 import { SPEAKERS } from '../src/data/speakers';
 import { STORY } from '../src/data/story';
@@ -24,6 +25,7 @@ import {
   checkMapAreas,
   checkMapNames,
   checkMaps,
+  checkPictures,
   checkReachable,
 } from './map-checks';
 
@@ -266,6 +268,7 @@ describe('reaching maps', () => {
       shops: SHOPS,
       enemies: ENEMIES,
       backdrops: BACKDROPS,
+      pictures: PICTURES,
       manifest: ASSETS,
       font,
       chestText: CHEST_TEXT,
@@ -339,6 +342,43 @@ describe('backdrops', () => {
 
   test('the real backdrops check out', () => {
     expect(checkBackdrops(BACKDROPS, MAP_CONTENT)).toEqual([]);
+  });
+});
+
+describe('pictures', () => {
+  const grass = (width: number, height: number): string =>
+    Array.from({ length: height }, () => '.'.repeat(width)).join('\n');
+
+  test('compile, fill the screen, and keep their lights on it', () => {
+    const light = { color: 0xffd98a, radius: 2 };
+    expect(
+      checkPictures(
+        {
+          dawn: {
+            terrain: grass(20, 12),
+            legend: { '.': 'grass' },
+            lights: [{ ...light, at: [19, 11], beam: true }],
+          },
+          strip: { terrain: grass(20, 3), legend: { '.': 'grass' } },
+          stray: {
+            terrain: grass(20, 12),
+            legend: { '.': 'grass' },
+            lights: [
+              { ...light, at: [3, 3] },
+              { ...light, at: [20, 3] },
+            ],
+          },
+        },
+        content({}),
+      ),
+    ).toEqual([
+      "Picture strip: it's 20×3 cells, not 20×12, the screen's size",
+      'Picture stray: lights[1] is at (20, 3), off the picture',
+    ]);
+  });
+
+  test('the real pictures check out', () => {
+    expect(checkPictures(PICTURES, MAP_CONTENT)).toEqual([]);
   });
 });
 

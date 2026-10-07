@@ -39,6 +39,7 @@ function talkingStage(said: string[]): Stage {
     leave: offStage,
     fadeOut: offStage,
     fadeIn: offStage,
+    picture: offStage,
     teleport: offStage,
     shop: offStage,
     battle: offStage,

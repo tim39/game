@@ -92,6 +92,9 @@ export const SCENE_FADE_MS = 600;
 /** Someone a script sees off, gone out of sight, fades from the map this fast. */
 export const LEAVE_FADE_MS = 300;
 
+/** A script's picture, such as the intro's, fades in and away this slowly. */
+export const PICTURE_FADE_MS = 700;
+
 /**
  * Pulling a lever in the Tide Caves fades to black this fast, the tide turns, and it fades back in
  * at the same speed, after holding black for `hold` as the sea rushes.
@@ -109,6 +112,17 @@ export const AREA_BANNER_MS = { fadeIn: 300, hold: 2000, fadeOut: 500 } as const
  * across, in pixels a second.
  */
 export const MIST = { alpha: 0.35, drift: { x: 6, y: 2 } } as const;
+
+/**
+ * A picture's lights (see src/data/pictures.ts): a glow pulses this much either side of full, once
+ * every `pulseMs`; and a lighthouse's beam turns once round every `turnMs`, reaching `length` cells,
+ * `spread` degrees across, this bright at its brightest.
+ */
+export const LIGHTS = {
+  pulse: 0.15,
+  pulseMs: 2400,
+  beam: { turnMs: 9000, length: 16, spread: 10, alpha: 0.4 },
+} as const;
 
 /** What a night at each inn costs (see Items and economy in docs/DESIGN.md). */
 export const INN_PRICES = { saltmere: 10, test: 20 } as const;

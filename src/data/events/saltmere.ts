@@ -65,11 +65,31 @@ async function lampDuty(ev: EventContext): Promise<void> {
 }
 
 /**
- * The game begins, from black: where, and when; then, in Tamsin's house, Tamsin comes over to put
+ * The game begins, from black: the intro, in pictures, of Aurel, its Beacons, the Gloam and the
+ * Kindling (see STORY.md); then where, and when; then, in Tamsin's house, Tamsin comes over to put
  * Rowan on lamp duty. Arriving in the house before lamp duty runs it.
  */
 export const opening = defineEvent(async (ev) => {
   await ev.fadeOut(0);
+  // The intro plays on to the title screen's music; Saltmere's comes in with the village.
+  ev.bgm('bgm.title');
+  await ev.picture('beacons');
+  await ev.say(
+    'sign',
+    'Aurel lives in the light of four great Beacons: Tide, Gale, Stone and Ember, kept burning by the Order of Wardens.',
+  );
+  await ev.picture('gloam');
+  await ev.say(
+    'sign',
+    'Beyond their glow lies the Gloam, a grey mist that eats memory. Those lost in it forget who they are, and become the Hollowed.',
+  );
+  await ev.picture('kindling');
+  await ev.say(
+    'sign',
+    'Once a year, at the Kindling, every town gives its Beacon a small memory in thanks: a song, a smell, a favorite day.',
+  );
+  await ev.picture(null);
+  ev.bgm('bgm.saltmere');
   await ev.say(
     'sign',
     'Saltmere: a fishing village on the coast of Aurel, under the light of the Tide Beacon.',

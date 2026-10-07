@@ -127,6 +127,8 @@ test('the title music waits for the first key press, then fades in', async ({ pa
 test('a map crossfades to its own music, which plays on indoors', async ({ page }) => {
   const errors = watchErrors(page);
   await toTitle(page);
+  // Past the opening, which Tamsin's house plays until Rowan is on lamp duty, to music of its own.
+  await page.evaluate(() => window.__game?.setFlag('story.lamp-duty'));
   await onlyMusic(page, 'bgm.title');
   expect(await audio(page)).toMatchObject({ starts: 1 });
 

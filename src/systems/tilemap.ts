@@ -1,12 +1,14 @@
 import Phaser from 'phaser';
 import { LAYERS, type CompiledMap, type LayerName } from '../core/map/compile';
+import { MIST } from '../data/balance';
 
 export const TILE = 16;
 
 /**
  * Field depths: the map's layers, with characters between the base and overhead layers, the
- * Gloam's mist over them, a shade over all of that, mist included, the debug collision view over
- * that, then the area banner, and over everything, the way into a battle.
+ * Gloam's mist over them, a shade over all of that, mist included, a picture's lights over the
+ * shade, the debug collision view over that, then the area banner, and over everything, the way
+ * into a battle.
  */
 export const DEPTH = {
   ground: 0,
@@ -15,10 +17,35 @@ export const DEPTH = {
   overhead: 3,
   mist: 3.4,
   shade: 3.5,
+  light: 3.6,
   debug: 4,
   banner: 5,
   transition: 6,
 } as const;
+
+/** The Gloam's mist: the pack's fog, tiled, and tinted a little towards the Gloam's violet-grey. */
+const MIST_IMAGE = 'overlay.mist';
+const MIST_TINT = 0xd8d0e8;
+
+/** Lays the Gloam's mist over a whole map at `depth`, faintly, for `driftMist` to move along. */
+export function mistMap(
+  scene: Phaser.Scene,
+  map: CompiledMap,
+  depth: number,
+): Phaser.GameObjects.TileSprite {
+  return scene.add
+    .tileSprite(0, 0, map.width * TILE, map.height * TILE, MIST_IMAGE)
+    .setOrigin(0)
+    .setTint(MIST_TINT)
+    .setAlpha(MIST.alpha)
+    .setDepth(depth);
+}
+
+/** Drifts the mist on by `dt` milliseconds' worth. */
+export function driftMist(mist: Phaser.GameObjects.TileSprite, dt: number): void {
+  mist.tilePositionX += (MIST.drift.x * dt) / 1000;
+  mist.tilePositionY += (MIST.drift.y * dt) / 1000;
+}
 
 /**
  * Lays a colour over a whole map, multiplying everything under it at `depth` by it, as a map's or a

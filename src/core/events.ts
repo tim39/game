@@ -42,6 +42,13 @@ export interface EventContext {
   leave(actor: string): Promise<void>;
   /** Fades the screen to black over `ms` milliseconds (the map fade's length by default). */
   fadeOut(ms?: number): Promise<void>;
+  /**
+   * Shows a picture from src/data/pictures.ts over the screen, as the intro's illustrations are
+   * shown: it fades in over what's there (black, usually: fade out first), or from the picture
+   * before it, and resolves once it's in. Lines said show over it. With null, it fades away, and
+   * resolves once it's gone. A script that ends with a picture up takes it away.
+   */
+  picture(id: string | null): Promise<void>;
   /** Fades the screen back in from black. */
   fadeIn(ms?: number): Promise<void>;
   /**

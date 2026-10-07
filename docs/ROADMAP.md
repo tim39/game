@@ -101,7 +101,7 @@ Start a session and say **"next task"**, or name one. Claude takes the first unc
 - [x] The Tide Caves: three floors, the tide-switch gimmick, 5–6 enemy types, treasure, Light Shrines.
 - [x] Boss: the Drowned Warden, with phases and one telegraphed attack.
 - [x] Cutscenes: the opening on Kindling day (lighting the village lamps, Bram arriving, the festival), the Beacon going out, the Beacon chamber, Rowan gaining Tide Edge.
-- [ ] Title screen art and a short intro.
+- [x] Title screen art and a short intro.
 - [ ] Balance pass with the simulator, then a playtest by you.
 - [ ] Bug bash and juice: screen shake, hit-stop, transitions, sound everywhere.
 

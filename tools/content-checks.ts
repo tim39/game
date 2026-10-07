@@ -37,6 +37,7 @@ const NAMES: { readonly [K in Kind]: string } = {
   prefabs: 'Prefab',
   maps: 'Map',
   backdrops: 'Backdrop',
+  pictures: 'Picture',
   events: 'Event',
   newGame: 'The new game',
 };

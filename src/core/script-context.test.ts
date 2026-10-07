@@ -53,6 +53,7 @@ function fakeStage(answers: number[] = []): { stage: Stage; log: string[] } {
     leave: (actor) => done(`leave ${actor}`),
     fadeOut: (ms) => done(`fadeOut ${ms ?? 'default'}`),
     fadeIn: (ms) => done(`fadeIn ${ms ?? 'default'}`),
+    picture: (id) => done(`picture ${id ?? 'none'}`),
     teleport: (map, spawn) => done(`teleport ${map} ${spawn}`),
     shop: (id) => done(`shop ${id}`),
     battle: (enemies, backdrop) => {
@@ -159,6 +160,8 @@ describe('the on-screen verbs', () => {
   test('go to the stage in order, and a choice answers with what was picked', async () => {
     const scene = defineEvent(async (ev) => {
       await ev.fadeOut();
+      await ev.picture('dawn');
+      await ev.picture(null);
       ev.bgm(null);
       await ev.teleport('saltmere', 'tamsin');
       ev.bgm('bgm.sad');
@@ -176,6 +179,8 @@ describe('the on-screen verbs', () => {
     const { log } = await run(scene, START, [1]);
     expect(log).toEqual([
       'fadeOut default',
+      'picture dawn',
+      'picture none',
       'bgm off',
       'teleport saltmere tamsin',
       'bgm bgm.sad',

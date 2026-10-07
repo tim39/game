@@ -69,6 +69,7 @@ By **Pixel-boy** and **AAA**: https://pixel-boy.itch.io/ninja-adventure-asset-pa
 | `public/assets/vfx/spark.png` | Healing, reviving and helpful statuses | `FX/Magic/Spark/SpriteSheet.png` | None |
 | `public/assets/vfx/aura.png` | Harmful statuses | `FX/Magic/Aura/SpriteSheet.png` | None |
 | `public/assets/vfx/fog.png` | The Gloam's mist, drifting over Saltmere once the Beacon is out | `FX/Environment/Fog.png` | None |
+| `public/assets/vfx/flame.png` | The flame over the title screen's name | `FX/Particle/Fire.png` | None |
 | `public/assets/vfx/shield-blue.png` | Guard | `FX/Magic/Shield/SpriteSheetBlue.png` | None |
 | `public/assets/tiles/floor.png` | Ground: grass, sand, dirt paths | `Backgrounds/Tilesets/TilesetFloor.png` | Cropped a blank 1 px row off the bottom (417 to 416 px tall), so it divides into 16 px tiles |
 | `public/assets/tiles/water.png` | Sea, shorelines, docks | `Backgrounds/Tilesets/TilesetWater.png` | None |

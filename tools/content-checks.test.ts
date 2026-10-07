@@ -11,6 +11,7 @@ import { EVENTS } from '../src/data/events';
 import { ITEMS } from '../src/data/items';
 import { MAPS } from '../src/data/maps';
 import { NEW_GAME } from '../src/data/new-game';
+import { PICTURES } from '../src/data/pictures';
 import { SHOPS } from '../src/data/shops';
 import { SKILLS } from '../src/data/skills';
 import { SPEAKERS } from '../src/data/speakers';
@@ -225,6 +226,15 @@ describe('checkContent', () => {
         objects: [{ type: 'prefab', prefab: 'oak', at: [0, 0] }],
       },
     },
+    pictures: {
+      dusk: {
+        terrain: '..\n..',
+        legend: { '.': 'grass' },
+        shade: 0xf0b090,
+        mist: true,
+        lights: [{ at: [1, 0], color: 0xffd98a, radius: 2.5, beam: true }],
+      },
+    },
     events: { 'town/ada': async () => {} },
     newGame: {
       location: { map: 'town', x: 2, y: 0, facing: 'down' },
@@ -273,6 +283,28 @@ describe('checkContent', () => {
       'Item ether: name should be text, not 3',
       `Speaker ada: portrait "Ada.png" isn't an asset key, like tiles.floor`,
       "Map town: objects[3] has a field it shouldn't: wnader",
+    ]);
+  });
+
+  test('reports pictures’ lights that can’t be, and pictures with an empty list of them', () => {
+    const { dusk } = VALID.pictures;
+    expect(
+      check({
+        pictures: {
+          dusk: {
+            ...dusk,
+            lights: [
+              { at: [1, 0], color: 0xffd98a, radius: 0 },
+              { at: [0, 0], color: 0xffd98a, radius: 1, sweep: true },
+            ],
+          },
+          dark: { ...dusk, lights: [] },
+        },
+      }),
+    ).toEqual([
+      'Picture dusk: lights[0].radius should be more than 0, not 0',
+      "Picture dusk: lights[1] has a field it shouldn't: sweep",
+      'Picture dark: lights is empty',
     ]);
   });
 
@@ -689,6 +721,7 @@ describe('checkContent', () => {
         prefabs: PREFABS,
         maps: MAPS,
         backdrops: BACKDROPS,
+        pictures: PICTURES,
         events: EVENTS,
         newGame: NEW_GAME,
       }),

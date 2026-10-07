@@ -47,7 +47,6 @@ import {
   FIELD_SPEEDS,
   LEAVE_FADE_MS,
   MAP_FADE_MS,
-  MIST,
   NPC_TUNING,
 } from '../data/balance';
 import { BACKDROPS } from '../data/backdrops';
@@ -68,7 +67,7 @@ import { input } from '../systems/input/game-input';
 import { saveSlots } from '../systems/saves';
 import { session } from '../systems/session';
 import { settings } from '../systems/settings';
-import { DEPTH, TILE, createTilemap, shadeMap } from '../systems/tilemap';
+import { DEPTH, TILE, createTilemap, driftMist, mistMap, shadeMap } from '../systems/tilemap';
 import { bannerOnArrival } from '../ui/area-banner';
 import { showAreaBanner, type AreaBannerBox } from '../ui/area-banner-box';
 import { playBattleTransition } from '../ui/battle-transition';
@@ -77,6 +76,7 @@ import { MAX_CHOICES } from '../ui/dialogue-layout';
 import { BATTLE_SCENE, battleMusic, type BattleStart } from './battle';
 import type { DialogueRequest } from './dialogue';
 import { MAIN_MENU_SCENE, type MainMenuStart } from './main-menu';
+import { PICTURE_SCENE, type PictureScene } from './picture';
 import { SHOP_SCENE, type ShopStart } from './shop';
 
 /**
@@ -100,10 +100,6 @@ const WORLD_ZOOM = 2;
 const MAX_FRAME_MS = 100;
 
 const PLAYER_SPRITE = 'sprite.rowan';
-
-/** The Gloam's mist, tiled over a map whose mood has it, tinted a little towards its violet-grey. */
-const MIST_IMAGE = 'overlay.mist';
-const MIST_TINT = 0xd8d0e8;
 
 /** A chest's sprite sheet: shut, then open. Its frames are shorter than a tile. */
 const CHEST_SPRITE = 'object.chest';
@@ -210,7 +206,11 @@ export class FieldScene extends Phaser.Scene {
     // A script's teleport carries on here. Any other start leaves whatever was running behind.
     const arrival = this.arrival;
     this.arrival = undefined;
-    if (!arrival) this.script = null;
+    if (!arrival) {
+      this.script = null;
+      // And any picture it left up.
+      this.pictures()?.clear();
+    }
     this.stopWalks();
     // The map left, on a map change; any other start (a new game, a load) has none.
     const left = start.autosave ? this.map?.id : undefined;
@@ -311,10 +311,7 @@ export class FieldScene extends Phaser.Scene {
     const { map, world } = this;
     if (!map || !world) return;
     const dt = Math.min(delta, MAX_FRAME_MS);
-    if (this.mist) {
-      this.mist.tilePositionX += (MIST.drift.x * dt) / 1000;
-      this.mist.tilePositionY += (MIST.drift.y * dt) / 1000;
-    }
+    if (this.mist) driftMist(this.mist, dt);
     // Play time is real time. Phaser smooths `delta`, and holds it to 1/60 s while the window
     // isn't focused, so it counts the time that really passed instead.
     session.state = addPlayTime(session.state, Math.min(this.game.loop.rawDelta, MAX_FRAME_MS));
@@ -435,6 +432,7 @@ export class FieldScene extends Phaser.Scene {
       dark: this.dark,
       fading: camera.fadeEffect.isRunning,
       banner: this.banner?.showing ? this.banner.name : null,
+      picture: this.pictures()?.showing ?? null,
       shade: this.look?.shade ?? null,
       mist: this.mist !== undefined,
       noclip: debugSwitches.noclip,
@@ -522,12 +520,7 @@ export class FieldScene extends Phaser.Scene {
       this.shade = look.shade === null ? undefined : shadeMap(this, map, look.shade, DEPTH.shade);
     }
     if (look.mist && !this.mist) {
-      this.mist = this.add
-        .tileSprite(0, 0, map.width * TILE, map.height * TILE, MIST_IMAGE)
-        .setOrigin(0)
-        .setTint(MIST_TINT)
-        .setAlpha(MIST.alpha)
-        .setDepth(DEPTH.mist);
+      this.mist = mistMap(this, map, DEPTH.mist);
     } else if (!look.mist && this.mist) {
       this.mist.destroy();
       this.mist = undefined;
@@ -739,6 +732,8 @@ export class FieldScene extends Phaser.Scene {
   private scriptEnded(): void {
     this.script = null;
     this.stopWalks();
+    // A picture left up goes with the script.
+    if (this.pictures()?.showing) void this.pictures()?.hide();
     if (this.dark) void this.fade('in', MAP_FADE_MS);
     if (this.bannerPending !== null) {
       this.showBanner(this.bannerPending);
@@ -783,6 +778,7 @@ export class FieldScene extends Phaser.Scene {
       leave: (actor) => this.seeOff(actor),
       fadeOut: (ms = MAP_FADE_MS) => this.fade('out', checkedMs(ms)),
       fadeIn: (ms = MAP_FADE_MS) => this.fade('in', checkedMs(ms)),
+      picture: (id) => this.showPicture(id),
       teleport: (map, spawn) => this.teleport(map, spawn),
       shop: (id) =>
         new Promise((resolve) => {
@@ -905,6 +901,30 @@ export class FieldScene extends Phaser.Scene {
   private stopWalks(): void {
     for (const scripted of this.walks.values()) scripted.arrived();
     this.walks.clear();
+  }
+
+  /** The picture scene, if it's running: a script's `picture` starts it. */
+  private pictures(): PictureScene | undefined {
+    return this.scene.isActive(PICTURE_SCENE)
+      ? (this.scene.get(PICTURE_SCENE) as PictureScene)
+      : undefined;
+  }
+
+  /**
+   * Shows a picture over the field, or with null takes it away, starting the picture scene the
+   * first time; resolves once it has faded in or away.
+   */
+  private async showPicture(id: string | null): Promise<void> {
+    const running = this.pictures();
+    const pictures =
+      running ??
+      (await new Promise<PictureScene>((ready) => {
+        const scene = this.scene.get(PICTURE_SCENE) as PictureScene;
+        scene.events.once(Phaser.Scenes.Events.CREATE, () => ready(scene));
+        this.scene.launch(PICTURE_SCENE);
+      }));
+    if (id === null) await pictures.hide();
+    else await pictures.show(id);
   }
 
   /** Fades the screen out to black, or back in, and resolves once it's done. */

@@ -251,6 +251,11 @@ export const PREFABS = definePrefabs({
   beacon: { sheet: 'tiles.dungeon', origin: [2, 2], layout: ['#'] },
   // A Light Shrine: a gold orb on a stone, which heals the party (see src/data/events/rest.ts).
   shrine: { sheet: 'tiles.dungeon', origin: [7, 2], layout: ['#'] },
+  // The four Beacons, as the intro shows them: orbs on stones, in their colours.
+  'orb-tide': { sheet: 'tiles.dungeon', origin: [4, 2], layout: ['#'] },
+  'orb-gale': { sheet: 'tiles.dungeon', origin: [5, 2], layout: ['#'] },
+  'orb-stone': { sheet: 'tiles.dungeon', origin: [7, 2], layout: ['#'] },
+  'orb-ember': { sheet: 'tiles.dungeon', origin: [6, 2], layout: ['#'] },
 
   // The Tide Caves. Green stone stairs, to match the walls, and a green door.
   'cave-stairs-down': { sheet: 'tiles.element', origin: [9, 11], layout: ['D'] },

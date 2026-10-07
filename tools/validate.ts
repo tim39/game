@@ -11,6 +11,7 @@ import { EVENTS } from '../src/data/events';
 import { ITEMS } from '../src/data/items';
 import { MAPS } from '../src/data/maps';
 import { NEW_GAME } from '../src/data/new-game';
+import { PICTURES } from '../src/data/pictures';
 import { SHOPS } from '../src/data/shops';
 import { SKILLS } from '../src/data/skills';
 import { SPEAKERS } from '../src/data/speakers';
@@ -36,6 +37,7 @@ import { checkEvents } from './event-checks';
 import { measureBodyFont, measureDisplayFont } from './font-metrics';
 import {
   checkBackdrops,
+  checkPictures,
   checkMapAreas,
   checkMapNames,
   checkMaps,
@@ -71,6 +73,7 @@ const content = {
   prefabs: PREFABS,
   maps: MAPS,
   backdrops: BACKDROPS,
+  pictures: PICTURES,
   events: EVENTS,
   newGame: NEW_GAME,
 };
@@ -93,6 +96,7 @@ const events = await checkEvents({
   shops: SHOPS,
   enemies: ENEMIES,
   backdrops: BACKDROPS,
+  pictures: PICTURES,
   manifest: ASSETS,
   font,
   chestText: CHEST_TEXT,
@@ -113,6 +117,7 @@ const problems = [
     },
   }),
   ...checkBackdrops(BACKDROPS, MAP_CONTENT),
+  ...checkPictures(PICTURES, MAP_CONTENT),
   ...events.problems,
   ...checkMapNames(MAPS, font),
   ...checkMapAreas(MAPS, displayFont),
@@ -174,6 +179,7 @@ console.log(
     `${some(size(SPEAKERS), 'speaker')}, ` +
     `${some(size(TERRAINS), 'terrain')}, ${some(size(PREFABS), 'prefab')}, ` +
     `${some(maps, 'map')}, ${some(size(BACKDROPS), 'backdrop')}, ` +
+    `${some(size(PICTURES), 'picture')}, ` +
     `${some(size(EVENTS), 'event script')} and the new game all match ` +
     'their schemas.',
 );
@@ -187,7 +193,7 @@ console.log(
     'no two chests share a flag; their names fit the save menu; every area they are part of ' +
     'is a map, and its name fits the area banner; and every map but the test maps ' +
     `can be reached from ${NEW_GAME.location.map}, where a new game starts. Every battle ` +
-    'backdrop compiles, and fills the screen.',
+    'backdrop and picture compiles, and fills the screen, with its lights on it.',
 );
 console.log(
   `Events: all ${size(EVENTS)} event scripts and ${some(chests, 'chest')} run down every path ` +

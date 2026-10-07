@@ -186,12 +186,42 @@ test('New Game opens on the morning of the Kindling, and Tamsin puts Rowan on la
   await toTitle(page);
   await page.keyboard.press('Enter');
 
-  // From black: where, and when.
+  // The intro, a picture at a time, over black, to the title's music.
+  const intro = [
+    [
+      'beacons',
+      'Aurel lives in the light of four great Beacons: Tide, Gale, Stone and Ember, kept burning by the Order of Wardens.',
+    ],
+    [
+      'gloam',
+      'Beyond their glow lies the Gloam, a grey mist that eats memory. Those lost in it forget who they are, and become the Hollowed.',
+    ],
+    [
+      'kindling',
+      'Once a year, at the Kindling, every town gives its Beacon a small memory in thanks: a song, a smell, a favorite day.',
+    ],
+  ] as const;
+  for (const [picture, line] of intro) {
+    await untilSaid(page, line);
+    expect(await field(page)).toMatchObject({
+      map: 'saltmere-tamsin',
+      dark: true,
+      running: true,
+      picture,
+    });
+    expect(await page.evaluate(() => window.__game?.inspect('picture')?.alpha)).toBe(1);
+    expect((await audio(page)).music).toBe('bgm.title');
+    await page.screenshot({ path: `test-results/screenshots/kindling-day-intro-${picture}.png` });
+    await press(page, 'KeyZ');
+  }
+
+  // Then, the picture gone, where and when, as Saltmere's music comes in.
   await untilSaid(
     page,
     'Saltmere: a fishing village on the coast of Aurel, under the light of the Tide Beacon.',
   );
-  expect(await field(page)).toMatchObject({ map: 'saltmere-tamsin', dark: true, running: true });
+  expect(await field(page)).toMatchObject({ dark: true, running: true, picture: null });
+  expect((await audio(page)).music).toBe('bgm.saltmere');
   await page.screenshot({ path: 'test-results/screenshots/kindling-day-opening.png' });
   await press(page, 'KeyZ');
   await untilSaid(page, 'It is the morning of the Kindling.');

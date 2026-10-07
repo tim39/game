@@ -185,13 +185,13 @@ const MapObjectSchema = z.discriminatedUnion('type', [
     }),
 ]);
 
+/** A colour, as 0xRRGGBB. */
+const ColorSchema = z.int().min(0).max(0xffffff);
+
 /**
  * What a battle is fought in front of: a small map that fills the screen, of terrain and maybe some
  * prefabs (see src/core/map/backdrop.ts).
  */
-/** A colour, as 0xRRGGBB. */
-const ColorSchema = z.int().min(0).max(0xffffff);
-
 const BackdropSchema = z.strictObject({
   terrain: z.string(),
   /** One character each. */
@@ -203,6 +203,28 @@ const BackdropSchema = z.strictObject({
   shade: ColorSchema.optional(),
 });
 export type BackdropDef = ContentOf<typeof BackdropSchema>;
+
+/**
+ * A light in a picture, shining from the middle of a cell: a glow that pulses gently, `radius`
+ * cells across from its middle, and with `beam`, a lighthouse's beam sweeping round from it too.
+ */
+const LightSchema = z.strictObject({
+  at: GridPointSchema,
+  color: ColorSchema,
+  radius: z.number().positive().max(10),
+  beam: z.boolean().optional(),
+});
+
+/**
+ * A picture: what the title screen shows, and the intro's illustrations (see src/data/pictures.ts).
+ * It's drawn like a backdrop, and fills the screen the same way, with the Gloam's mist over it
+ * should it have `mist`, and its `lights` over everything.
+ */
+const PictureSchema = BackdropSchema.extend({
+  mist: z.boolean().optional(),
+  lights: z.array(LightSchema).min(1).optional(),
+});
+export type PictureDef = ContentOf<typeof PictureSchema>;
 
 /** How a map's music, shade and mist change once something has happened. */
 const MapMoodSchema = z
@@ -595,6 +617,7 @@ export const CONTENT_SCHEMAS = {
   prefabs: z.record(IdSchema, PrefabSchema),
   maps: z.record(IdSchema, MapSchema),
   backdrops: z.record(IdSchema, BackdropSchema),
+  pictures: z.record(IdSchema, PictureSchema),
   events: z.record(ScriptIdSchema, EventScriptSchema),
   newGame: NewGameSchema,
 };
