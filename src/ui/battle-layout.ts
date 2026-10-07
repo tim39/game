@@ -51,13 +51,17 @@ const CURSOR = 5;
 const STATUS_COLUMNS = {
   name: 0,
   hpLabel: 35,
-  hpRight: 106,
+  hpRight: 108,
   mpLabel: 111,
-  mpRight: 145,
+  mpRight: 147,
   tags: 151,
 };
-/** How wide HP and MP's labels are, in the body font, and the gap kept after a name or a label. */
-const LABELS = { hp: 12, mp: 13, gap: 3 };
+/**
+ * How wide HP and MP's labels are, in the body font, and the gap kept between a name, a label and
+ * a number: 4 pixels, as letters are 1 apart. A right-aligned number keeps its last letter's gap
+ * after it, so its ink ends a pixel short of where it's aligned.
+ */
+const LABELS = { hp: 12, mp: 13, gap: 4, trailing: 1 };
 
 export const BATTLE_LAYOUT = {
   /**
@@ -101,8 +105,8 @@ export const BATTLE_LAYOUT = {
    */
   room: {
     name: STATUS_COLUMNS.hpLabel - LABELS.gap,
-    hp: STATUS_COLUMNS.hpRight - STATUS_COLUMNS.hpLabel - LABELS.hp - LABELS.gap,
-    mp: STATUS_COLUMNS.mpRight - STATUS_COLUMNS.mpLabel - LABELS.mp - LABELS.gap,
+    hp: STATUS_COLUMNS.hpRight - LABELS.trailing - STATUS_COLUMNS.hpLabel - LABELS.hp - LABELS.gap,
+    mp: STATUS_COLUMNS.mpRight - LABELS.trailing - STATUS_COLUMNS.mpLabel - LABELS.mp - LABELS.gap,
     listLabel: LIST_COLUMN - CURSOR - 6 - 14 - 3,
     help: BOTTOM.width - 2 * (FRAME + INSET.x),
     /** A line of the victory panel. */
