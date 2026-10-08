@@ -2,8 +2,9 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { expect, test } from 'vitest';
 import type { ChestText } from '../src/core/chest';
-import { defineEvent } from '../src/core/events';
-import type { MapDef } from '../src/core/map/types';
+import type { Direction } from '../src/core/direction';
+import { defineEvent, type EventContext } from '../src/core/events';
+import type { MapContent, MapDef } from '../src/core/map/types';
 import { BACKDROPS } from '../src/data/backdrops';
 import { CHARACTERS } from '../src/data/characters';
 import { ENEMIES } from '../src/data/enemies';
@@ -14,6 +15,7 @@ import { PICTURES } from '../src/data/pictures';
 import { SHOPS } from '../src/data/shops';
 import { SPEAKERS } from '../src/data/speakers';
 import { STORY } from '../src/data/story';
+import { MAP_CONTENT } from '../src/data/terrain';
 import { CHEST_TEXT } from '../src/data/ui-text';
 import { ASSETS, type AssetEntry } from '../src/systems/asset-manifest';
 import { checkEvents, type EventSources } from './event-checks';
@@ -27,6 +29,15 @@ const FONT: MeasuredFont = {
 
 /** `count` words of 9 letters: 4 fit on a line of 236 pixels (beside a portrait), 5 on 280. */
 const words = (count: number): string => Array.from({ length: count }, () => 'abcdefghi').join(' ');
+
+/** Grass to walk on, and walls. */
+const CONTENT: MapContent = {
+  terrains: {
+    grass: { kind: 'fill', sheet: 'tiles.grass', tiles: [[0, 0]] },
+    wall: { kind: 'fill', sheet: 'tiles.grass', tiles: [[0, 0]], solid: true },
+  },
+  prefabs: {},
+};
 
 const MANIFEST: Record<string, AssetEntry> = {
   'portrait.ada': { type: 'image', url: 'ada.png' },
@@ -66,6 +77,7 @@ const sources = (overrides: Partial<EventSources>): EventSources => ({
   events: { hello },
   speakers: { ada: { name: 'Ada', portrait: 'portrait.ada' } },
   maps: {},
+  content: CONTENT,
   characters: { rowan: {}, bram: {} },
   items: { potion: { name: 'Potion' }, 'old-key': { name: 'Old Key' } },
   shops: { market: {} },
@@ -311,6 +323,56 @@ test('checks the people a script moves, turns and sees off are on each map that 
   ]);
 });
 
+test('reports a script that leaves someone it walked walling part of the map off', async () => {
+  // A nook at the top left, which only the cell under it leads into; Ada over on the right, and
+  // Bo in the bottom corner.
+  const yard: MapDef = {
+    id: 'yard',
+    name: 'Yard',
+    terrain: `
+      .#...
+      .....
+      .....
+    `,
+    legend: { '.': 'grass', '#': 'wall' },
+    objects: [
+      { type: 'npc', id: 'ada', sprite: 'ada', at: [4, 2], facing: 'left', script: 'walk' },
+      { type: 'npc', id: 'bo', sprite: 'bo', at: [0, 2], facing: 'up' },
+      { type: 'spawn', id: 'gate', at: [4, 0], facing: 'down' },
+    ],
+  };
+  // Ada walks the route, and then the script does whatever else.
+  const walk = async (route: Direction[], then?: (ev: EventContext) => Promise<void>) =>
+    check({
+      maps: { yard },
+      events: {
+        hello,
+        walk: defineEvent(async (ev) => {
+          await ev.move('ada', route);
+          await then?.(ev);
+        }),
+      },
+    });
+
+  // Into the cell under the nook: there's no way in or out of it past her.
+  expect(await walk(['left', 'left', 'left', 'up', 'left'])).toEqual([
+    'Event walk: it leaves ada at (0, 1), walling (0, 0) off from the rest of yard',
+  ]);
+  // Out of the way, she's no trouble; nor back where she started, or seen off.
+  expect(await walk(['left', 'up'])).toEqual([]);
+  expect(await walk(['left', 'up', 'down', 'right'])).toEqual([]);
+  expect(await walk(['left', 'left', 'left', 'up', 'left'], (ev) => ev.leave('ada'))).toEqual([]);
+  // Nor once the player has gone through a teleport, which puts everyone back.
+  expect(
+    await walk(['left', 'left', 'left', 'up', 'left'], (ev) => ev.teleport('yard', 'gate')),
+  ).toEqual([]);
+  // Those who stand still count too: with Bo in the corner, she walls off the nook and the cell
+  // under it, between them.
+  expect(await walk(['left', 'left', 'left', 'up'])).toEqual([
+    'Event walk: it leaves ada at (1, 1), walling (0, 0) and (0, 1) off from the rest of yard',
+  ]);
+});
+
 test('checks teleports go to spawns that exist, and who is about on the map after one', async () => {
   const problems = await check({
     maps: {
@@ -544,6 +606,7 @@ test('the real event scripts, speakers and maps check out', async () => {
     events: EVENTS,
     speakers: SPEAKERS,
     maps: MAPS,
+    content: MAP_CONTENT,
     characters: CHARACTERS,
     items: ITEMS,
     shops: SHOPS,

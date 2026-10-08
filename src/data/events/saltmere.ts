@@ -67,7 +67,8 @@ async function lampDuty(ev: EventContext): Promise<void> {
 /**
  * The game begins, from black: the intro, in pictures, of Aurel, its Beacons, the Gloam and the
  * Kindling (see STORY.md); then where, and when; then, in Tamsin's house, Tamsin comes over to put
- * Rowan on lamp duty. Arriving in the house before lamp duty runs it.
+ * Rowan on lamp duty, and steps aside: she stands in the only way out from between the beds.
+ * Arriving in the house before lamp duty runs it.
  */
 export const opening = defineEvent(async (ev) => {
   await ev.fadeOut(0);
@@ -100,6 +101,8 @@ export const opening = defineEvent(async (ev) => {
   await ev.face('tamsin', 'player');
   await ev.face('player', 'tamsin');
   await lampDuty(ev);
+  await ev.move('tamsin', ['right']);
+  await ev.face('tamsin', 'left');
 });
 
 // Tamsin's house: Tamsin, Rowan's bed and Tamsin's things.

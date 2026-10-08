@@ -1,8 +1,9 @@
 import { MAX_ENEMIES } from '../src/core/battle/battle';
 import { chestScript, type ChestText } from '../src/core/chest';
-import { isDirection } from '../src/core/direction';
+import { STEP, isDirection } from '../src/core/direction';
 import { PLAYER, type EventContext, type EventScript } from '../src/core/events';
-import type { MapDef, MapObject } from '../src/core/map/types';
+import { compileMap, type CompiledMap } from '../src/core/map/compile';
+import type { GridPoint, MapContent, MapDef, MapObject } from '../src/core/map/types';
 import {
   addGold,
   addItem,
@@ -29,6 +30,8 @@ export interface EventSources {
   readonly events: Readonly<Record<string, EventScript>>;
   readonly speakers: Readonly<Record<string, Speaker>>;
   readonly maps: Readonly<Record<string, MapDef>>;
+  /** The terrains and prefabs the maps are built from, to see where people can walk. */
+  readonly content: MapContent;
   /** Everyone who can be in the party, by ID, as in src/data/characters.ts. */
   readonly characters: Readonly<Record<string, unknown>>;
   /** Every item, by ID, as in src/data/items.ts. */
@@ -84,7 +87,8 @@ class LongPath extends Error {}
  *   people who are on the map it's on, teleport to spawns that exist, fight 1 to 6 enemies that
  *   exist in front of a backdrop that does, wait and fade for real lengths of time, play music and
  *   sound effects that are in the asset manifest, and only read and set `story.` flags that are
- *   the story's points;
+ *   the story's points; and where it ends, it mustn't leave anyone it walked somewhere walling
+ *   part of the map off (see `wallsOff`);
  * - every line it says fits in the dialogue box (three lines, narrower beside a portrait), every
  *   choice it offers fits the choice box, it offers one to four at a time, and the font has every
  *   character they use;
@@ -97,6 +101,7 @@ export async function checkEvents({
   events,
   speakers,
   maps,
+  content,
   characters,
   items,
   shops,
@@ -256,8 +261,10 @@ export async function checkEvents({
         let mapId = startMap;
         // What this run has settled: once a flag, an item or gold is read or changed, it stays so.
         const settled = { flags: new Set<string>(), items: new Set<string>(), gold: false };
-        // Who this run has seen off the map it's on, until it teleports.
+        // Who this run has seen off the map it's on, and where it has walked people to on it,
+        // until it teleports.
         const gone = new Set<string>();
+        const walked = new Map<string, GridPoint>();
         const checkActor = (actor: string, verb: string): void => {
           if (actor === PLAYER) return;
           const map = mapId === null ? undefined : maps[mapId];
@@ -288,6 +295,17 @@ export async function checkEvents({
             for (const step of route) {
               if (!isDirection(step))
                 report(`it moves ${actor} "${String(step)}", which isn't a way`);
+            }
+            const from =
+              walked.get(actor) ?? (mapId === null ? undefined : placed(maps[mapId], actor));
+            if (from && route.every(isDirection)) {
+              walked.set(
+                actor,
+                route.reduce<GridPoint>(
+                  ([x, y], step) => [x + STEP[step][0], y + STEP[step][1]],
+                  from,
+                ),
+              );
             }
             return Promise.resolve();
           },
@@ -321,6 +339,7 @@ export async function checkEvents({
             if (mapId !== null) teleports.set(mapId, (teleports.get(mapId) ?? new Set()).add(map));
             mapId = map;
             gone.clear();
+            walked.clear();
             return Promise.resolve();
           },
           shop: (id) => {
@@ -412,6 +431,9 @@ export async function checkEvents({
 
         try {
           await script(ev);
+          const def = mapId === null ? undefined : maps[mapId];
+          const walledOff = def && wallsOff(def, content, state, walked, gone);
+          if (walledOff) report(walledOff);
         } catch (error) {
           if (!(error instanceof LongPath)) {
             report(error instanceof Error ? error.message : String(error));
@@ -424,6 +446,111 @@ export async function checkEvents({
 
   return { problems, teleports };
 }
+
+/** Where a map places someone, if it places them: not the player. */
+function placed(map: MapDef | undefined, actor: string): GridPoint | undefined {
+  const people = map?.objects?.flatMap((object) => (object.type === 'npc' ? [object] : []));
+  return people?.find(({ id }) => id === actor)?.at;
+}
+
+/**
+ * Whether the people a script walked somewhere wall part of the map off, where it leaves them:
+ * cells that could be walked between with everyone where the map places them, but can't be with
+ * them standing where they are now. A player there couldn't get out. Everyone the map places
+ * stands in the way, about or not, as a run doesn't know who is; those seen off don't. Says who
+ * is where, and the cells walled off, all but the biggest piece of what was split; or returns
+ * null if nothing is.
+ */
+function wallsOff(
+  def: MapDef,
+  content: MapContent,
+  state: GameState,
+  walked: ReadonlyMap<string, GridPoint>,
+  gone: ReadonlySet<string>,
+): string | null {
+  const people = (def.objects ?? []).flatMap((object) => (object.type === 'npc' ? [object] : []));
+  const moved = people.flatMap(({ id, at }) => {
+    const there = walked.get(id);
+    return there && !gone.has(id) && (there[0] !== at[0] || there[1] !== at[1])
+      ? [{ id, there }]
+      : [];
+  });
+  if (moved.length === 0) return null;
+  let map: CompiledMap;
+  try {
+    map = compileMap(def, content, (flag) => hasFlag(state, flag));
+  } catch {
+    return null; // checkMaps reports a map that doesn't compile
+  }
+  const { width, height, solid } = map;
+  const cellAt = ([x, y]: GridPoint): number | null =>
+    x >= 0 && y >= 0 && x < width && y < height ? y * width + x : null;
+  // The cells people stand in: where the map places them, and where the script leaves them.
+  const standing = (where: (person: (typeof people)[number]) => GridPoint | null): Set<number> => {
+    const cells = new Set<number>();
+    for (const person of people) {
+      const spot = where(person);
+      const cell = spot && cellAt(spot);
+      if (typeof cell === 'number') cells.add(cell);
+    }
+    return cells;
+  };
+  const before = standing(({ at }) => at);
+  const after = standing(({ id, at }) => (gone.has(id) ? null : (walked.get(id) ?? at)));
+
+  // Which piece of the map each open cell is in, with people standing in the way: -1 for none.
+  const pieces = (blocked: ReadonlySet<number>): Int32Array => {
+    const piece = new Int32Array(width * height).fill(-1);
+    const open = (cell: number | null): cell is number =>
+      cell !== null && !solid[cell] && !blocked.has(cell) && piece[cell] === -1;
+    let next = 0;
+    for (let first = 0; first < width * height; first++) {
+      if (!open(first)) continue;
+      piece[first] = next;
+      for (let queue = [first], cell = queue.pop(); cell !== undefined; cell = queue.pop()) {
+        for (const [dx, dy] of Object.values(STEP)) {
+          const neighbour = cellAt([(cell % width) + dx, Math.floor(cell / width) + dy]);
+          if (open(neighbour)) {
+            piece[neighbour] = next;
+            queue.push(neighbour);
+          }
+        }
+      }
+      next++;
+    }
+    return piece;
+  };
+  const was = pieces(before);
+  const now = pieces(after);
+  // Each piece as it was, split into the pieces its cells are in now.
+  const splits = new Map<number, Map<number, number[]>>();
+  was.forEach((piece, cell) => {
+    const into = now[cell] ?? -1;
+    if (piece === -1 || into === -1) return;
+    const split = splits.get(piece) ?? new Map<number, number[]>();
+    split.set(into, [...(split.get(into) ?? []), cell]);
+    splits.set(piece, split);
+  });
+  const walledOff = [...splits.values()]
+    .flatMap((split) =>
+      [...split.values()]
+        .sort((a, b) => b.length - a.length)
+        .slice(1)
+        .flat(),
+    )
+    .sort((a, b) => a - b);
+  if (walledOff.length === 0) return null;
+
+  const named = ([x, y]: GridPoint): string => `(${x}, ${y})`;
+  const who = moved.map(({ id, there }) => `${id} at ${named(there)}`);
+  const cells = walledOff.map((cell) => named([cell % width, Math.floor(cell / width)]));
+  const shown = cells.length > 4 ? [...cells.slice(0, 3), `${cells.length - 3} more cells`] : cells;
+  return `it leaves ${andList(who)}, walling ${andList(shown)} off from the rest of ${def.id}`;
+}
+
+/** Things in a list, as a sentence says them: "a", "a and b", "a, b and c". */
+const andList = (things: readonly string[]): string =>
+  things.length < 2 ? (things[0] ?? '') : `${things.slice(0, -1).join(', ')} and ${things.at(-1)}`;
 
 /** The script a map object runs, if it runs one. */
 function scriptOf(object: MapObject): string | undefined {

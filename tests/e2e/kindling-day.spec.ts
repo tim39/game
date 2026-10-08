@@ -106,6 +106,15 @@ async function startOn(
   await arrivedOn(page, map);
 }
 
+/** Steps one cell (or turns, if the way is blocked) and waits for the step to end. */
+async function step(page: Page, key: string, times = 1): Promise<void> {
+  for (let i = 0; i < times; i++) {
+    await page.keyboard.press(key);
+    await nextFrames(page);
+    await page.waitForFunction(() => window.__game?.inspect('field')?.moving === false);
+  }
+}
+
 /** Waits for the dialogue box to show `text` in full. */
 async function untilSaid(page: Page, text: string): Promise<void> {
   await page.waitForFunction((line) => {
@@ -256,6 +265,15 @@ test('New Game opens on the morning of the Kindling, and Tamsin puts Rowan on la
   // Then the banner names the place, and Saltmere's music plays.
   expect(await field(page)).toMatchObject({ banner: 'Saltmere', dark: false });
   expect((await audio(page)).music).toBe('bgm.saltmere');
+
+  // Tamsin has stepped aside, out of the only way from between the beds, and Rowan can go out:
+  // down past the table, and out of the door.
+  expect(await at(page, 'tamsin')).toEqual([x + 1, y + 1]);
+  await page.screenshot({ path: 'test-results/screenshots/kindling-day-way-out.png' });
+  await step(page, 'ArrowDown', 3);
+  await step(page, 'ArrowRight', 3);
+  await step(page, 'ArrowDown', 2);
+  await arrivedOn(page, 'saltmere');
   expect(errors).toEqual([]);
 });
 

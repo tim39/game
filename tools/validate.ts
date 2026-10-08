@@ -91,6 +91,7 @@ const events = await checkEvents({
   events: EVENTS,
   speakers: SPEAKERS,
   maps: MAPS,
+  content: MAP_CONTENT,
   characters: CHARACTERS,
   items: ITEMS,
   shops: SHOPS,
@@ -198,8 +199,9 @@ console.log(
 console.log(
   `Events: all ${size(EVENTS)} event scripts and ${some(chests, 'chest')} run down every path ` +
     'through their choices and flags; every script, speaker, portrait, person, spawn, item, ' +
-    'character, music and sound they or the maps name exists; and every line and choice fits ' +
-    'its box, in characters the font has.',
+    'character, music and sound they or the maps name exists; every line and choice fits ' +
+    'its box, in characters the font has; and none leaves anyone it walks somewhere walling ' +
+    'part of a map off.',
 );
 console.log(
   'New game: it starts on a cell the player can stand on, with characters and items that exist.',

@@ -263,6 +263,7 @@ describe('reaching maps', () => {
       events: EVENTS,
       speakers: SPEAKERS,
       maps: MAPS,
+      content: MAP_CONTENT,
       characters: CHARACTERS,
       items: ITEMS,
       shops: SHOPS,
